@@ -230,7 +230,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	xStreamSavingBar.load(inifile);
 	yStreamSavingBar.load(inifile);
 
-	ModInfo->moduleString = "BASS Sound System v"PLUGIN_VERSION;
+	ModInfo->moduleString = "BASS Sound System "PLUGIN_VERSION;
 	ModInfo->moduleExtensions = (LPTSTR)(LPCTSTR)strExtensions;
 	ModInfo->moduleCategory = "AUDIO";
 
