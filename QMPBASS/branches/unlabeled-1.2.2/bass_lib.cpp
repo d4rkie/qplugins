@@ -21,7 +21,7 @@ bool create_bass (DWORD device)
 
 	BASS_SetConfig(BASS_CONFIG_NET_TIMEOUT, 10000);
 
-	return BASS_Init(device, 44100, 0, NULL, NULL) ? true : false;
+	return BASS_Init(device, 44100, 0, hwndPlayer, NULL) ? true : false;
 }
 
 bool destroy_bass (void)
@@ -425,9 +425,14 @@ int bass::get_data(void *out_buffer, int *out_size)
 	int todo = *out_size;
 	while (todo && BASS_ChannelIsActive(handle)) {
 		int rt = BASS_ChannelGetData(handle, p, todo);
+
+		if (rt == -1) { // Decode error
+			if (BASS_ErrorGetCode() == BASS_ERROR_NOPLAY) // The channel is not playing, or is stalled. When handle is a "decoding channel", this indicates that it has reached the end.
+				break;	// break while loop
+		}
 		p += rt;
 		todo -= rt;
-
+		
 		if (todo > 0 && is_url) Sleep(50);
 	}
 
