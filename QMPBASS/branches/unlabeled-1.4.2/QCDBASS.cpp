@@ -18,6 +18,15 @@
 //	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 //-----------------------------------------------------------------------------
+// Tode
+// : No need to calculate rg_scale_factor for each decode call
+// : When dithering is enabled it skips the first 5-15 secs.
+// : Volume in system mode with 32bit is very low/not mirrored to backspeakers
+//-----------------------------------------------------------------------------
+// 18-03-05 : Fixed wrong replaygain value for files with no RG info
+// 17-03-05 : Dublicated cfg_string to remove returning a const that is changed
+//            on PSN_APPLY.
+//-----------------------------------------------------------------------------
 
 #include "QCDBASS.h"
 
@@ -27,6 +36,7 @@
 #include "bass_lib.h"
 #include "BASSCfgUI.h"
 
+// ConStream log;			// Debug output stream
 
 HINSTANCE		hInstance;
 HWND			hwndPlayer;
@@ -43,34 +53,34 @@ typedef struct
 
 DecoderInfo_t decoderInfo;
 
-DOUBLE	seek_to = -1;
-BOOL	encoding = FALSE;
-BOOL	paused = FALSE;
-INT64	decode_pos_ms = 0;
+DOUBLE	seek_to			= -1;
+BOOL	encoding		= FALSE;
+BOOL	paused			= FALSE;
+INT64	decode_pos_ms	= 0;
 
-DWORD WINAPI __stdcall DecodeThread(void *b); // decoding thread only for decode mode
-DWORD WINAPI __stdcall PlayThread(void *b); // playing thread only for system mode
+DWORD WINAPI __stdcall DecodeThread(void *b);	// decoding thread only for decode mode
+DWORD WINAPI __stdcall PlayThread(void *b);		// playing thread only for system mode
 
-cfg_int uPrefPage("QCDBASS", "PrefPage", 0); // pref page number
-cfg_int xPrefPos("QCDBASS", "xPrefPos", 200); // left side of property sheet
-cfg_int yPrefPos("QCDBASS", "yPrefPos", 300); // left side of property sheet
+cfg_int uPrefPage("QCDBASS", "PrefPage", 0);	// pref page number
+cfg_int xPrefPos("QCDBASS", "xPrefPos", 200);	// left side of property sheet
+cfg_int yPrefPos("QCDBASS", "yPrefPos", 300);	// left side of property sheet
 
 cfg_string strExtensions("QCDBASS", "Extensions", "WAV:MP3:MP2:MP1:OGG:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
-cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0); // 0=decode, 1...=use internal output module
-cfg_int bUse32FP("QCDBASS", "Use32FP", TRUE); // enable 32-bit floating-point sample resolution
-cfg_int uPriority("QCDBASS", "Priority", 2); // thread priority, 0=normal, 1=higher, 2=highest, 3=critcal
+cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0);	// 0=decode, 1...=use internal output module
+cfg_int bUse32FP("QCDBASS", "Use32FP", TRUE);	// enable 32-bit floating-point sample resolution
+cfg_int uPriority("QCDBASS", "Priority", 2);	// thread priority, 0=normal, 1=higher, 2=highest, 3=critcal
 cfg_int bEqEnabled("QCDBASS", "EQEnabled", TRUE); // enable internal equalizer
-cfg_int bShowVBR("QCDBASS", "ShowVBR", TRUE); // display VBR bitrate
+cfg_int bShowVBR("QCDBASS", "ShowVBR", TRUE);	// display VBR bitrate
 
-cfg_int uFadeIn("QCDBASS", "FadeIn", 1000); // fade-in sound
-cfg_int uFadeOut("QCDBASS", "FadeOut", 3000); // fade-out sound
-cfg_int nPreAmp("QCDBASS", "PreAmp", 0); // preamp
+cfg_int uFadeIn("QCDBASS", "FadeIn", 1000);		// fade-in sound
+cfg_int uFadeOut("QCDBASS", "FadeOut", 3000);	// fade-out sound
+cfg_int nPreAmp("QCDBASS", "PreAmp", 0);		// preamp
 cfg_int bHardLimiter("QCDBASS", "HardLimiter", 0); // 6dB hard limiter
-cfg_int bDither("QCDBASS", "Dither", 0); // dither
+cfg_int bDither("QCDBASS", "Dither", 0);		// dither
 cfg_int uNoiseShaping("QCDBASS", "NoiseShaping", 1); // noise shaping
 cfg_int uReplayGainMode("QCDBASS", "ReplayGainMode", 0); // replaygain mode
 
-cfg_int uBufferLen("QCDBASS", "BufferLen", 10); // stream buffer lengthe in milliseconds
+cfg_int uBufferLen("QCDBASS", "BufferLen", 10);	// stream buffer lengthe in milliseconds
 cfg_int bStreamTitle("QCDBASS", "StreamTitle", TRUE); // enable stream title
 
 cfg_int bStreamSaving("QCDBASS", "StreamSaving", FALSE); // enable stream saving
@@ -123,8 +133,8 @@ int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpDa
 {
 	if (uMsg == BFFM_INITIALIZED) 
 	{
-		lpData = (LPARAM)(LPCTSTR)strStreamSavingPath;
-		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);	
+		lpData = strStreamSavingPath;
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
 	}
 	return 0;
 }
@@ -149,6 +159,7 @@ int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner)
 	bi.lParam = (LPARAM)(LPCWSTR)pszFolder;
 
 	pidlBrowse = SHBrowseForFolder(&bi);     
+
 	if (pidlBrowse != NULL) 
 	{
 		if (SHGetPathFromIDList(pidlBrowse, findname)) 
@@ -201,6 +212,8 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	decoderInfo.playingFile = NULL;
 	decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
 
+	// log.OpenConsole();
+
 	// load config
 	char inifile[MAX_PATH];
 	QCDCallbacks.Service(opGetPluginSettingsFile, inifile, MAX_PATH, 0);
@@ -231,7 +244,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	yStreamSavingBar.load(inifile);
 
 	ModInfo->moduleString = "BASS Sound System "PLUGIN_VERSION;
-	ModInfo->moduleExtensions = (LPTSTR)(LPCTSTR)strExtensions;
+	ModInfo->moduleExtensions = strExtensions;
 	ModInfo->moduleCategory = "AUDIO";
 
 	// insert plug-in menu
@@ -297,6 +310,7 @@ void ShutDown(int flags)
 		DestroyWindow(hwndStreamSavingBar);
 		hwndStreamSavingBar = NULL;
 	}
+	//log.CloseAll();
 }
 
 //-----------------------------------------------------------------------------
@@ -415,14 +429,17 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 int Stop(const char* medianame, int flags)
 {
 	if ( medianame && *medianame && !lstrcmpi(decoderInfo.playingFile, medianame) ) {
-		if (decoderInfo.pDecoder->is_decode) // stop output first for decoding
+		if (decoderInfo.pDecoder->is_decode) { // stop output first for decoding
 			QCDCallbacks.toPlayer.OutputStop(flags);
+		}
 
 		// destroy play/decoding thread
 		decoderInfo.killThread = 1;
+
 		if (decoderInfo.thread_handle != INVALID_HANDLE_VALUE) {
-			if (WaitForSingleObject(decoderInfo.thread_handle, INFINITE) == WAIT_TIMEOUT)
+			if (WaitForSingleObject(decoderInfo.thread_handle, INFINITE) == WAIT_TIMEOUT) {
 				TerminateThread(decoderInfo.thread_handle, 0);
+			}
 
 			CloseHandle(decoderInfo.thread_handle);
 			decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
@@ -466,6 +483,7 @@ int Pause(const char* medianame, int flags)
 	}
 
 	paused = !flags;
+
 	return FALSE;
 }
 
@@ -598,11 +616,11 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	}
 
 		// audio specs
-	unsigned int samplerate = (unsigned int)(decoderInfo->pDecoder->get_srate());
-	unsigned int bitspersample = (unsigned int)(decoderInfo->pDecoder->get_bps());
-	unsigned int numchannels = (unsigned int)(decoderInfo->pDecoder->get_nch());
-	unsigned int lengthMS = (unsigned int)decoderInfo->pDecoder->get_length() * 1000;
-	unsigned int avgbitrate = (unsigned int)(decoderInfo->pDecoder->get_bitrate());
+	unsigned int samplerate		= (unsigned int)(decoderInfo->pDecoder->get_srate());
+	unsigned int bitspersample	= (unsigned int)(decoderInfo->pDecoder->get_bps());
+	unsigned int numchannels	= (unsigned int)(decoderInfo->pDecoder->get_nch());
+	unsigned int lengthMS		= (unsigned int) decoderInfo->pDecoder->get_length() * 1000;
+	unsigned int avgbitrate		= (unsigned int)(decoderInfo->pDecoder->get_bitrate());
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
@@ -610,7 +628,8 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 		done = TRUE;
 	}
 
-#define VIS_BUFFER_SIZE 2048*numchannels*(bitspersample/8) // get 576 samples as winamp does, maybe safest^_^
+	const unsigned int VIS_BUFFER_SIZE = 2048*numchannels*(bitspersample/8); // get 576 samples as winamp does, maybe safest^_^
+
 	// alloc decoding buffer
 	LPBYTE pVisData = NULL;
 	if (!done) {
@@ -723,6 +742,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 //-- decoding thread
 DWORD WINAPI __stdcall DecodeThread(void *b)
 {
+	// log << "Entered DecodeThread\n";
 	DecoderInfo_t *decoderInfo = (DecoderInfo_t*)b;
 	BOOL done = FALSE, updatePos = FALSE;
 
@@ -732,14 +752,14 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
 
 			return 0;
-		}
+	}
 
 	// audio specs
-	unsigned int samplerate = (unsigned int)(decoderInfo->pDecoder->get_srate());
-	unsigned int bitspersample = (unsigned int)(decoderInfo->pDecoder->get_bps());
-	unsigned int numchannels = (unsigned int)(decoderInfo->pDecoder->get_nch());
-	unsigned int lengthMS = (unsigned int)decoderInfo->pDecoder->get_length() * 1000;
-	unsigned int avgbitrate = (unsigned int)(decoderInfo->pDecoder->get_bitrate());
+	unsigned int samplerate		= (unsigned int)(decoderInfo->pDecoder->get_srate());
+	unsigned int bitspersample	= (unsigned int)(decoderInfo->pDecoder->get_bps());
+	unsigned int numchannels	= (unsigned int)(decoderInfo->pDecoder->get_nch());
+	unsigned int lengthMS		= (unsigned int) decoderInfo->pDecoder->get_length() * 1000;
+	unsigned int avgbitrate		= (unsigned int)(decoderInfo->pDecoder->get_bitrate());
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
@@ -758,13 +778,15 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		wf.nBlockAlign = wf.nChannels * wf.wBitsPerSample / 8;
 		wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign;
 		if (!QCDCallbacks.toPlayer.OutputOpen(decoderInfo->playingFile, &wf)) {
-			show_error("Error: Failed openning output plugin!");
+			show_error("Error: Failed opening output plugin!");
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
 			done = TRUE; // cannot open sound device
 		}
+		// log << "File: " << decoderInfo->playingFile << "\n" << "FormatTag: " << wf.wFormatTag << "\n" << "Channels: " << wf.nChannels << "\n" << "BitsPerSample: " << wf.wBitsPerSample << "\n" << "SamplesPerSec: " << wf.nSamplesPerSec << "\n" << "BlockAlign: " << wf.nBlockAlign << "\n" << "AvgBytesPerSec: " << wf.nAvgBytesPerSec << "\n";
 	}
 
-#define BUFFER_SIZE 576*numchannels*(bitspersample/8) // get 576 samples as winamp does, maybe safest^_^
+	const unsigned int BUFFER_SIZE = 576*numchannels*(bitspersample/8); // get 576 samples as winamp does, maybe safest^_^
+
 	// alloc decoding buffer
 	HANDLE hHeap = NULL;
 	HANDLE pRawData = NULL;
@@ -811,33 +833,34 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 		/******************* DECODE TO BUFFER ****************/
 		else {
-			AudioInfo ai;
-			ai.struct_size = sizeof(AudioInfo);
-			ai.frequency = samplerate;
-			ai.mode = (numchannels == 2) ? 0 : 3;
-			ai.text[0] = '\0';
-
-			const char *type = decoderInfo->pDecoder->get_type();
-			if ( lstrcmpi(type, "mp1") == 0 ) {
-				ai.level = 1;
-				ai.layer = 1;
-			}
-			else if ( lstrcmpi(type, "mp2") == 0 ) {
-				ai.level = 1;
-				ai.layer = 2;
-			}
-			else if ( lstrcmpi(type, "mp3") == 0 ) {
-				ai.level = 1;
-				ai.layer = 3;
-			}
-			else
-				lstrcpyn(ai.text, type, sizeof(ai.text));
-
-			// update bitrate info
-			ai.bitrate = bShowVBR ? decoderInfo->pDecoder->get_bitrate() : avgbitrate;
-
+			// Update player info
 			static int ct = 51; // timer counter to slow display
 			if (ct > 50) {
+				AudioInfo ai;
+				ai.struct_size = sizeof(AudioInfo);
+				ai.frequency = samplerate;
+				ai.mode = (numchannels == 2) ? 0 : 3;
+				ai.text[0] = '\0';
+
+				const char *type = decoderInfo->pDecoder->get_type();
+				if ( lstrcmpi(type, "mp1") == 0 ) {
+					ai.level = 1;
+					ai.layer = 1;
+				}
+				else if ( lstrcmpi(type, "mp2") == 0 ) {
+					ai.level = 1;
+					ai.layer = 2;
+				}
+				else if ( lstrcmpi(type, "mp3") == 0 ) {
+					ai.level = 1;
+					ai.layer = 3;
+				}
+				else
+					lstrcpyn(ai.text, type, sizeof(ai.text));
+
+				// update bitrate info
+				ai.bitrate = bShowVBR ? decoderInfo->pDecoder->get_bitrate() : avgbitrate;
+
 				QCDCallbacks.Service(opSetAudioInfo, &ai, sizeof(AudioInfo), 0);
 				ct = 0; // reset counter
 			}
@@ -887,6 +910,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	if (pRawData) HeapFree(hHeap, 0, pRawData);
 	if (hHeap) HeapDestroy(hHeap);
 
+	// log << "End of DecodeThread\n";
 	return 0;
 }
 
