@@ -200,9 +200,7 @@ void CALLBACK bass::stream_status_proc(void *buffer, DWORD length, DWORD user)
 					// first, check our saving path
 					if (!PathFileExists(strStreamSavingPath)) {
 						TCHAR szBuffer[MAX_PATH];
-						browse_folder(hwndPlayer, _T("Select a folder to saving streamed files: "), szBuffer);
-
-						if(PathFileExists(szBuffer))
+						if ( browse_folder(szBuffer, _T("Select a folder to saving streamed files: "), hwndPlayer) )
 							lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
 					}
 					// secondly, show our stream saving bar
@@ -386,7 +384,7 @@ int bass::init ( bool fullinit )
 				length = (DWORD)BASS_ChannelBytes2Seconds( handle, BASS_StreamGetLength(handle) );
 
 				if (fullinit) {
-					bitrate=(DWORD)( size/(125*length)+0.5 )*1000; // bitrate (bps)
+					bitrate=(DWORD)( (unsigned long)size/(125*length)+0.5 )*1000; // bitrate (bps)
 
 					BASS_ChannelGetInfo(handle, &info);
 
