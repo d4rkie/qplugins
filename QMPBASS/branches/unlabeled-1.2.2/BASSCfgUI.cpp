@@ -230,7 +230,7 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 			}
 
 			break;
-		}
+		}	// switch(LOWORD(wParam))
 
 		return TRUE;
 	case WM_NOTIFY:
@@ -246,7 +246,9 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 				break;
 			case PSN_APPLY:
 				{
-					GetDlgItemText(hwndDlg, IDC_EXTENSIONS, (LPTSTR)(LPCTSTR)strExtensions, MAX_PATH);
+					// GetDlgItemText(hwndDlg, IDC_EXTENSIONS, (LPTSTR)(LPCTSTR)strExtensions, MAX_PATH);
+					GetDlgItemText(hwndDlg, IDC_EXTENSIONS, strExtensions, MAX_PATH);
+
 					uDeviceNum = SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
 					bUse32FP = IsDlgButtonChecked(hwndDlg, IDC_USE_32FP);
 					uPriority = 3-SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_GETPOS, 0, 0);
@@ -315,6 +317,13 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			for (i = 0; i < sizeof(replaygain_table)/sizeof(replaygain_table[0]); i++)
 				SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)replaygain_table[i]);
 			SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_SETCURSEL, uReplayGainMode, 0);
+
+			// Debug items
+			/*if (log.IsConsoleOpen())
+				CheckDlgButton(hwndDlg, IDC_DEBUG_CONSOLE, TRUE);
+			if (log.IsFileOpen())
+				CheckDlgButton(hwndDlg, IDC_DEBUG_FILE, TRUE);*/
+
 		}
 
 		return TRUE;
@@ -363,6 +372,10 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 			break;
 		case IDC_NOISE_SHAPING:
+			// Fall through
+			
+			
+
 		case IDC_REPLAYGAIN_MODE:
 			{
 				if (CBN_SELCHANGE == HIWORD(wParam))
@@ -370,7 +383,25 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			}
 
 			break;
-		}
+		/*case IDC_DEBUG_CONSOLE:
+			{
+				if (IsDlgButtonChecked(hwndDlg, IDC_DEBUG_CONSOLE))
+					log.OpenConsole();
+				else
+					log.CloseConsole();
+			}
+
+			break;
+		case IDC_DEBUG_FILE:
+			{
+				if (IsDlgButtonChecked(hwndDlg, IDC_DEBUG_FILE))
+					log.OpenFile();
+				else
+					log.CloseFile();
+			}
+
+			break;*/
+		} // switch(LOWORD(wParam))
 
 		return TRUE;
 	case WM_NOTIFY:
@@ -589,9 +620,9 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 
 					TCHAR szBuffer[MAX_PATH];
 					GetDlgItemText(hwndDlg, IDC_STREAM_SAVING_PATH, szBuffer, MAX_PATH);
-					if (PathFileExists(szBuffer)) {
-						lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
-					}
+					if (PathFileExists(szBuffer))
+						lstrcpy(strStreamSavingPath, szBuffer);
+						// lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
 
 					if (hwndStreamSavingBar)
 						SendMessage(hwndStreamSavingBar, WM_INITDIALOG, 0, 0);
@@ -834,7 +865,7 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 						TCHAR szBuffer[MAX_PATH];
 						if ( browse_folder(szBuffer, _T("Select a folder to saving streamed files: "), hwndDlg) && 
 							lstrcmpi(strStreamSavingPath, szBuffer) ) {
-							lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
+							lstrcpy(strStreamSavingPath, szBuffer);
 						}
 					}
 
@@ -884,6 +915,5 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 	}
 	
 	return FALSE; 
-	UNREFERENCED_PARAMETER(lParam); 
+	UNREFERENCED_PARAMETER(lParam);
 }
-
