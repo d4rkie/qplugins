@@ -48,7 +48,7 @@ extern void reset_menu(void);
 
 
 // common function
-extern void browse_folder(HWND hwndParent, LPCTSTR lpszTitle, LPTSTR pszPath);
+extern int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner);
 
 
 // streaming title

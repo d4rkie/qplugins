@@ -119,43 +119,51 @@ void reset_menu(void)
 	insert_menu();
 }
 
-int CALLBACK WINAPI BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) 
 {
-	switch (uMsg)
+	if (uMsg == BFFM_INITIALIZED) 
 	{
-	case BFFM_INITIALIZED:
-		{
-			lpData = (LPARAM)(LPCTSTR)strStreamSavingPath;
-			SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
-		}
-
-		break;
+		lpData = (LPARAM)(LPCTSTR)strStreamSavingPath;
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);	
 	}
-	
 	return 0;
 }
 
-void browse_folder(HWND hwndParent, LPCTSTR lpszTitle, LPTSTR pszPath)
+int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner)
 {
-	TCHAR szBuffer[MAX_PATH];
-	BROWSEINFO bi;
-	LPITEMIDLIST pidlSelected = NULL;
+	BROWSEINFO		bi;
+	LPMALLOC		SHMalloc;
+	LPITEMIDLIST	pidlBrowse;
+	CHAR			findname[MAX_PATH];
+	BOOL			ret = FALSE;
 
-	ZeroMemory(&bi, sizeof(BROWSEINFO));
-	ZeroMemory(szBuffer, sizeof(szBuffer));
+	if (FAILED(SHGetMalloc(&SHMalloc)))         
+		return 0;
 
-	bi.hwndOwner = hwndParent;
-	bi.pidlRoot = NULL;
-	bi.pszDisplayName = szBuffer;
+	bi.hwndOwner = hwndOwner; 
+	bi.pidlRoot = NULL;     
+	bi.pszDisplayName = NULL; 
 	bi.lpszTitle = lpszTitle;
-	bi.ulFlags = BIF_USENEWUI | BIF_RETURNONLYFSDIRS | BIF_SHAREABLE | BIF_STATUSTEXT;
-	bi.lpfn = BrowseCallbackProc;
-	
-	if ( (pidlSelected = SHBrowseForFolder(&bi)) && SHGetPathFromIDList(pidlSelected, szBuffer) )
-		lstrcpy(pszPath, szBuffer);
-	else
-		lstrcpy(pszPath, _T(""));
+	bi.ulFlags = BIF_NEWDIALOGSTYLE; 
+	bi.lpfn = BrowseCallbackProc; 
+	bi.lParam = (LPARAM)(LPCWSTR)pszFolder;
+
+	pidlBrowse = SHBrowseForFolder(&bi);     
+	if (pidlBrowse != NULL) 
+	{
+		if (SHGetPathFromIDList(pidlBrowse, findname)) 
+		{
+			lstrcpy(pszFolder, findname);
+			ret = TRUE;
+		}
+
+		SHMalloc->Free(pidlBrowse);
+	}
+
+	SHMalloc->Release();
+	return ret;
 }
+
 //-----------------------------------------------------------------------------
 
 int WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
