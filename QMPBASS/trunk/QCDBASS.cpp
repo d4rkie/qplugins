@@ -758,11 +758,14 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 #define BUFFER_SIZE 576*numchannels*(bitspersample/8) // get 576 samples as winamp does, maybe safest^_^
 	// alloc decoding buffer
-	LPBYTE pRawData = NULL;
+	HANDLE hHeap = NULL;
+	HANDLE pRawData = NULL;
 	if (!done) {
-		pRawData = new BYTE[BUFFER_SIZE];
-
-		if (pRawData == NULL) {
+		hHeap = HeapCreate(0, BUFFER_SIZE, BUFFER_SIZE);
+		if (hHeap)
+			pRawData = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
+        
+        if (hHeap == NULL || pRawData == NULL) {
 			show_error("Error: Out of memory!");
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
 			done = TRUE;
@@ -873,8 +876,8 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	// close up
 	decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
 
-	if (pRawData)
-		delete [] pRawData;
+	if (pRawData) HeapFree(hHeap, 0, pRawData);
+	if (hHeap) HeapDestroy(hHeap);
 
 	return 0;
 }
