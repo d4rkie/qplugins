@@ -40,19 +40,22 @@ RSC=rc.exe
 # PROP Use_Debug_Libraries 1
 # PROP Output_Dir ".\Debug"
 # PROP Intermediate_Dir ".\Debug"
+# PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MTd /I "..\replaygain_synthesis" /ZI /W3 /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Fp".\Debug/QCDBASS.pch" /Fo".\Debug/" /Fd".\Debug/" /FR".\Debug/" /GZ /c /GX 
-# ADD CPP /nologo /MTd /I "..\replaygain_synthesis" /ZI /W3 /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Fp".\Debug/QCDBASS.pch" /Fo".\Debug/" /Fd".\Debug/" /FR".\Debug/" /GZ /c /GX 
-# ADD BASE MTL /nologo /D"_DEBUG" /mktyplib203 /tlb".\Debug\QCDBASS.tlb" /win32 
-# ADD MTL /nologo /D"_DEBUG" /mktyplib203 /tlb".\Debug\QCDBASS.tlb" /win32 
-# ADD BASE RSC /l 1033 /d "_DEBUG" 
-# ADD RSC /l 1033 /d "_DEBUG" 
+# ADD BASE CPP /nologo /MTd /W3 /GX /ZI /Od /I "..\replaygain_synthesis" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /FR /GZ /c
+# ADD CPP /nologo /MTd /W3 /GX /ZI /Od /I "..\replaygain_synthesis" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /FR /GZ /c
+# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
+# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
+# ADD BASE RSC /l 0x409 /d "_DEBUG"
+# ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo 
-# ADD BSC32 /nologo 
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /dll /out:"D:\Media\Quintessential Player\Plugins\QCDBASS.dll" /incremental:no /libpath:"..\replaygain_synthesis\Debug" /debug /pdb:".\Debug\QCDBASS.pdb" /pdbtype:sept /subsystem:windows /implib:".\Debug/QCDBASS.lib" /machine:ix86 
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /dll /out:"D:\Media\Quintessential Player\Plugins\QCDBASS.dll" /incremental:no /libpath:"..\replaygain_synthesis\Debug" /debug /pdb:".\Debug\QCDBASS.pdb" /pdbtype:sept /subsystem:windows /implib:".\Debug/QCDBASS.lib" /machine:ix86 
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /subsystem:windows /dll /incremental:no /debug /machine:IX86 /out:"D:\Media\Quintessential Player\Plugins\QCDBASS.dll" /pdbtype:sept /libpath:"..\replaygain_synthesis\Debug"
+# SUBTRACT BASE LINK32 /pdb:none
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /subsystem:windows /dll /incremental:no /debug /machine:IX86 /pdbtype:sept /libpath:"..\replaygain_synthesis\Debug"
+# SUBTRACT LINK32 /pdb:none
 
 !ELSEIF  "$(CFG)" == "QCDBASS - Win32 Release"
 
@@ -65,26 +68,24 @@ LINK32=link.exe
 # PROP Use_Debug_Libraries 0
 # PROP Output_Dir ".\Release"
 # PROP Intermediate_Dir ".\Release"
+# PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MT /I "..\replaygain_synthesis" /W3 /O2 /Ob1 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /GF /Gy /Fp".\Release/QCDBASS.pch" /Fo".\Release/" /Fd".\Release/" /c /GX 
-# ADD CPP /nologo /MT /I "..\replaygain_synthesis" /W3 /O2 /Ob1 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /GF /Gy /Fp".\Release/QCDBASS.pch" /Fo".\Release/" /Fd".\Release/" /c /GX 
-# ADD BASE MTL /nologo /D"NDEBUG" /mktyplib203 /tlb".\Release\QCDBASS.tlb" /win32 
-# ADD MTL /nologo /D"NDEBUG" /mktyplib203 /tlb".\Release\QCDBASS.tlb" /win32 
-# ADD BASE RSC /l 1033 /d "NDEBUG" 
-# ADD RSC /l 1033 /d "NDEBUG" 
+# ADD BASE CPP /nologo /MT /W3 /GX /O2 /I "..\replaygain_synthesis" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /GF /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "..\replaygain_synthesis" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /GF /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
+# ADD BASE RSC /l 0x409 /d "NDEBUG"
+# ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo 
-# ADD BSC32 /nologo 
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /dll /out:".\Release\QCDBASS.dll" /incremental:no /libpath:"..\replaygain_synthesis\Release" /pdb:".\Release\QCDBASS.pdb" /pdbtype:sept /subsystem:windows /implib:".\Release/QCDBASS.lib" /machine:ix86 
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /dll /out:".\Release\QCDBASS.dll" /incremental:no /libpath:"..\replaygain_synthesis\Release" /pdb:".\Release\QCDBASS.pdb" /pdbtype:sept /subsystem:windows /implib:".\Release/QCDBASS.lib" /machine:ix86 
-# Begin Special Build Tool
-SOURCE="$(InputPath)"
-PostBuild_Desc=Creating Installer...
-PostBuild_Cmds=D:\system\nsis\makensis.exe $(TargetName).nsi
-# End Special Build Tool
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /subsystem:windows /dll /machine:IX86 /pdbtype:sept /libpath:"..\replaygain_synthesis\Release"
+# SUBTRACT BASE LINK32 /pdb:none
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /subsystem:windows /dll /machine:IX86 /pdbtype:sept /libpath:"..\replaygain_synthesis\Release"
+# SUBTRACT LINK32 /pdb:none
 
-!ENDIF
+!ENDIF 
 
 # Begin Target
 
@@ -96,31 +97,81 @@ PostBuild_Cmds=D:\system\nsis\makensis.exe $(TargetName).nsi
 # Begin Source File
 
 SOURCE=.\bass_lib.cpp
+DEP_CPP_BASS_=\
+	"..\replaygain_synthesis\ordinals.h"\
+	"..\replaygain_synthesis\replaygain_synthesis.h"\
+	".\bass.h"\
+	".\bass_lib.h"\
+	".\BASSCfgUI.h"\
+	".\cfg_var.h"\
+	".\QCDBASS.h"\
+	".\qcdhelper.h"\
+	".\QCDInputDLL.h"\
+	".\QCDModDefs.h"\
+	".\QCDModInput.h"\
+	".\tags.h"\
+	
 # End Source File
 # Begin Source File
 
 SOURCE=.\BASSCfgUI.cpp
+DEP_CPP_BASSC=\
+	".\bass.h"\
+	".\BASSCfgUI.h"\
+	".\cfg_var.h"\
+	".\QCDBASS.h"\
+	".\qcdhelper.h"\
+	".\QCDInputDLL.h"\
+	".\QCDModDefs.h"\
+	".\QCDModInput.h"\
+	
 # End Source File
 # Begin Source File
 
 SOURCE=QCDBASS.cpp
+DEP_CPP_QCDBA=\
+	"..\replaygain_synthesis\ordinals.h"\
+	"..\replaygain_synthesis\replaygain_synthesis.h"\
+	".\bass.h"\
+	".\bass_lib.h"\
+	".\BASSCfgUI.h"\
+	".\cfg_var.h"\
+	".\QCDBASS.h"\
+	".\qcdhelper.h"\
+	".\QCDInputDLL.h"\
+	".\QCDModDefs.h"\
+	".\QCDModInput.h"\
+	
 
 !IF  "$(CFG)" == "QCDBASS - Win32 Debug"
 
-# ADD CPP /nologo /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /FR /GZ /GX 
+# ADD CPP /nologo /GX /Od /FR /GZ
+
 !ELSEIF  "$(CFG)" == "QCDBASS - Win32 Release"
 
-# ADD CPP /nologo /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /GX 
-!ENDIF
+# ADD CPP /nologo /GX /O2
+
+!ENDIF 
 
 # End Source File
 # Begin Source File
 
 SOURCE=.\qcdhelper.cpp
+DEP_CPP_QCDHE=\
+	".\qcdhelper.h"\
+	".\QCDModDefs.h"\
+	".\QCDModInput.h"\
+	
 # End Source File
 # Begin Source File
 
 SOURCE=.\tags.cpp
+DEP_CPP_TAGS_=\
+	".\qcdhelper.h"\
+	".\QCDModDefs.h"\
+	".\QCDModInput.h"\
+	".\tags.h"\
+	
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -197,4 +248,3 @@ SOURCE=.\qcdbass.nsi
 # End Source File
 # End Target
 # End Project
-
