@@ -67,7 +67,7 @@ bass::~bass(void)
 		if (info.ctype & BASS_CTYPE_STREAM) BASS_StreamFree(handle);
 		else if (info.ctype & BASS_CTYPE_MUSIC_MOD) BASS_MusicFree(handle);
 
-		handle = 0;
+		handle = NULL;
 	}
 
 	if (path) {
@@ -539,7 +539,7 @@ bool bass::stop(int flags) // flags for force stop or playdone
 {
 	if (is_decode) { // just reset timer for decoding mothod
 		starttime = pausetime = 0;
-		return true;;
+		return true;
 	}
 
 	//// wind the frequency down for force stop
