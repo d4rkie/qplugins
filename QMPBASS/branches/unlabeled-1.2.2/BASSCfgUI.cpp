@@ -94,7 +94,7 @@ int CALLBACK ConfigSheetProc(HWND hwndDlg, UINT uMsg, LPARAM lParam)
 
 void DestroyPropertySheet(HWND hwndPage)
 {
-	if ( ( (bOKAdvanced && bOKStreaming && bOKStreamSaving) || bCancelAll ) && hwndConfig ) {
+	if ( ( (bOKGeneral && bOKAdvanced && bOKStreaming && bOKStreamSaving) || bCancelAll ) && hwndConfig ) {
 		RECT rc;
 		GetWindowRect(hwndConfig, &rc);
 		xPrefPos = rc.left;
@@ -207,7 +207,7 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 					"Free sample slot: %ld\n"
 					"Free 3D sample slot: %ld\n"
 					"Min. sample rate supported: %ld Hz\n"
-					"Max. sample rete supported: %ld Hz\n"
+					"Max. sample rate supported: %ld Hz\n"
 					"EAX supported: %s\n"
 					"Min. buffer length: %ld milliseconds\n"
 					"DirectX version: %ld\n"
@@ -246,14 +246,13 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 				break;
 			case PSN_APPLY:
 				{
-					// GetDlgItemText(hwndDlg, IDC_EXTENSIONS, (LPTSTR)(LPCTSTR)strExtensions, MAX_PATH);
 					GetDlgItemText(hwndDlg, IDC_EXTENSIONS, strExtensions, MAX_PATH);
 
-					uDeviceNum = SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
-					bUse32FP = IsDlgButtonChecked(hwndDlg, IDC_USE_32FP);
-					uPriority = 3-SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_GETPOS, 0, 0);
-					bEqEnabled = IsDlgButtonChecked(hwndDlg, IDC_EQENABLED);
-					bShowVBR = IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE);
+					uDeviceNum	= SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
+					bUse32FP	= IsDlgButtonChecked(hwndDlg, IDC_USE_32FP);
+					uPriority	= 3-SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_GETPOS, 0, 0);
+					bEqEnabled	= IsDlgButtonChecked(hwndDlg, IDC_EQENABLED);
+					bShowVBR	= IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE);
 
 					if (lppsn->lParam == TRUE)  { // for OK button
 						bOKGeneral = TRUE;
@@ -915,5 +914,5 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 	}
 	
 	return FALSE; 
-	UNREFERENCED_PARAMETER(lParam);
+	// UNREFERENCED_PARAMETER(lParam);
 }
