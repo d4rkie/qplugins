@@ -43,6 +43,7 @@ public:
 	}
 };
 
+
 //-- class cfg_string
 class cfg_string
 {
@@ -84,7 +85,7 @@ public:
 		return WritePrivateProfileString(m_lpAppName, m_lpKeyName, m_lpValue, lpFileName);
 	}
 public:
-	inline operator LPCTSTR (void) const { return m_lpValue; }
+	inline operator LPTSTR (void) { return m_lpValue; }				// change to not return a const string
 	inline bool is_empty() { return !m_lpValue || !m_lpValue[0]; }
 };
 
