@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QCDBASS", "QCDBASS.vcproj", "{86F8984B-8D3A-4FB2-B24B-9937F8ADE605}"
+	ProjectSection(ProjectDependencies) = postProject
+		{D77ECB8D-2238-4CE6-98AF-63370498017B} = {D77ECB8D-2238-4CE6-98AF-63370498017B}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "replaygain_synthesis_static", "..\replaygain_synthesis\replaygain_synthesis_static.vcproj", "{D77ECB8D-2238-4CE6-98AF-63370498017B}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{86F8984B-8D3A-4FB2-B24B-9937F8ADE605}.Debug.ActiveCfg = Debug|Win32
+		{86F8984B-8D3A-4FB2-B24B-9937F8ADE605}.Debug.Build.0 = Debug|Win32
+		{86F8984B-8D3A-4FB2-B24B-9937F8ADE605}.Release.ActiveCfg = Release|Win32
+		{86F8984B-8D3A-4FB2-B24B-9937F8ADE605}.Release.Build.0 = Release|Win32
+		{D77ECB8D-2238-4CE6-98AF-63370498017B}.Debug.ActiveCfg = Debug|Win32
+		{D77ECB8D-2238-4CE6-98AF-63370498017B}.Debug.Build.0 = Debug|Win32
+		{D77ECB8D-2238-4CE6-98AF-63370498017B}.Release.ActiveCfg = Release|Win32
+		{D77ECB8D-2238-4CE6-98AF-63370498017B}.Release.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal
