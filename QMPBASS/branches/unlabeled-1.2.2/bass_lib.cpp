@@ -21,7 +21,7 @@ bool create_bass (DWORD device)
 
 	BASS_SetConfig(BASS_CONFIG_NET_TIMEOUT, 10000);
 
-	return BASS_Init(device, 44100, 0, hwndPlayer, NULL) ? true : false;
+	return BASS_Init(device, 44100, 0, NULL, NULL) ? true : false;
 }
 
 bool destroy_bass (void)
@@ -201,7 +201,7 @@ void CALLBACK bass::stream_status_proc(void *buffer, DWORD length, DWORD user)
 					if (!PathFileExists(strStreamSavingPath)) {
 						TCHAR szBuffer[MAX_PATH];
 						if ( browse_folder(szBuffer, _T("Select a folder to saving streamed files: "), hwndPlayer) )
-							lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
+							lstrcpy(strStreamSavingPath, szBuffer);
 					}
 					// secondly, show our stream saving bar
 					if (bAutoShowStreamSavingBar) {
@@ -282,7 +282,8 @@ double bass::rg_scale_factor = 1.0;
 bool bass::hard_limiter = false;
 void bass::init_rg()
 {
-	double track_gain, track_peak, album_gain, album_peak;
+	double track_gain = 0.0, track_peak = 0.0, album_gain = 0.0, album_peak = 0.0;
+
 	if (uReplayGainMode !=0 && !is_url) { // replaygain for local media
 		file_info info;
 		if( read_tags(r, &info) ) {
@@ -296,7 +297,7 @@ void bass::init_rg()
 			rg_gain = track_gain ? track_gain : album_gain;
 			rg_peak = track_peak ? track_peak : album_peak;
 		}
-		else if (uReplayGainMode == 2) {
+		else if (uReplayGainMode == 2) { // album gain
 			rg_gain = album_gain ? album_gain : track_gain;
 			rg_peak = album_peak ? album_peak : track_peak;
 		}
@@ -308,6 +309,7 @@ void bass::init_rg()
 
 	dither = !!bDither;
 	FLAC__replaygain_synthesis__init_dither_context(&dither_context, use_32fp ? 32 : 16, uNoiseShaping);
+	// log << "track_gain: " << track_gain << "\ntrack_peak: " << track_peak << "\nalbum_gain: " << album_gain << "\nalbum_peak: " << album_peak << "\n";
 }
 
 void CALLBACK bass::rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD length, DWORD user)
@@ -453,19 +455,23 @@ int bass::decode ( void *out_buffer, int *out_size )
 
 	// calculate rg scale factor dynamically
 	hard_limiter = !!bHardLimiter;
-	rg_scale_factor = FLAC__replaygain_synthesis__compute_scale_factor(rg_peak, rg_gain, (double)nPreAmp, !hard_limiter);
+	rg_scale_factor = FLAC__replaygain_synthesis__compute_scale_factor(rg_peak, rg_gain, (double)(int)nPreAmp, !hard_limiter);
 
+	// log << "scale: " << rg_scale_factor << " peak: " << rg_peak << " gain: " << rg_gain << " PreAmp" << (double)(int)nPreAmp << "\n";
+
+	/* FLAC__replaygain_synthesis__apply_gain(*data_out, little_endian_data_out, unsigned_data_out, *input, float_in, 
+		wide_samples, channels, source_bps, target_bps, scale, hard_limit, do_dithering, *dither_context) */
 	if (dither && use_32fp)
 		*out_size = FLAC__replaygain_synthesis__apply_gain(
 		(FLAC__byte *)out_buffer, 
-		true, /* little_endian_data_out */
-		get_bps() == 8, /* unsigned_data_out */
+		true, // little_endian_data_out
+		get_bps() == 8, // unsigned_data_out
 		reservoir__, 
-		get_format() == 0x0003, /* 32-bit floating-point data */
-		(*out_size)/(get_nch()*get_bps()/8), 
-		get_nch(), 
-		get_bps(), 
-		dither ? 16 : get_bps(), 
+		get_format() == 0x0003, // 32-bit floating-point data
+		(*out_size)/(get_nch()*get_bps()/8), // # of wide samples
+		get_nch(), // Channels
+		get_bps(), // source_bps
+		dither ? 16 : get_bps(), // target_bps
 		rg_scale_factor, 
 		hard_limiter, 
 		dither, 
@@ -475,7 +481,7 @@ int bass::decode ( void *out_buffer, int *out_size )
 		*out_size = FLAC__replaygain_synthesis__apply_gain_normal(
 		(FLAC__byte *)out_buffer, 
 		reservoir__, 
-		get_format() == 0x0003, 
+		get_format() == 0x0003, // WAVE_FORMAT_IEEE_FLOAT
 		(*out_size)/(get_nch()*get_bps()/8), 
 		get_nch(), 
 		get_bps(), 
