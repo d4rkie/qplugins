@@ -158,9 +158,6 @@
 				RelativePath=".\BASSCfgUI.cpp">
 			</File>
 			<File
-				RelativePath=".\cfg_var.cpp">
-			</File>
-			<File
 				RelativePath="QCDBASS.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">

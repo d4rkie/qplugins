@@ -103,10 +103,6 @@ SOURCE=.\BASSCfgUI.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\cfg_var.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=QCDBASS.cpp
 
 !IF  "$(CFG)" == "QCDBASS - Win32 Debug"
