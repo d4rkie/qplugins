@@ -4,7 +4,7 @@
 #include "qcdhelper.h"
 #include "cfg_var.h"
 
-#define PLUGIN_VERSION "v1.0beta6"
+#define PLUGIN_VERSION "v1.0beta7"
 
 
 // vars for config UI
