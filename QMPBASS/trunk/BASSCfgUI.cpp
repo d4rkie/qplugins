@@ -45,33 +45,33 @@ HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
     psp[0].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[0].hInstance = hInstance;
     psp[0].pResource = LoadResDialog(hInstance, IDD_GENERAL);
-    psp[0].pfnDlgProc = GeneralDlgProc;
+    psp[0].pfnDlgProc = (DLGPROC)GeneralDlgProc;
     psp[0].lParam = 0;
     psp[0].pfnCallback = NULL;
     psp[1].dwSize = sizeof(PROPSHEETPAGE);
     psp[1].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[1].hInstance = hInstance;
     psp[1].pResource = LoadResDialog(hInstance, IDD_ADVANCED);
-    psp[1].pfnDlgProc = AdvancedDlgProc;
+    psp[1].pfnDlgProc = (DLGPROC)AdvancedDlgProc;
     psp[1].lParam = 0;
     psp[1].pfnCallback = NULL;
     psp[2].dwSize = sizeof(PROPSHEETPAGE);
     psp[2].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[2].hInstance = hInstance;
 	psp[2].pResource = LoadResDialog(hInstance, IDD_STREAMING);
-    psp[2].pfnDlgProc = StreamingDlgProc;
+    psp[2].pfnDlgProc = (DLGPROC)StreamingDlgProc;
     psp[2].lParam = 0;
     psp[2].pfnCallback = NULL;
     psp[3].dwSize = sizeof(PROPSHEETPAGE);
     psp[3].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[3].hInstance = hInstance;
 	psp[3].pResource = LoadResDialog(hInstance, IDD_STREAM_SAVING);
-    psp[3].pfnDlgProc = StreamSavingDlgProc;
+    psp[3].pfnDlgProc = (DLGPROC)StreamSavingDlgProc;
     psp[3].lParam = 0;
     psp[3].pfnCallback = NULL;
 
     psh.dwSize = sizeof(PROPSHEETHEADER);
-    psh.dwFlags = PSH_DEFAULT | PSH_MODELESS | PSH_NOCONTEXTHELP | PSH_PROPSHEETPAGE/* | PSH_USECALLBACK*/;
+    psh.dwFlags = PSH_DEFAULT | PSH_MODELESS | PSH_PROPSHEETPAGE/* | PSH_USECALLBACK*/;
     psh.hwndParent = hwndParent;
     psh.hInstance = hInstance;
     psh.pszCaption = _T("Config BASS Sound System Plug-in");
@@ -181,14 +181,14 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 			break;
 		case IDC_EQENABLED:
 			{
-				if ( bEqEnabled != IsDlgButtonChecked(hwndDlg, IDC_EQENABLED) )
+				if ( bEqEnabled != (int)IsDlgButtonChecked(hwndDlg, IDC_EQENABLED) )
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 			}
 
 			break;
 		case IDC_SHOW_AVG_BITRATE:
 			{
-				if ( bShowVBR != IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE) )
+				if ( bShowVBR != (int)IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE) )
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 			}
 
@@ -284,6 +284,8 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 	{
 	case WM_INITDIALOG:
 		{
+			int i;
+
 			uFadeIn = uFadeIn < 0 ? 0 : (uFadeIn > 10000 ? 10000 : uFadeIn); // value fixer
 			SetDlgItemInt(hwndDlg, IDC_FADE_IN, uFadeIn, FALSE);
 			SendDlgItemMessage(hwndDlg, IDC_FADE_IN, EM_SETLIMITTEXT, 5*sizeof(TCHAR), 0);
@@ -306,11 +308,11 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			CheckDlgButton(hwndDlg, IDC_HARD_LIMITER, !!bHardLimiter);
 			CheckDlgButton(hwndDlg, IDC_DITHER, !!bDither);
 			EnableWindow(GetDlgItem(hwndDlg, IDC_DITHER), bUse32FP);
-			for (int i = 0; i < sizeof(noise_shaping_table)/sizeof(noise_shaping_table[0]); i++)
+			for (i = 0; i < sizeof(noise_shaping_table)/sizeof(noise_shaping_table[0]); i++)
 				SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)noise_shaping_table[i]);
 			SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_SETCURSEL, uNoiseShaping, 0);
 			EnableWindow(GetDlgItem(hwndDlg, IDC_NOISE_SHAPING), bUse32FP && bDither);
-			for (int i = 0; i < sizeof(replaygain_table)/sizeof(replaygain_table[0]); i++)
+			for (i = 0; i < sizeof(replaygain_table)/sizeof(replaygain_table[0]); i++)
 				SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)replaygain_table[i]);
 			SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_SETCURSEL, uReplayGainMode, 0);
 		}
@@ -332,21 +334,21 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 		{
 		case IDC_FADE_IN:
 			{
-				if (uFadeIn != GetDlgItemInt(hwndDlg, IDC_FADE_IN, NULL, FALSE))
+				if (uFadeIn != (int)GetDlgItemInt(hwndDlg, IDC_FADE_IN, NULL, FALSE))
                     PropSheet_Changed(GetParent(hwndDlg), hwndDlg);					
 			}
 
 			break;
 		case IDC_FADE_OUT:
 			{
-				if (uFadeOut != GetDlgItemInt(hwndDlg, IDC_FADE_OUT, NULL, FALSE))
+				if (uFadeOut != (int)GetDlgItemInt(hwndDlg, IDC_FADE_OUT, NULL, FALSE))
                     PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 			}
 
 			break;
 		case IDC_HARD_LIMITER:
 			{
-				if ( bHardLimiter != IsDlgButtonChecked(hwndDlg, IDC_HARD_LIMITER) )
+				if ( bHardLimiter != (int)IsDlgButtonChecked(hwndDlg, IDC_HARD_LIMITER) )
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 			}
 			
@@ -458,7 +460,7 @@ INT_PTR CALLBACK StreamingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
 		{
 		case IDC_BUFFER_LENGTH:
 			{
-				if(uBufferLen != GetDlgItemInt(hwndDlg, IDC_BUFFER_LENGTH, NULL, FALSE))
+				if(uBufferLen != (int)GetDlgItemInt(hwndDlg, IDC_BUFFER_LENGTH, NULL, FALSE))
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 			}
 
@@ -557,9 +559,8 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 		case IDC_STREAM_SAVING_PATH:
 			{
 				TCHAR szBuffer[MAX_PATH];
-				browse_folder(hwndDlg, _T("Select a folder to saving streamed files: "), szBuffer);
-
-				if (PathFileExists(szBuffer) && lstrcmpi(strStreamSavingPath, szBuffer) ) {
+				if (browse_folder(szBuffer, _T("Select a folder to saving streamed files: "), hwndDlg) && 
+					lstrcmpi(strStreamSavingPath, szBuffer) ) {
 					SetDlgItemText(hwndDlg, IDC_STREAM_SAVING_PATH, szBuffer);
 
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
@@ -628,7 +629,7 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 //-- for About dialog box
 HWND DoAboutDlg(HINSTANCE hInstance, HWND hwndParent)
 {
-	HWND ret = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_ABOUT), hwndParent, AboutDlgProc);
+	HWND ret = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_ABOUT), hwndParent, (DLGPROC)AboutDlgProc);
 	ShowWindow(ret, SW_SHOW);
 
 	return ret;
@@ -670,7 +671,7 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 //-- for stream saving bar
 HWND DoStreamSavingBar(HINSTANCE hInstance, HWND hwndParent)
 {
-	HWND ret = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_STREAM_SAVING_BAR), hwndParent, StreamSavingBarProc);
+	HWND ret = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_STREAM_SAVING_BAR), hwndParent, (DLGPROC)StreamSavingBarProc);
 	SetWindowPos(ret, HWND_TOPMOST, xStreamSavingBar, yStreamSavingBar, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
 
 	return ret;
@@ -831,10 +832,10 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 				case IDC_STREAM_SAVING_BAR_SETPATH:
 					{
 						TCHAR szBuffer[MAX_PATH];
-						browse_folder(hwndDlg, _T("Select a folder to saving streamed files: "), szBuffer);
-
-						if (PathFileExists(szBuffer) && lstrcmpi(strStreamSavingPath, szBuffer))
+						if ( browse_folder(szBuffer, _T("Select a folder to saving streamed files: "), hwndDlg) && 
+							lstrcmpi(strStreamSavingPath, szBuffer) ) {
 							lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
+						}
 					}
 
 					break;
