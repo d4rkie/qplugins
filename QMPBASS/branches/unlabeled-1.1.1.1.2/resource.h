@@ -1,5 +1,5 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ generated include file.
+// Microsoft Developer Studio generated include file.
 // Used by QCDBASS.rc
 //
 #define ID_PLUGINMENU_SETTINGS          101
@@ -43,6 +43,8 @@
 #define IDC_REPLAYGAIN_MODE             1024
 #define IDC_PA                          1025
 #define IDC_PLUGIN_VERSION              1027
+#define IDC_DEBUG_CONSOLE               1028
+#define IDC_DEBUG_FILE                  1029
 #define IDC_STREAM_SAVING_BAR_GO        1058
 #define IDC_STREAM_SAVING_BAR_SKIP_TITLE 1059
 #define IDC_STREAM_SAVING_BAR_BROWSE    1060
@@ -56,7 +58,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        112
 #define _APS_NEXT_COMMAND_VALUE         40002
-#define _APS_NEXT_CONTROL_VALUE         1028
+#define _APS_NEXT_CONTROL_VALUE         1030
 #define _APS_NEXT_SYMED_VALUE           103
 #endif
 #endif
