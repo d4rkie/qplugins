@@ -19,14 +19,21 @@
 //
 //-----------------------------------------------------------------------------
 // Tode
-// : No need to calculate rg_scale_factor for each decode call
-// : When dithering is enabled it skips the first 5-15 secs.
 // : Volume in system mode with 32bit is very low/not mirrored to backspeakers
+// : Add FLAC support via addon
+// : Soundcard info is only shown after a file has been played
+// : the bass plugin retaining the file open when you press the stop button
+// :   I made a BASS_ChannelSetSync BASS_SYNC_SLIDE to free the channel.
+// : Shoutcast stream titles. Currently only the songname tag is supported,
+// : the BASS plugin is making everything mono.
+// : Changing EQ setting before a song is played will not tricker eq update...
 //-----------------------------------------------------------------------------
+// 04-04-05 : Fixed EQ wasn't set before eq was changed
 // 18-03-05 : Fixed wrong replaygain value for files with no RG info
 // 17-03-05 : Dublicated cfg_string to remove returning a const that is changed
 //            on PSN_APPLY.
 //-----------------------------------------------------------------------------
+// #define TDEBUG
 
 #include "QCDBASS.h"
 
@@ -36,7 +43,9 @@
 #include "bass_lib.h"
 #include "BASSCfgUI.h"
 
-// ConStream log;			// Debug output stream
+//#ifdef TDEBUG
+//	ConStream log;			// Debug output stream
+//#endif
 
 HINSTANCE		hInstance;
 HWND			hwndPlayer;
@@ -57,6 +66,7 @@ DOUBLE	seek_to			= -1;
 BOOL	encoding		= FALSE;
 BOOL	paused			= FALSE;
 INT64	decode_pos_ms	= 0;
+EQInfo	eq;
 
 DWORD WINAPI __stdcall DecodeThread(void *b);	// decoding thread only for decode mode
 DWORD WINAPI __stdcall PlayThread(void *b);		// playing thread only for system mode
@@ -133,7 +143,7 @@ int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpDa
 {
 	if (uMsg == BFFM_INITIALIZED) 
 	{
-		lpData = strStreamSavingPath;
+		lpData = (LPARAM)(LPTSTR)strStreamSavingPath;
 		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
 	}
 	return 0;
@@ -200,7 +210,7 @@ PLUGIN_API QCDModInitIn* INPUTDLL_ENTRY_POINT(QCDModInitIn *ModInit, QCDModInfo 
 	QCDCallbacks.toModule.Stop				= Stop;
 	QCDCallbacks.toModule.About				= About;
 	QCDCallbacks.toModule.Configure			= Configure;
-	QCDCallbacks.toModule.SetEQ				= bEqEnabled ? SetEQ : NULL;;
+	QCDCallbacks.toModule.SetEQ				= bEqEnabled ? SetEQ : NULL;
 	QCDCallbacks.toModule.SetVolume			= SetVolume;
 
 	return &QCDCallbacks;
@@ -212,7 +222,9 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	decoderInfo.playingFile = NULL;
 	decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
 
-	// log.OpenConsole();
+#ifdef TDEBUG
+	log.OpenConsole();
+#endif
 
 	// load config
 	char inifile[MAX_PATH];
@@ -250,6 +262,11 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	// insert plug-in menu
 	insert_menu();
 
+	// Init eq struct
+	eq.struct_size = sizeof(eq);
+	QCDCallbacks.Service(opGetEQVals, &eq, 0, 0);
+
+	// Init BASS
 	if (create_bass(uDeviceNum)) {
 		uCurDeviceNum = uDeviceNum;
 		return TRUE;
@@ -310,7 +327,9 @@ void ShutDown(int flags)
 		DestroyWindow(hwndStreamSavingBar);
 		hwndStreamSavingBar = NULL;
 	}
-	//log.CloseAll();
+#ifdef TDEBUG
+	log.CloseAll();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -504,8 +523,14 @@ int Eject(const char* medianame, int flags)
 
 void SetEQ(EQInfo *eqinfo)
 {
-	if (decoderInfo.pDecoder)
-		decoderInfo.pDecoder->set_eq(bEqEnabled && eqinfo->enabled, eqinfo->bands);
+	if (eqinfo) {	// Copy new data, else use old data
+		for (int i = 0; i < 10; i++)
+			eq.bands[i] = eqinfo->bands[i];
+		eq.enabled = eqinfo->enabled;
+		eq.preamp = eqinfo->preamp;
+	}
+	if (decoderInfo.pDecoder)	// Running, so update
+		decoderInfo.pDecoder->set_eq(bEqEnabled && eq.enabled, eq.bands);
 }
 
 //-----------------------------------------------------------------------------
@@ -600,6 +625,8 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 {
 	DecoderInfo_t *decoderInfo = (DecoderInfo_t*)b;
 	BOOL done = FALSE, updatePos = FALSE;
+
+	SetEQ(NULL);	// Enable eq with new values
 
 	if (decoderInfo->pDecoder->is_stream() && 
 		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
@@ -745,6 +772,8 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	// log << "Entered DecodeThread\n";
 	DecoderInfo_t *decoderInfo = (DecoderInfo_t*)b;
 	BOOL done = FALSE, updatePos = FALSE;
+
+	SetEQ(NULL);	// Enable eq with new values
 
 	if (decoderInfo->pDecoder->is_stream() && 
 		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
