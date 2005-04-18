@@ -71,7 +71,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /I "..\replaygain_synthesis" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /GF /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "..\replaygain_synthesis" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /GF /c
+# ADD CPP /nologo /MT /W3 /GX /Zd /O2 /I "..\replaygain_synthesis" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Fr /GF /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -82,7 +82,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /subsystem:windows /dll /machine:IX86 /pdbtype:sept /libpath:"..\replaygain_synthesis\Release"
 # SUBTRACT BASE LINK32 /pdb:none
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /subsystem:windows /dll /machine:IX86 /pdbtype:sept /libpath:"..\replaygain_synthesis\Release"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib /nologo /subsystem:windows /dll /map /machine:IX86 /pdbtype:sept /libpath:"..\replaygain_synthesis\Release" /MAPINFO:LINES /MAPINFO:EXPORTS
 # SUBTRACT LINK32 /pdb:none
 
 !ENDIF 
@@ -171,6 +171,18 @@ DEP_CPP_TAGS_=\
 	".\QCDModDefs.h"\
 	".\QCDModInput.h"\
 	".\tags.h"\
+	".\VorbisComment.h"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=.\VorbisComment.cpp
+DEP_CPP_VORBI=\
+	".\qcdhelper.h"\
+	".\QCDModDefs.h"\
+	".\QCDModInput.h"\
+	".\tags.h"\
+	".\VorbisComment.h"\
 	
 # End Source File
 # End Group
@@ -216,6 +228,10 @@ SOURCE=.\resource.h
 # Begin Source File
 
 SOURCE=.\tags.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\VorbisComment.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

@@ -4,8 +4,10 @@
 #include "qcdhelper.h"
 #include "cfg_var.h"
 
-#define PLUGIN_VERSION "v1.0beta6"
+#define PLUGIN_VERSION "v1.0 beta7.7"
 
+//#include "ConStream.h"
+//extern ConStream log;
 
 // vars for config UI
 extern cfg_int uPrefPage; // pref page number
