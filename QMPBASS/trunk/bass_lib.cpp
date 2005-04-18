@@ -290,6 +290,13 @@ void bass::init_rg()
 			track_peak = info.meta_get_float("replaygain_track_peak");
 			album_gain = info.meta_get_float("replaygain_album_gain");
 			album_peak = info.meta_get_float("replaygain_album_peak");
+			
+			/*log << "Info struct:\n";
+			for (int i = 0; i < info.meta_get_count(); i++) {
+				log << "\t";
+				log << info.meta_enum_name(i) << "\t";
+				log << info.meta_enum_value(i) << "\n";
+			}*/
 		}
 
 		if (uReplayGainMode == 1 ) { // track gain

@@ -1,5 +1,6 @@
 #include "tags.h"
 #include "stdio.h"
+#include "VorbisComment.h"
 
 // -------------------------------------
 // tagging
@@ -75,7 +76,7 @@ static const char*  ID3v1GenreList[] = {
     "SynthPop",
 };
 
-static void insert_tag_field ( file_info *info, const char *field, const char *value )
+void insert_tag_field ( file_info *info, const char *field, const char *value )
 {
     char *tmp = string_utf8_from_ansi ( value );
     if ( tmp ) {
@@ -548,6 +549,12 @@ static int WriteAPE2Tag ( reader* fp, file_info *info )
     return ret;
 }
 
+int ReadOggTag ( reader *fp, file_info *info, __int64 &tag_offset )
+{
+	VorbisComment oVC(fp, info);
+	return oVC.ReadTags();
+}
+
 bool read_tags ( reader *r, file_info *info )
 {
     bool success = false;
@@ -561,6 +568,8 @@ bool read_tags ( reader *r, file_info *info )
         if ( ReadLyrics3v2Tag(r, info, tag_offset) ) success = true;
         if ( ReadID3v1Tag(r, info, tag_offset) ) success = true;
     } while ( offs_bk != tag_offset );
+	
+	if ( ReadOggTag(r, info, tag_offset) ) success = true;
 
     return success;
 }

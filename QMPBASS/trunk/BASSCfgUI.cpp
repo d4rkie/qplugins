@@ -197,36 +197,38 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 			{
 				BASS_INFO info;
 				ZeroMemory(&info, sizeof(BASS_INFO));
-				info.size=sizeof(BASS_INFO);
-				BASS_GetInfo(&info);
-
-				TCHAR buf[2*MAX_PATH];
-				_stprintf(buf, _T(
-					"Total hardware memory: %ld\n"
-					"Free hardware memory: %ld\n"
-					"Free sample slot: %ld\n"
-					"Free 3D sample slot: %ld\n"
-					"Min. sample rate supported: %ld Hz\n"
-					"Max. sample rete supported: %ld Hz\n"
-					"EAX supported: %s\n"
-					"Min. buffer length: %ld milliseconds\n"
-					"DirectX version: %ld\n"
-					"Playback delay: %ld milliseconds\n"
-					"Speakers supported: %ld\n"
-					"Using driver file: %s"
-					), 
-					info.hwsize, 
-					info.hwfree, 
-					info.freesam, 
-					info.free3d, 
-					info.minrate, info.maxrate, 
-					info.eax ? "Yes" : "No", 
-					info.minbuf, 
-					info.dsver, 
-					info.latency, 
-					info.speakers, 
-					info.driver ? info.driver : "Unknown");
-				MessageBox(hwndDlg, buf, _T("Information on current using device"), MB_OK | MB_ICONINFORMATION);
+				info.size = sizeof(BASS_INFO);
+				if (BASS_GetInfo(&info)) {
+					TCHAR buf[2*MAX_PATH];
+					_stprintf(buf, _T(
+						"Total hardware memory: %ld\n"
+						"Free hardware memory: %ld\n"
+						"Free sample slot: %ld\n"
+						"Free 3D sample slot: %ld\n"
+						"Min. sample rate supported: %ld Hz\n"
+						"Max. sample rate supported: %ld Hz\n"
+						"EAX supported: %s\n"
+						"Min. buffer length: %ld milliseconds\n"
+						"DirectX version: %ld\n"
+						"Playback delay: %ld milliseconds\n"
+						"Speakers supported: %ld\n"
+						"Using driver file: %s"
+						), 
+						info.hwsize, 
+						info.hwfree, 
+						info.freesam, 
+						info.free3d, 
+						info.minrate, info.maxrate, 
+						info.eax ? "Yes" : "No", 
+						info.minbuf, 
+						info.dsver, 
+						info.latency, 
+						info.speakers, 
+						info.driver ? info.driver : "Unknown");
+					MessageBox(hwndDlg, buf, _T("Information on current using device"), MB_OK | MB_ICONINFORMATION);
+				}
+				else
+					MessageBox(hwndDlg, "Failed to get information on current device", "Error", MB_OK | MB_ICONSTOP);
 			}
 
 			break;

@@ -4,7 +4,7 @@
 //
 // About:	BASS Sound System Plug-in for Quintessential Player
 //
-// Authors: Shao Hao
+// Authors: Shao Hao, Toke Noer
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
@@ -18,8 +18,28 @@
 //	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 //-----------------------------------------------------------------------------
+// Bugs
+// : Add id3v2 tag replaygain reading
+// : The bass plugin retaining the file open when you press the stop button
+// : Volume in system mode with 32bit is very low/not mirrored to backspeakers
+//     (Not looked into yet)
+
+// Feature Reqeusts
+// : Replaygain support: preamp for files which don't have replaygain applied
+// : Add FLAC support via addon
+// : Shoutcast stream titles. Currently only the songname tag is supported,
+//-----------------------------------------------------------------------------
+// 05-04-05 : Added VorbisComment reader for replaygain
+// 04-04-05 : Fixed EQ wasn't set before eq was changed
+// 18-03-05 : Fixed wrong replaygain value for files with no RG info
+// 17-03-05 : Dublicated cfg_string to remove returning a const that is changed
+//            on PSN_APPLY.
+//-----------------------------------------------------------------------------
 
 #include "QCDBASS.h"
+
+//#define TDEBUG
+//ConStream log;			// Debug output stream
 
 #include "mmreg.h"
 #include <memory>
@@ -43,17 +63,17 @@ typedef struct
 
 DecoderInfo_t decoderInfo;
 
-DOUBLE	seek_to = -1;
-BOOL	encoding = FALSE;
-BOOL	paused = FALSE;
-INT64	decode_pos_ms = 0;
+DOUBLE	seek_to			= -1;
+BOOL	encoding		= FALSE;
+BOOL	paused			= FALSE;
+INT64	decode_pos_ms	= 0;
 
-DWORD WINAPI __stdcall DecodeThread(void *b); // decoding thread only for decode mode
-DWORD WINAPI __stdcall PlayThread(void *b); // playing thread only for system mode
+DWORD WINAPI __stdcall DecodeThread(void *b);	// decoding thread only for decode mode
+DWORD WINAPI __stdcall PlayThread(void *b);		// playing thread only for system mode
 
-cfg_int uPrefPage("QCDBASS", "PrefPage", 0); // pref page number
-cfg_int xPrefPos("QCDBASS", "xPrefPos", 200); // left side of property sheet
-cfg_int yPrefPos("QCDBASS", "yPrefPos", 300); // left side of property sheet
+cfg_int uPrefPage("QCDBASS", "PrefPage", 0);	// pref page number
+cfg_int xPrefPos("QCDBASS", "xPrefPos", 200);	// left side of property sheet
+cfg_int yPrefPos("QCDBASS", "yPrefPos", 300);	// left side of property sheet
 
 cfg_string strExtensions("QCDBASS", "Extensions", "WAV:MP3:MP2:MP1:OGG:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
 cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0); // 0=decode, 1...=use internal output module
@@ -237,6 +257,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	// insert plug-in menu
 	insert_menu();
 
+	// Init BASS
 	if (create_bass(uDeviceNum)) {
 		uCurDeviceNum = uDeviceNum;
 		return TRUE;
@@ -364,6 +385,7 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 
 		if (!decoderInfo.pDecoder->is_stream()) { // local file should be initialized now, but stream should do this in thread later avoiding blocking
 			int ret = decoderInfo.pDecoder->init();
+
 			if ( ret != 1 ) {
 				if (decoderInfo.pDecoder) {
 					delete decoderInfo.pDecoder;
@@ -379,6 +401,8 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 
 	decoderInfo.killThread = 0;
 	seek_to = (double)playfrom;
+
+	SetEQ(NULL);
 
 	if (paused)
 		Pause(decoderInfo.playingFile, PAUSE_DISABLED);
@@ -439,6 +463,8 @@ int Stop(const char* medianame, int flags)
 			delete decoderInfo.pDecoder;
 			decoderInfo.pDecoder = NULL;
 		}
+		decoderInfo.info.reset();
+
 		seek_to = -1;
 		decode_pos_ms = 0;
 	}
@@ -486,7 +512,13 @@ int Eject(const char* medianame, int flags)
 
 void SetEQ(EQInfo *eqinfo)
 {
-	if (decoderInfo.pDecoder)
+	EQInfo eq;
+	if (!eqinfo) {
+		QCDCallbacks.Service(opGetEQVals, &eq, 0, 0);
+		eqinfo = &eq;
+	}
+
+	if (decoderInfo.pDecoder)	// Running, so update
 		decoderInfo.pDecoder->set_eq(bEqEnabled && eqinfo->enabled, eqinfo->bands);
 }
 
