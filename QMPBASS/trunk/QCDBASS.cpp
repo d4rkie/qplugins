@@ -630,11 +630,11 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	}
 
 		// audio specs
-	unsigned int samplerate = (unsigned int)(decoderInfo->pDecoder->get_srate());
-	unsigned int bitspersample = (unsigned int)(decoderInfo->pDecoder->get_bps());
-	unsigned int numchannels = (unsigned int)(decoderInfo->pDecoder->get_nch());
-	unsigned int lengthMS = (unsigned int)decoderInfo->pDecoder->get_length() * 1000;
-	unsigned int avgbitrate = (unsigned int)(decoderInfo->pDecoder->get_bitrate());
+	unsigned int samplerate		= (unsigned int)(decoderInfo->pDecoder->get_srate());
+	unsigned int bitspersample	= (unsigned int)(decoderInfo->pDecoder->get_bps());
+	unsigned int numchannels	= (unsigned int)(decoderInfo->pDecoder->get_nch());
+	unsigned int lengthMS		= (unsigned int)decoderInfo->pDecoder->get_length() * 1000;
+	unsigned int avgbitrate		= (unsigned int)(decoderInfo->pDecoder->get_bitrate());
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
@@ -642,7 +642,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 		done = TRUE;
 	}
 
-#define VIS_BUFFER_SIZE 2048*numchannels*(bitspersample/8) // get 576 samples as winamp does, maybe safest^_^
+	const DWORD VIS_BUFFER_SIZE = 2048*numchannels*(bitspersample/8); // get 576 samples as winamp does, maybe safest^_^
 	// alloc decoding buffer
 	LPBYTE pVisData = NULL;
 	if (!done) {
@@ -796,7 +796,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		}
 	}
 
-#define BUFFER_SIZE 576*numchannels*(bitspersample/8) // get 576 samples as winamp does, maybe safest^_^
+	const DWORD BUFFER_SIZE = 576*numchannels*(bitspersample/8); // get 576 samples as winamp does, maybe safest^_^
 	// alloc decoding buffer
 	HANDLE hHeap = NULL;
 	HANDLE pRawData = NULL;
