@@ -767,11 +767,11 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		}
 
 	// audio specs
-	unsigned int samplerate = (unsigned int)(decoderInfo->pDecoder->get_srate());
-	unsigned int bitspersample = (unsigned int)(decoderInfo->pDecoder->get_bps());
-	unsigned int numchannels = (unsigned int)(decoderInfo->pDecoder->get_nch());
-	unsigned int lengthMS = (unsigned int)decoderInfo->pDecoder->get_length() * 1000;
-	unsigned int avgbitrate = (unsigned int)(decoderInfo->pDecoder->get_bitrate());
+	unsigned int samplerate		= (unsigned int)(decoderInfo->pDecoder->get_srate());
+	unsigned int bitspersample	= (unsigned int)(decoderInfo->pDecoder->get_bps());
+	unsigned int numchannels	= (unsigned int)(decoderInfo->pDecoder->get_nch());
+	unsigned int lengthMS		= (unsigned int)decoderInfo->pDecoder->get_length() * 1000;
+	unsigned int avgbitrate		= (unsigned int)(decoderInfo->pDecoder->get_bitrate());
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
@@ -921,4 +921,3 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 	return 0;
 }
-

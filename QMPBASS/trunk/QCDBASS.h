@@ -4,7 +4,7 @@
 #include "qcdhelper.h"
 #include "cfg_var.h"
 
-#define PLUGIN_VERSION "v1.0 beta7.7"
+#define PLUGIN_VERSION "v1.0 beta7.8"
 
 //#include "ConStream.h"
 //extern ConStream log;
