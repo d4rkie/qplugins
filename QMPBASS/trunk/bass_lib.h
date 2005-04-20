@@ -32,7 +32,7 @@ public:
 	bass(const char * _path, bool _is_decode = true, bool _use_32fp = false); // default mode is decode, 'cause it need less resource
 	virtual ~bass(void);
 private:
-	DWORD handle;
+	DWORD hBASS;
 	DWORD eqfx[10];
 
 	bool use_32fp;
