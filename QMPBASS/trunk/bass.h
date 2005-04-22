@@ -1,4 +1,4 @@
-/* BASS 2.1 C/C++ header file, copyright (c) 1999-2004 Ian Luck.
+/* BASS 2.1 C/C++ header file, copyright (c) 1999-2005 Ian Luck.
    Please report bugs/suggestions/etc... to bass@un4seen.com
 
    See the BASS.CHM file for more complete documentation */
@@ -666,6 +666,7 @@ typedef struct {
 #define BASS_CONFIG_NET_BUFFER		12
 #define BASS_CONFIG_PAUSE_NOPLAY	13
 #define BASS_CONFIG_NET_NOPROXY		14
+#define BASS_CONFIG_NET_PREBUF		15
 
 DWORD BASSDEF(BASS_SetConfig)(DWORD option, DWORD value);
 DWORD BASSDEF(BASS_GetConfig)(DWORD option);
