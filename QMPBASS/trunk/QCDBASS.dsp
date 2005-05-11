@@ -104,6 +104,7 @@ DEP_CPP_BASS_=\
 	".\bass_lib.h"\
 	".\BASSCfgUI.h"\
 	".\cfg_var.h"\
+	".\ConStream.h"\
 	".\QCDBASS.h"\
 	".\qcdhelper.h"\
 	".\QCDInputDLL.h"\
@@ -119,9 +120,20 @@ DEP_CPP_BASSC=\
 	".\bass.h"\
 	".\BASSCfgUI.h"\
 	".\cfg_var.h"\
+	".\ConStream.h"\
 	".\QCDBASS.h"\
 	".\qcdhelper.h"\
 	".\QCDInputDLL.h"\
+	".\QCDModDefs.h"\
+	".\QCDModInput.h"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=.\ID3v2.cpp
+DEP_CPP_ID3V2=\
+	".\ID3v2.h"\
+	".\qcdhelper.h"\
 	".\QCDModDefs.h"\
 	".\QCDModInput.h"\
 	
@@ -136,6 +148,7 @@ DEP_CPP_QCDBA=\
 	".\bass_lib.h"\
 	".\BASSCfgUI.h"\
 	".\cfg_var.h"\
+	".\ConStream.h"\
 	".\QCDBASS.h"\
 	".\qcdhelper.h"\
 	".\QCDInputDLL.h"\
@@ -158,7 +171,11 @@ DEP_CPP_QCDBA=\
 
 SOURCE=.\qcdhelper.cpp
 DEP_CPP_QCDHE=\
+	".\cfg_var.h"\
+	".\ConStream.h"\
+	".\QCDBASS.h"\
 	".\qcdhelper.h"\
+	".\QCDInputDLL.h"\
 	".\QCDModDefs.h"\
 	".\QCDModInput.h"\
 	
@@ -167,7 +184,12 @@ DEP_CPP_QCDHE=\
 
 SOURCE=.\tags.cpp
 DEP_CPP_TAGS_=\
+	".\cfg_var.h"\
+	".\ConStream.h"\
+	".\ID3v2.h"\
+	".\QCDBASS.h"\
 	".\qcdhelper.h"\
+	".\QCDInputDLL.h"\
 	".\QCDModDefs.h"\
 	".\QCDModInput.h"\
 	".\tags.h"\
@@ -200,6 +222,10 @@ SOURCE=.\BASSCfgUI.h
 # Begin Source File
 
 SOURCE=.\cfg_var.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ID3v2.h
 # End Source File
 # Begin Source File
 
