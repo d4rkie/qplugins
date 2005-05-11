@@ -1,80 +1,11 @@
 #include "tags.h"
 #include "stdio.h"
 #include "VorbisComment.h"
+#include "ID3v2.h"
 
 // -------------------------------------
 // tagging
 // -------------------------------------
-
-#define APE_TAG_FIELD_TITLE             "Title"
-#define APE_TAG_FIELD_SUBTITLE          "Subtitle"
-#define APE_TAG_FIELD_ARTIST            "Artist"
-#define APE_TAG_FIELD_ALBUM             "Album"
-#define APE_TAG_FIELD_DEBUTALBUM        "Debut Album"
-#define APE_TAG_FIELD_PUBLISHER         "Publisher"
-#define APE_TAG_FIELD_CONDUCTOR         "Conductor"
-#define APE_TAG_FIELD_COMPOSER          "Composer"
-#define APE_TAG_FIELD_COMMENT           "Comment"
-#define APE_TAG_FIELD_YEAR              "Date"
-#define APE_TAG_FIELD_RECORDDATE        "Record Date"
-#define APE_TAG_FIELD_RECORDLOCATION    "Record Location"
-#define APE_TAG_FIELD_TRACK             "Tracknumber"
-#define APE_TAG_FIELD_GENRE             "Genre"
-#define APE_TAG_FIELD_COVER_ART_FRONT   "Cover Art (front)"
-#define APE_TAG_FIELD_NOTES             "Notes"
-#define APE_TAG_FIELD_LYRICS            "Lyrics"
-#define APE_TAG_FIELD_COPYRIGHT         "Copyright"
-#define APE_TAG_FIELD_PUBLICATIONRIGHT  "Publicationright"
-#define APE_TAG_FIELD_FILE              "File"
-#define APE_TAG_FIELD_MEDIA             "Media"
-#define APE_TAG_FIELD_EANUPC            "EAN/UPC"
-#define APE_TAG_FIELD_ISRC              "ISRC"
-#define APE_TAG_FIELD_RELATED_URL       "Related"
-#define APE_TAG_FIELD_ABSTRACT_URL      "Abstract"
-#define APE_TAG_FIELD_LANGUAGE          "Language"
-#define APE_TAG_FIELD_BIBLIOGRAPHY_URL  "Bibliography"
-#define APE_TAG_FIELD_BUY_URL           "Buy URL"
-#define APE_TAG_FIELD_ARTIST_URL        "Artist URL"
-#define APE_TAG_FIELD_PUBLISHER_URL     "Publisher URL"
-#define APE_TAG_FIELD_FILE_URL          "File URL"
-#define APE_TAG_FIELD_COPYRIGHT_URL     "Copyright URL"
-#define APE_TAG_FIELD_INDEX             "Index"
-#define APE_TAG_FIELD_INTROPLAY         "Introplay"
-#define APE_TAG_FIELD_MJ_METADATA       "Media Jukebox Metadata"
-#define APE_TAG_FIELD_DUMMY             "Dummy"
-
-enum {
-    MAX_FIELD_SIZE = 16*1024*1024 // treat bigger fields as errors
-};
-
-static const char*  ID3v1GenreList[] = {
-    "Blues", "Classic Rock", "Country", "Dance", "Disco", "Funk",
-    "Grunge", "Hip-Hop", "Jazz", "Metal", "New Age", "Oldies",
-    "Other", "Pop", "R&B", "Rap", "Reggae", "Rock",
-    "Techno", "Industrial", "Alternative", "Ska", "Death Metal", "Pranks",
-    "Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop", "Vocal", "Jazz+Funk",
-    "Fusion", "Trance", "Classical", "Instrumental", "Acid", "House",
-    "Game", "Sound Clip", "Gospel", "Noise", "AlternRock", "Bass",
-    "Soul", "Punk", "Space", "Meditative", "Instrumental Pop", "Instrumental Rock",
-    "Ethnic", "Gothic", "Darkwave", "Techno-Industrial", "Electronic", "Pop-Folk",
-    "Eurodance", "Dream", "Southern Rock", "Comedy", "Cult", "Gangsta",
-    "Top 40", "Christian Rap", "Pop/Funk", "Jungle", "Native American", "Cabaret",
-    "New Wave", "Psychadelic", "Rave", "Showtunes", "Trailer", "Lo-Fi",
-    "Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical",
-    "Rock & Roll", "Hard Rock", "Folk", "Folk/Rock", "National Folk", "Swing",
-    "Fast-Fusion", "Bebob", "Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde",
-    "Gothic Rock", "Progressive Rock", "Psychedelic Rock", "Symphonic Rock", "Slow Rock", "Big Band",
-    "Chorus", "Easy Listening", "Acoustic", "Humour", "Speech", "Chanson",
-    "Opera", "Chamber Music", "Sonata", "Symphony", "Booty Bass", "Primus",
-    "Porn Groove", "Satire", "Slow Jam", "Club", "Tango", "Samba",
-    "Folklore", "Ballad", "Power Ballad", "Rhythmic Soul", "Freestyle", "Duet",
-    "Punk Rock", "Drum Solo", "A capella", "Euro-House", "Dance Hall",
-    "Goa", "Drum & Bass", "Club House", "Hardcore", "Terror",
-    "Indie", "BritPop", "NegerPunk", "Polsk Punk", "Beat",
-    "Christian Gangsta", "Heavy Metal", "Black Metal", "Crossover", "Contemporary C",
-    "Christian Rock", "Merengue", "Salsa", "Thrash Metal", "Anime", "JPop",
-    "SynthPop",
-};
 
 void insert_tag_field ( file_info *info, const char *field, const char *value )
 {
@@ -86,6 +17,21 @@ void insert_tag_field ( file_info *info, const char *field, const char *value )
         }
         free ( tmp );
     }
+}
+
+void insert_tag_field ( file_info *info, const WCHAR *field, const WCHAR *value )
+{
+    char* pField = string_utf8_from_ucs2(field);
+	char* pValue = string_utf8_from_ucs2(value);
+
+    if (pField && pValue) {
+        const char *pv = info->meta_get(pField);
+        if (!pv || strlen (pv) < strlen (pValue)) {
+            info->meta_set ( pField, pValue );
+        }
+    }
+	free ( pField );
+	free ( pValue );
 }
 
 // Get ID3v1 genre name
@@ -549,6 +495,64 @@ static int WriteAPE2Tag ( reader* fp, file_info *info )
     return ret;
 }
 
+int ReadID3v2Tag ( reader *fp, file_info *info, __int64 &tag_offset )
+{
+	DWORD nRead	= 0;
+	ID3Header		header;
+	ID3ExHeader		exheader;
+	ID3FrameHeader	frameheader;
+
+	ZeroMemory(&header, sizeof(ID3Header));
+	ZeroMemory(&exheader, sizeof(ID3ExHeader));
+	ZeroMemory(&frameheader, sizeof(ID3FrameHeader));
+
+	ID3v2 tag(fp, info);
+
+	if (!tag.m_pFile || !tag.m_pInfo)
+		return 0;
+	if (!tag.GetHeader(&header, &exheader))
+		return 0;
+	if (!header.bValid || HIBYTE(header.nVersion) != 3)
+		return 0;
+
+	// Unsynchronisation check
+	if (header.nFlags & 0x80 == 0x80) // Unsynchronisation used. Isn't supported atm.
+		return 0;
+
+	while ((nRead += tag.GetNextFrameHeader(&frameheader)) <= header.nSize - exheader.nPadding)
+	{
+		if (frameheader.nSize > 0) {
+			ID3Frame frame;
+
+			if (tag.GetNextFrame(&frame, &frameheader)) {
+				// The frame is read and ready to be interpreted
+				// Get the TXXX frames, see 4.2.2.
+				if (strncmp(frameheader.strFrameID, "TXXX", 5) == 0) {
+					BYTE* pField = 0;
+					BYTE* pValue = 0;
+					BYTE nEncoding = 0;
+
+					tag.GetFrameTXXX((BYTE*)frame.GetDataPtr(), frame.GetSize(), &pField, &pValue, &nEncoding);
+
+					if (pField && pValue) {
+						if (nEncoding == 1) // unicode
+							insert_tag_field(info, (WCHAR*)pField, (WCHAR*)pValue);
+						else if (nEncoding == 0) // Native encoding
+							insert_tag_field(info, (CHAR*)pField, (CHAR*)pValue);
+					}
+
+					delete [] pField;
+					delete [] pValue;
+				}
+			}
+		}
+		else
+			nRead = 0x7fffffff;			
+	}
+
+	return 1;
+}
+
 int ReadOggTag ( reader *fp, file_info *info, __int64 &tag_offset )
 {
 	VorbisComment oVC(fp, info);
@@ -570,6 +574,7 @@ bool read_tags ( reader *r, file_info *info )
     } while ( offs_bk != tag_offset );
 	
 	if ( ReadOggTag(r, info, tag_offset) ) success = true;
+	if ( ReadID3v2Tag(r, info, tag_offset) ) success = true;
 
     return success;
 }
