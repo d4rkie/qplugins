@@ -1,5 +1,5 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ generated include file.
+// Microsoft Developer Studio generated include file.
 // Used by QCDBASS.rc
 //
 #define ID_PLUGINMENU_SETTINGS          101
@@ -17,6 +17,7 @@
 #define IDC_PRIORITY                    1003
 #define IDC_PREAMP                      1003
 #define IDC_USE_32FP                    1004
+#define IDC_RG_PREAMP                   1004
 #define IDC_BUFFER_LENGTH_UD            1005
 #define IDC_DITHER                      1006
 #define IDC_STREAM_SAVING_PATH          1007
@@ -42,6 +43,7 @@
 #define IDC_SPEAKERS                    1023
 #define IDC_REPLAYGAIN_MODE             1024
 #define IDC_PA                          1025
+#define IDC_RG_PA                       1026
 #define IDC_PLUGIN_VERSION              1027
 #define IDC_STREAM_SAVING_BAR_GO        1058
 #define IDC_STREAM_SAVING_BAR_SKIP_TITLE 1059
