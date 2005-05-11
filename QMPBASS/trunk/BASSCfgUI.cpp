@@ -287,6 +287,7 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 	case WM_INITDIALOG:
 		{
 			int i;
+			TCHAR buffer[10];
 
 			uFadeIn = uFadeIn < 0 ? 0 : (uFadeIn > 10000 ? 10000 : uFadeIn); // value fixer
 			SetDlgItemInt(hwndDlg, IDC_FADE_IN, uFadeIn, FALSE);
@@ -301,11 +302,17 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			SendDlgItemMessage(hwndDlg, IDC_FADE_OUT_UD, UDM_SETACCEL, 1, (LPARAM)(LPUDACCEL)&uda);
 			SendDlgItemMessage(hwndDlg, IDC_FADE_OUT_UD, UDM_SETRANGE, 0, (LPARAM)MAKELONG(10000, 0));
 
+			// Preamp
 			SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_SETRANGE, TRUE, MAKELONG(0, PREAMP_RANGE*2));
 			SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_SETPOS, TRUE, nPreAmp+PREAMP_RANGE);
-			TCHAR buffer[10];
 			_stprintf(buffer, "%+2d dB", (int)nPreAmp);
 			SetWindowText(GetDlgItem(hwndDlg, IDC_PA), buffer);
+
+			// RG Preamp
+			SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_SETRANGE, TRUE, MAKELONG(0, PREAMP_RANGE*2));
+			SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_SETPOS, TRUE, nRGPreAmp+PREAMP_RANGE);
+			_stprintf(buffer, "%+2d dB", (int)nRGPreAmp);
+			SetWindowText(GetDlgItem(hwndDlg, IDC_RG_PA), buffer);
 
 			CheckDlgButton(hwndDlg, IDC_HARD_LIMITER, !!bHardLimiter);
 			CheckDlgButton(hwndDlg, IDC_DITHER, !!bDither);
@@ -322,10 +329,16 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 		return TRUE;
 	case WM_HSCROLL:
 		{
-			int pos = SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;
+			int nPos;
 			TCHAR buffer[10];
-			_stprintf(buffer, "%+2d dB", pos);
+			
+			nPos = SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;			
+			_stprintf(buffer, "%+2d dB", nPos);
 			SetDlgItemText(hwndDlg, IDC_PA, buffer);
+
+			nPos = SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;			
+			_stprintf(buffer, "%+2d dB", nPos);
+			SetDlgItemText(hwndDlg, IDC_RG_PA, buffer);
 
 			PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 		}
@@ -410,11 +423,12 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 					if(ret)
 						uFadeOut = tmp;
 
-					nPreAmp = SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;
-					bHardLimiter = IsDlgButtonChecked(hwndDlg, IDC_HARD_LIMITER);
-					bDither = IsDlgButtonChecked(hwndDlg, IDC_DITHER);
-					uNoiseShaping = SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_GETCURSEL, 0, 0);
-					uReplayGainMode = SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_GETCURSEL, 0, 0);
+					nPreAmp			= SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;
+					nRGPreAmp		= SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;
+					uNoiseShaping	= SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_GETCURSEL, 0, 0);
+					uReplayGainMode	= SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_GETCURSEL, 0, 0);
+					bHardLimiter	= IsDlgButtonChecked(hwndDlg, IDC_HARD_LIMITER);
+					bDither			= IsDlgButtonChecked(hwndDlg, IDC_DITHER);
 
 					if (lppsn->lParam == TRUE)  { // for OK button
 						bOKAdvanced = TRUE;
