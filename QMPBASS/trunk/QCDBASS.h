@@ -6,8 +6,11 @@
 
 #define PLUGIN_VERSION "v1.0 beta7.8"
 
-//#include "ConStream.h"
-//extern ConStream log;
+/*#ifndef _DT
+#define _DT
+#include "ConStream.h"
+extern ConStream dLog;
+#endif*/
 
 // vars for config UI
 extern cfg_int uPrefPage; // pref page number
@@ -18,12 +21,14 @@ extern cfg_string strExtensions;
 extern cfg_int uDeviceNum;
 extern cfg_int bUse32FP;
 extern cfg_int uPriority;
-extern cfg_int bEqEnabled; // enable internal equalizer
-extern cfg_int bShowVBR; // display VBR bitrate
+extern cfg_int bEqEnabled;	// enable internal equalizer
+extern cfg_int bShowVBR;	// display VBR bitrate
+extern cfg_int nSampleRate;	// Output samplerate
 
 extern cfg_int uFadeIn; // fade-in sound
 extern cfg_int uFadeOut; // fade-out sound
 extern cfg_int nPreAmp; // preamp
+extern cfg_int nRGPreAmp; // RG_preamp
 extern cfg_int bHardLimiter; // 6dB hard limiter
 extern cfg_int bDither; // dither
 extern cfg_int uNoiseShaping; // noise shaping
