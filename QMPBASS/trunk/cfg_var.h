@@ -87,4 +87,3 @@ public:
 	inline operator LPCTSTR (void) const { return m_lpValue; }
 	inline bool is_empty() { return !m_lpValue || !m_lpValue[0]; }
 };
-
