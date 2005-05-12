@@ -1,6 +1,7 @@
 #include "qcdhelper.h"
 #include <math.h>
 
+
 // misc ------------------------------------------------------------------------
 
 bool IsUnicode()
@@ -122,6 +123,58 @@ char *string_utf8_from_ansi ( const char *str )
     return utf8;
 }
 
+char *string_utf8_from_ucs2(const WCHAR* pUCS2)
+{
+    char* pUTF8 = 0;
+	int nSize = lstrlenW(pUCS2) + 1;
+
+	if (nSize > 0) {
+		pUTF8 = (char*)malloc(nSize * sizeof(WCHAR));
+		if (pUTF8)
+			QCDCallbacks.Service(opUCS2toUTF8, (void *)pUCS2, (long)pUTF8, (long)nSize);
+	}
+	return pUTF8;
+}
+
+static double pfc_string_to_float(const char * src)
+{
+    bool neg = false;
+    __int64 val = 0;
+    int div = 0;
+    bool got_dot = false;
+
+    while(*src==' ') src++;
+
+    if (*src=='-') {neg = true;src++;}
+    else if (*src=='+') src++;
+    
+    while(*src)
+    {
+        if (*src>='0' && *src<='9')
+        {
+            int d = *src - '0';
+            val = val * 10 + d;
+            if (got_dot) div--;
+            src++;
+        }
+        else if (*src=='.' || *src==',')
+        {
+            if (got_dot) break;
+            got_dot = true;
+            src++;
+        }
+        else if (*src=='E' || *src=='e')
+        {
+            src++;
+            div += atoi(src);
+            break;
+        }
+        else break;
+    }
+    if (neg) val = -val;
+    return (double) val * pow(10.0,(double)div);
+}
+
 // reader ----------------------------------------------------------------------
 
 reader::reader()
@@ -147,13 +200,14 @@ void reader::set_error ( const char *str )
 // reader (file) ---------------------------------------------------------------
 
 reader_file::reader_file ( HANDLE handle )
-: fh(handle)
+	: fh( handle )
 {
 }
 
 reader_file::reader_file ( const char *name, reader_mode mode )
+	: fh ( INVALID_HANDLE_VALUE )
 {
-    switch ( mode ) {
+	switch ( mode ) {
     case READ:
     default:
         fh = CreateFileA ( name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
@@ -170,6 +224,7 @@ reader_file::reader_file ( const char *name, reader_mode mode )
 }
 
 reader_file::reader_file ( const WCHAR *name, reader_mode mode )
+	: fh ( INVALID_HANDLE_VALUE )
 {
     switch ( mode ) {
     case READ:
@@ -245,45 +300,26 @@ bool reader_file::can_seek ()
     return false;
 }
 
-// file_info -------------------------------------------------------------------
 
-static double pfc_string_to_float(const char * src)
+//-----------------------------------------------------------------------------
+// file_info class
+//-----------------------------------------------------------------------------
+
+file_info::file_info()
+	: meta(NULL)
+	, meta_count(0)
+	, length(0)
+	, bitrate(0)
+	, samplerate(0)
+	, channels(0)
+	, bitspersample(0)
+	, mode(0)
 {
-    bool neg = false;
-    __int64 val = 0;
-    int div = 0;
-    bool got_dot = false;
+}
 
-    while(*src==' ') src++;
-
-    if (*src=='-') {neg = true;src++;}
-    else if (*src=='+') src++;
-    
-    while(*src)
-    {
-        if (*src>='0' && *src<='9')
-        {
-            int d = *src - '0';
-            val = val * 10 + d;
-            if (got_dot) div--;
-            src++;
-        }
-        else if (*src=='.' || *src==',')
-        {
-            if (got_dot) break;
-            got_dot = true;
-            src++;
-        }
-        else if (*src=='E' || *src=='e')
-        {
-            src++;
-            div += atoi(src);
-            break;
-        }
-        else break;
-    }
-    if (neg) val = -val;
-    return (double) val * pow(10.0,(double)div);
+file_info::~file_info()
+{
+    freeall();
 }
 
 void file_info::freeall()
@@ -296,23 +332,6 @@ void file_info::freeall()
     if ( meta ) free ( meta );
     meta = NULL;
     meta_count = 0;
-}
-
-file_info::file_info()
-: meta(NULL)
-, meta_count(0)
-, length(0)
-, bitrate(0)
-, samplerate(0)
-, channels(0)
-, bitspersample(0)
-, mode(0)
-{
-}
-
-file_info::~file_info()
-{
-    freeall();
 }
 
 void file_info::meta_modify_value ( int n, const char *new_value )
