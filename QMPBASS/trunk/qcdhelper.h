@@ -39,7 +39,7 @@ public:
 
 class reader_file : public reader {
 private:
-    HANDLE fh;
+    //HANDLE fh;
 
 public:
     reader_file ( HANDLE handle );
@@ -53,6 +53,8 @@ public:
     virtual bool set_eof();
     virtual bool seek ( __int64 offset );
     virtual bool can_seek ();
+
+	HANDLE fh;
 };
 
 // -------------------------------------
@@ -62,6 +64,7 @@ bool IsUnicode();
 reader *new_reader ( const char *path, reader_mode mode = READ );
 
 char *string_utf8_from_ansi ( const char *str );
+char *string_utf8_from_ucs2 ( const WCHAR *str );
 
 // -------------------------------------
 
