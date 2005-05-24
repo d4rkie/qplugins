@@ -72,11 +72,11 @@ char *qcd_get_proxy ( const char *url )
     return (char *)proxy_url;
 }
 
-reader *new_reader ( const char *path, reader_mode mode )
+reader_file* new_reader ( const char *path, reader_mode mode )
 {
     if ( !path || (path && !*path) ) return NULL;
 
-    reader *new_r;
+    reader_file* new_r;
 /*    if ( strstr(path, "://") ) {
         char *proxy_url = qcd_get_proxy ( path );
         new_r = new reader_http ( path, proxy_url );

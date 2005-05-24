@@ -3,14 +3,23 @@
 #include "QCDInputDLL.h"
 #include "qcdhelper.h"
 #include "cfg_var.h"
+#include "bass_lib.h"
 
-#define PLUGIN_VERSION "v1.0 beta7.8"
+#define PLUGIN_VERSION "v1.0 beta8.0"
 
-/*#ifndef _DT
-#define _DT
-#include "ConStream.h"
-extern ConStream dLog;
-#endif*/
+// #include "ConStream.h"
+// extern ConStream dLog;
+
+typedef struct
+{
+	bass		*pDecoder;
+	file_info	info;
+	int			killThread;
+	HANDLE		thread_handle;
+	char		*playingFile;
+} DecoderInfo_t;
+
+extern DecoderInfo_t decoderInfo;
 
 // vars for config UI
 extern cfg_int uPrefPage; // pref page number
@@ -56,8 +65,3 @@ extern void reset_menu(void);
 
 // common function
 extern int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner);
-
-
-// streaming title
-extern char * cur_title; // current stream media title, used for stream saving
-

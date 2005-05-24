@@ -85,42 +85,47 @@ public:
 	bool fade_volume(int dst_volume, unsigned int elapse);
 	bool set_eq(bool enabled, char const * bands);
 
+	// Streaming
+	char* m_strCurTitle; // stream media title per read, used for stream saving
 
 private:
-	DWORD hBass;				// BASS handle
+	BOOL use_32fp;
+	
 	DWORD eqfx[10];
-
-	bool use_32fp;
-	QWORD size;
 	DWORD length;
 	DWORD bitrate;
+	DWORD starttime, pausetime; // time marker for MOD file
+	signed __int64 size;
+
+	HSTREAM m_hBass;				// BASS handle	
+	
 	BASS_CHANNELINFO ChannelInfo;
 
 	bool is_url;
 	bool is_seekable;
 
-	reader *r;
-
-	DWORD starttime, pausetime; // time marker for MOD file
+	reader_file* r;
+	
+	CHAR* m_strPath;
 
 	// replaygain
 	DitherContext dither_context;
 	bool dither;
-	static double rg_gain;
-	static double rg_peak;
-	static double rg_scale_factor;
-	static bool hard_limiter;
-	static bool replaygain;
+	double rg_gain;
+	double rg_peak;
+	double rg_scale_factor;
+	bool hard_limiter;
+	bool replaygain;
 
 	void init_rg(void);	
 	static void CALLBACK rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD length, DWORD user);
 
 	// Streaming
-	static char * path;
-	static const char * stream_type;
-	static FILE * fp;
+	static const char* stream_type;
+	FILE* m_StreamFile;
 
-	static void update_stream_title(char * meta);
+	// static void update_stream_title(char * meta);
+	static void update_stream_title(char* meta, bass* pBass);
 	static void CALLBACK stream_title_sync(HSYNC handle, DWORD channel, DWORD data, DWORD user);
 	static void CALLBACK stream_status_proc(void *buffer, DWORD length, DWORD user);
 };

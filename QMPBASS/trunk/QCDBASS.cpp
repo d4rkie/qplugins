@@ -37,27 +37,17 @@
 
 #include "QCDBASS.h"
 
-//ConStream dLog;			// Debug output stream
+// ConStream dLog;			// Debug output stream
 
 #include "mmreg.h"
 #include <memory>
 
-#include "bass_lib.h"
 #include "BASSCfgUI.h"
 
 
 HINSTANCE		hInstance;
 HWND			hwndPlayer;
 QCDModInitIn	QCDCallbacks;
-
-typedef struct
-{
-	bass		*pDecoder;
-	file_info	info;
-	int			killThread;
-	HANDLE		thread_handle;
-	char		*playingFile;
-} DecoderInfo_t;
 
 DecoderInfo_t decoderInfo;
 
@@ -392,6 +382,8 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 				return PLAYSTATUS_FAILED;
 		}
 
+		if (decoderInfo.pDecoder)
+			delete decoderInfo.pDecoder;
 		decoderInfo.pDecoder = new bass(medianame, uCurDeviceNum == 0, !!bUse32FP);
 		if (!decoderInfo.pDecoder)
 			return PLAYSTATUS_FAILED;

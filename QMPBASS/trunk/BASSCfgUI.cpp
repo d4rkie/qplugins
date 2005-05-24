@@ -777,9 +777,12 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 					{
 						SendMessage(lpnmhdr->hwndFrom, TTM_SETMAXTIPWIDTH, 0, 3*MAX_PATH);
 
-						if (bStreamSaving && cur_title && *cur_title) {
+						//if (bStreamSaving && cur_title && *cur_title) {
+						if (bStreamSaving && decoderInfo.pDecoder->m_strCurTitle &&
+							*decoderInfo.pDecoder->m_strCurTitle)
+						{
 							lstrcpy(szToolTip, "Saving Stream...\r\nTitle: ");
-							lstrcat(szToolTip, cur_title);
+							lstrcat(szToolTip, decoderInfo.pDecoder->m_strCurTitle);
 							lstrcat(szToolTip, "\r\nTo Path: ");
 							lstrcat(szToolTip, strStreamSavingPath);
 						}
