@@ -1,0 +1,209 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 中文(中华人民共和国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_PRESETFILE_MENU MENU 
+BEGIN
+    POPUP "PRESETFILE Menu"
+    BEGIN
+        MENUITEM "&Import from EPF...",         ID_PRESETFILE_IMPORT
+        MENUITEM "&Export to EPF...",           ID_PRESETFILE_EXPORT
+    END
+END
+
+#endif    // 中文(中华人民共和国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// 英语(美国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_NEW_MENU MENU 
+BEGIN
+    POPUP "NEW MENU"
+    BEGIN
+        MENUITEM "&Catalog",                    ID_NEW_CATALOG
+        MENUITEM "&Preset",                     ID_NEW_PRESET
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_PARENT DIALOGEX 0, 0, 266, 160
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD
+FONT 8, "Tahoma", 400, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_TAB,"SysTabControl32",0x0,0,0,265,160
+END
+
+IDD_SETTINGS DIALOGEX 0, 0, 266, 154
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD
+FONT 8, "Tahoma", 400, 0, 0x0
+BEGIN
+    EDITTEXT        IDC_PATH,63,20,172,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_BROWSE_PATH,239,20,13,14
+    EDITTEXT        IDC_PARAMETER,54,38,198,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EXTENSION,54,56,40,14,ES_AUTOHSCROLL
+    CONTROL         "Don't write WAV header",IDC_NO_WAV_HEADER,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,112,93,10
+    CONTROL         "Show console window",IDC_SHOW_CONSOLE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,126,85,10
+    LTEXT           "Encoder Path: ",IDC_STATIC,11,23,48,8
+    LTEXT           "Extension: ",IDC_STATIC,11,57,37,8
+    LTEXT           "Paramater: ",IDC_STATIC,11,41,39,8
+    GROUPBOX        "Encoder Settings",IDC_STATIC,7,7,252,88
+    GROUPBOX        "Generic Settings",IDC_STATIC,7,99,252,48
+END
+
+IDD_PRESETS DIALOGEX 0, 0, 266, 156
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_SYSMENU
+FONT 8, "Tahoma", 400, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_EP_TREE,"SysTreeView32",TVS_HASBUTTONS | 
+                    TVS_HASLINES | TVS_LINESATROOT | TVS_EDITLABELS | 
+                    TVS_DISABLEDRAGDROP | TVS_SHOWSELALWAYS | 
+                    TVS_TRACKSELECT | WS_BORDER | WS_TABSTOP | 0x400,7,7,194,
+                    71
+    EDITTEXT        IDC_PAT,64,93,173,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_BP,241,93,13,14
+    EDITTEXT        IDC_PAR,55,111,199,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EXT,53,128,40,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Update",IDC_UPDATE,204,128,50,14
+    PUSHBUTTON      "&New",IDC_NEW,209,7,50,14
+    PUSHBUTTON      "&Delete",IDC_DELETE,209,25,50,14
+    PUSHBUTTON      "&Preset file",IDC_PRESETFILE,209,64,50,14
+    LTEXT           "Encoder Path: ",IDC_STATIC,12,95,48,8
+    LTEXT           "Extension: ",IDC_STATIC,12,131,37,8
+    LTEXT           "Paramater: ",IDC_STATIC,12,114,39,8
+    GROUPBOX        "Presets Content",IDC_STATIC,7,82,252,66
+    PUSHBUTTON      "&Save",IDC_SAVE,209,46,50,14
+END
+
+IDD_ABOUT DIALOGEX 0, 0, 219, 113
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About"
+FONT 8, "MS Sans Serif", 400, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,84,85,50,14
+    CTEXT           "Version 1.0b1\nLast modified July 2005\nBrought you by Shao Hao",
+                    IDC_STATIC,24,51,172,24
+    CTEXT           "Ability to write audio data to various media formats with command line encoders.",
+                    IDC_STATIC,24,22,172,26
+    GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,99
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_SETTINGS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 259
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+
+    IDD_PRESETS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 259
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 148
+    END
+
+    IDD_ABOUT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 212
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 106
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+#endif    // 英语(美国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QMPCLIEnc", "QMPCLIEnc.vcproj", "{51C48787-9E7F-4DB0-B6F3-965573419924}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{51C48787-9E7F-4DB0-B6F3-965573419924}.Debug.ActiveCfg = Debug|Win32
+		{51C48787-9E7F-4DB0-B6F3-965573419924}.Debug.Build.0 = Debug|Win32
+		{51C48787-9E7F-4DB0-B6F3-965573419924}.Release.ActiveCfg = Release|Win32
+		{51C48787-9E7F-4DB0-B6F3-965573419924}.Release.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal
