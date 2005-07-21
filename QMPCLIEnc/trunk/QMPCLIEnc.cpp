@@ -23,7 +23,7 @@
 
 #define PLUGIN_NAME "CLI Encoder"
 #define PLUGIN_FULL_NAME "Commandline Encoder"
-#define PLUGIN_VERSION "v1.0b1"
+#define PLUGIN_VERSION "v1.0b2"
 
 HINSTANCE		hInstance, hBrandInstance;
 HWND			hwndParent;
