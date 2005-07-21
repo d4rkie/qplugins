@@ -136,12 +136,12 @@ BEGIN
     PUSHBUTTON      "&Update",IDC_UPDATE,204,128,50,14
     PUSHBUTTON      "&New",IDC_NEW,209,7,50,14
     PUSHBUTTON      "&Delete",IDC_DELETE,209,25,50,14
-    PUSHBUTTON      "&Preset file",IDC_PRESETFILE,209,64,50,14
+    PUSHBUTTON      "&Preset file",IDC_PRESETFILE,209,46,50,14
     LTEXT           "Encoder Path: ",IDC_STATIC,12,95,48,8
     LTEXT           "Extension: ",IDC_STATIC,12,131,37,8
     LTEXT           "Paramater: ",IDC_STATIC,12,114,39,8
     GROUPBOX        "Presets Content",IDC_STATIC,7,82,252,66
-    PUSHBUTTON      "&Save",IDC_SAVE,209,46,50,14
+    PUSHBUTTON      "&Save",IDC_SAVE,209,64,50,14
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 219, 113
@@ -150,7 +150,7 @@ CAPTION "About"
 FONT 8, "MS Sans Serif", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,84,85,50,14
-    CTEXT           "Version 1.0b1\nLast modified July 2005\nBrought you by Shao Hao",
+    CTEXT           "Version 1.0b2\nLast modified July 2005\nBrought you by Shao Hao",
                     IDC_STATIC,24,51,172,24
     CTEXT           "Ability to write audio data to various media formats with command line encoders.",
                     IDC_STATIC,24,22,172,26
