@@ -58,5 +58,11 @@ Section
   Call SetPluginPath
 
   File "Release\QMPCLIEnc.dll"
-  File "QMPCLIEnc.ep"
+  ${If} ${FileExists} "$OUTDIR\QMPCLIEnc.ep"
+    MessageBox MB_YESNO "Do you want to install the default Encoder Preset file (.ep)?$\r$\nNote: This will overwrite the preset file which you're using!!" IDYES 0 IDNO noep
+      File "QMPCLIEnc.ep"
+noep:
+  ${Else}
+    File "QMPCLIEnc.ep"
+  ${EndIf}
 SectionEnd
