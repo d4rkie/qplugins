@@ -23,7 +23,7 @@
 
 #define PLUGIN_NAME "CLI Encoder"
 #define PLUGIN_FULL_NAME "Commandline Encoder"
-#define PLUGIN_VERSION "v1.0b2"
+#define PLUGIN_VERSION "v1.0b4"
 
 HINSTANCE		hInstance, hBrandInstance;
 HWND			hwndParent;
@@ -61,7 +61,7 @@ PLUGIN_API QCDModInitEnc* ENCODEDLL_ENTRY_POINT()
 	QCDCallbacks.toModule.Write				= Write;
 	QCDCallbacks.toModule.Drain				= Drain;
 	QCDCallbacks.toModule.Complete			= Complete;
-	QCDCallbacks.toModule.Configure			= Configure;
+	QCDCallbacks.toModule.Configure			= NULL; //Configure;
 	QCDCallbacks.toModule.About				= About;
 
 	return &QCDCallbacks;
