@@ -20,6 +20,7 @@
 #define IDC_UPDATE                      1009
 #define IDC_BUTTON1                     1020
 #define IDC_SAVE                        1020
+#define IDC_URL_ENCODERS                1020
 #define IDC_PATH                        5001
 #define IDC_BROWSE_PATH                 5002
 #define IDC_PARAMETER                   5003

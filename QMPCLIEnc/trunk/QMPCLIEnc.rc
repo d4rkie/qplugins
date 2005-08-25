@@ -99,6 +99,8 @@ STYLE DS_SETFONT | DS_CONTROL | WS_CHILD
 FONT 8, "Tahoma", 400, 0, 0x0
 BEGIN
     CONTROL         "",IDC_TAB,"SysTabControl32",0x0,0,0,265,160
+    CONTROL         "Get Encoders",IDC_URL_ENCODERS,"Button",BS_OWNERDRAW | 
+                    WS_TABSTOP,215,3,48,10
 END
 
 IDD_SETTINGS DIALOGEX 0, 0, 266, 154
@@ -150,7 +152,7 @@ CAPTION "About"
 FONT 8, "MS Sans Serif", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,84,85,50,14
-    CTEXT           "Version 1.0b2\nLast modified July 2005\nBrought you by Shao Hao",
+    CTEXT           "Version 1.0b4\nLast modified August 2005\nBrought you by Shao Hao",
                     IDC_STATIC,24,51,172,24
     CTEXT           "Ability to write audio data to various media formats with command line encoders.",
                     IDC_STATIC,24,22,172,26
