@@ -9,7 +9,7 @@
 Name "QMP Command Line Encoder(CLI) Plug-in"
 OutFile "enc_qmpclienc.exe"
 
-SetCompressor lzma
+SetCompressor /SOLID lzma
 InstallColors /WINDOWS
 Icon "qmp.ico"
 XPStyle on
@@ -59,7 +59,7 @@ Section
 
   File "Release\QMPCLIEnc.dll"
   ${If} ${FileExists} "$OUTDIR\QMPCLIEnc.ep"
-    MessageBox MB_YESNO "Do you want to install the default Encoder Preset file (.ep)?$\r$\nNote: This will overwrite the preset file which you're using!!" IDYES 0 IDNO noep
+    MessageBox MB_YESNO|MB_DEFBUTTON2 "Do you want to install the default Encoder Preset file (.ep)?$\r$\nNote: This will overwrite the preset file which you're using!!" IDYES 0 IDNO noep
       File "QMPCLIEnc.ep"
 noep:
   ${Else}
