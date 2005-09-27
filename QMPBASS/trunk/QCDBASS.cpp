@@ -20,8 +20,11 @@
 //-----------------------------------------------------------------------------
 // Bugs
 // : The bass plugin retaining the file open when you press the stop button
-// : Volume in system mode with 32bit is very low/not mirrored to backspeakers
-//     (Not looked into yet)
+// : Volume in system mode with 32bit is very low/not mirrored to backspeakers (Not looked into yet)
+// : BASS is allowing qmp to add files with an extension of .1 to the media library.
+//     These are backup files created by Quick Par during the file repair process.
+//     The file names will look something like xxx.ape.1. They are unplayable unless renamed.
+// : Encoding doesn't work
 
 // Feature Reqeusts
 // : Add FLAC support via addon
@@ -450,11 +453,11 @@ int Stop(const char* medianame, int flags)
 		// destroy play/decoding thread
 		decoderInfo.killThread = 1;
 		if (decoderInfo.thread_handle != INVALID_HANDLE_VALUE) {
-			if (WaitForSingleObject(decoderInfo.thread_handle, 10000) == WAIT_TIMEOUT)
+			if (WaitForSingleObject(decoderInfo.thread_handle, 2000) == WAIT_TIMEOUT) {
 				TerminateThread(decoderInfo.thread_handle, 0);
-
-			CloseHandle(decoderInfo.thread_handle);
-			decoderInfo.thread_handle = INVALID_HANDLE_VALUE;			
+				CloseHandle(decoderInfo.thread_handle);
+				decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
+			}
 		}
 
 		decoderInfo.pDecoder->stop(flags); // stop all
@@ -749,9 +752,12 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	}
 
 	// Clean up
-
 	if (pVisData)
 		delete [] pVisData;
+
+	CloseHandle(decoderInfo->thread_handle);
+	decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
+
 	return 0;
 }
 
@@ -920,6 +926,9 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	// Clean up
 	if (pRawData) HeapFree(hHeap, 0, pRawData);
 	if (hHeap) HeapDestroy(hHeap);
+
+	CloseHandle(decoderInfo->thread_handle);
+	decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
 
 	return 0;
 }
