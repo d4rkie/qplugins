@@ -5,10 +5,10 @@
 #include "cfg_var.h"
 #include "bass_lib.h"
 
-#define PLUGIN_VERSION "v1.0 beta8.0"
+#define PLUGIN_VERSION "v1.0 beta8.4"
 
-// #include "ConStream.h"
-// extern ConStream dLog;
+//#include "ConStream.h"
+//extern ConStream dLog;
 
 typedef struct
 {
