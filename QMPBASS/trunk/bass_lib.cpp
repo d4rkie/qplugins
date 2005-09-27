@@ -301,8 +301,6 @@ DWORD bass::get_bitrate(void)
 			else if (version == 2 && (layer == 2 || layer == 1)) // m2l2 & m2l3
 				bitrate = bitrate_table[4][bitrate_index] * 1000;
 		}
-		else
-			return bitrate = 0;
 	}
 
 	return bitrate;
