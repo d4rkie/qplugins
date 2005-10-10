@@ -3,8 +3,6 @@
 	ProjectType="Visual C++"
 	Version="7.10"
 	Name="QCDBASS"
-	ProjectGUID="{86F8984B-8D3A-4FB2-B24B-9937F8ADE605}"
-	RootNamespace="QCDBASS"
 	SccProjectName="QCDBASS"
 	SccLocalPath=".">
 	<Platforms>
@@ -31,24 +29,23 @@
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
 				BrowseInformation="1"
-				BrowseInformationFile=".\Debug/"
 				WarningLevel="3"
 				SuppressStartupBanner="TRUE"
-				DebugInformationFormat="4"/>
+				DebugInformationFormat="4"
+				CompileAs="0"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="winmm.lib wsock32.lib replaygain_synthesis_static.lib"
-				OutputFile="D:\Media\Quintessential Player\Plugins/QCDBASS.dll"
+				AdditionalDependencies="odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib"
+				OutputFile="D:\Media\Quintessential Media Player\Plugins/QCDBASS.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="TRUE"
 				AdditionalLibraryDirectories="..\replaygain_synthesis\Debug"
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile=".\Debug/QCDBASS.pdb"
 				SubSystem="2"
-				ImportLibrary=".\Debug/QCDBASS.lib"
-				TargetMachine="1"/>
+				ImportLibrary=".\Debug/QCDBASS.lib"/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_DEBUG"
@@ -98,21 +95,27 @@
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
+				BrowseInformation="1"
+				BrowseInformationFile=".\Release/"
 				WarningLevel="3"
-				SuppressStartupBanner="TRUE"/>
+				SuppressStartupBanner="TRUE"
+				DebugInformationFormat="2"
+				CompileAs="0"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="winmm.lib wsock32.lib replaygain_synthesis_static.lib"
+				AdditionalOptions="/MAPINFO:LINES /MAPINFO:EXPORTS "
+				AdditionalDependencies="odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib"
 				OutputFile=".\Release/QCDBASS.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="TRUE"
 				AdditionalLibraryDirectories="..\replaygain_synthesis\Release"
 				ProgramDatabaseFile=".\Release/QCDBASS.pdb"
+				GenerateMapFile="TRUE"
+				MapFileName=".\Release/QCDBASS.map"
 				SubSystem="2"
-				ImportLibrary=".\Release/QCDBASS.lib"
-				TargetMachine="1"/>
+				ImportLibrary=".\Release/QCDBASS.lib"/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="NDEBUG"
@@ -122,9 +125,7 @@
 				TypeLibraryName=".\Release/QCDBASS.tlb"
 				HeaderFileName=""/>
 			<Tool
-				Name="VCPostBuildEventTool"
-				Description="Creating Installer..."
-				CommandLine="D:\system\nsis\makensis.exe $(TargetName).nsi"/>
+				Name="VCPostBuildEventTool"/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
 			<Tool
@@ -152,18 +153,13 @@
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat">
 			<File
-				RelativePath=".\bass_lib.cpp">
-			</File>
-			<File
-				RelativePath=".\BASSCfgUI.cpp">
-			</File>
-			<File
-				RelativePath="QCDBASS.cpp">
+				RelativePath="bass_lib.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCLCompilerTool"
 						Optimization="0"
+						AdditionalIncludeDirectories=""
 						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
 						BasicRuntimeChecks="3"
 						BrowseInformation="1"/>
@@ -173,33 +169,164 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						Optimization="2"
-						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"/>
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
+						BrowseInformation="1"/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\qcdhelper.cpp">
+				RelativePath="BASSCfgUI.cpp">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
+						BasicRuntimeChecks="3"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
+						BrowseInformation="1"/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\tags.cpp">
+				RelativePath="ID3v2.cpp">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
+						BasicRuntimeChecks="3"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="QCDBASS.cpp">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
+						BasicRuntimeChecks="3"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="qcdhelper.cpp">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
+						BasicRuntimeChecks="3"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="tags.cpp">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
+						BasicRuntimeChecks="3"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="VorbisComment.cpp">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
+						BasicRuntimeChecks="3"
+						BrowseInformation="1"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
+						BrowseInformation="1"/>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl">
 			<File
-				RelativePath=".\bass_lib.h">
+				RelativePath="bass_lib.h">
 			</File>
 			<File
-				RelativePath=".\BASSCfgUI.h">
+				RelativePath="BASSCfgUI.h">
 			</File>
 			<File
-				RelativePath=".\cfg_var.h">
+				RelativePath="cfg_var.h">
 			</File>
 			<File
-				RelativePath=".\QCDBASS.h">
+				RelativePath="ID3v2.h">
 			</File>
 			<File
-				RelativePath=".\qcdhelper.h">
+				RelativePath="QCDBASS.h">
+			</File>
+			<File
+				RelativePath="qcdhelper.h">
 			</File>
 			<File
 				RelativePath="QCDInputDLL.h">
@@ -211,33 +338,36 @@
 				RelativePath="QCDModInput.h">
 			</File>
 			<File
-				RelativePath=".\resource.h">
+				RelativePath="resource.h">
 			</File>
 			<File
-				RelativePath=".\tags.h">
+				RelativePath="tags.h">
+			</File>
+			<File
+				RelativePath="VorbisComment.h">
 			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
 			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
 			<File
-				RelativePath=".\logo_bas.bmp">
+				RelativePath="logo_bas.bmp">
 			</File>
 			<File
-				RelativePath=".\logo_bass.bmp">
+				RelativePath="logo_bass.bmp">
 			</File>
 			<File
-				RelativePath=".\QCDBASS.rc">
+				RelativePath="QCDBASS.rc">
 			</File>
 			<File
-				RelativePath=".\ss_bar.bmp">
+				RelativePath="ss_bar.bmp">
 			</File>
 			<File
-				RelativePath=".\stream_s.bmp">
+				RelativePath="stream_s.bmp">
 			</File>
 		</Filter>
 		<File
-			RelativePath=".\qcdbass.nsi">
+			RelativePath="qcdbass.nsi">
 		</File>
 	</Files>
 	<Globals>
