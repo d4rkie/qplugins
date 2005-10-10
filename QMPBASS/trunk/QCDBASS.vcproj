@@ -38,7 +38,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib"
-				OutputFile="D:\Media\Quintessential Media Player\Plugins/QCDBASS.dll"
+				OutputFile=".\Debug/QCDBASS.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="TRUE"
 				AdditionalLibraryDirectories="..\replaygain_synthesis\Debug"
@@ -197,6 +197,9 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\Hyperlinks.cpp">
+			</File>
+			<File
 				RelativePath="ID3v2.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
@@ -318,6 +321,9 @@
 			</File>
 			<File
 				RelativePath="cfg_var.h">
+			</File>
+			<File
+				RelativePath=".\Hyperlinks.h">
 			</File>
 			<File
 				RelativePath="ID3v2.h">

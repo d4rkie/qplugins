@@ -126,6 +126,7 @@ DEP_CPP_BASSC=\
 	".\QCDInputDLL.h"\
 	".\QCDModDefs.h"\
 	".\QCDModInput.h"\
+	".\Hyperlinks.h"\
 	
 # End Source File
 # Begin Source File
@@ -207,6 +208,13 @@ DEP_CPP_VORBI=\
 	".\VorbisComment.h"\
 	
 # End Source File
+# Begin Source File
+
+SOURCE=.\Hyperlinks.cpp
+DEP_CPP_VORBI=\
+	".\Hyperlinks.h"\
+	
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
@@ -258,6 +266,10 @@ SOURCE=.\tags.h
 # Begin Source File
 
 SOURCE=.\VorbisComment.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\Hyperlinks.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"
