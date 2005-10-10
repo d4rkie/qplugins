@@ -516,7 +516,7 @@ int ReadID3v2Tag ( reader *fp, file_info *info, __int64 &tag_offset )
 		return 0;
 
 	// Unsynchronisation check
-	if (header.nFlags & 0x80 == 0x80) // Unsynchronisation used. Isn't supported atm.
+	if ((header.nFlags & 0x80) == 0x80) // Unsynchronisation used. Isn't supported atm.
 		return 0;
 
 	while ((nRead += tag.GetNextFrameHeader(&frameheader)) <= header.nSize - exheader.nPadding)
