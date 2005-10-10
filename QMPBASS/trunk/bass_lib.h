@@ -11,6 +11,8 @@
 
 
 //-- command functions
+void load_addons(const char * fldr);
+void free_addons(HPLUGIN handle);
 bool create_bass (DWORD device);
 bool destroy_bass (void);
 
@@ -61,6 +63,10 @@ public:
 			return "MP2";
 		case BASS_CTYPE_STREAM_MP3:
 			return "MP3";
+		case BASS_CTYPE_STREAM_AIFF:
+			return "AIFF";
+		case BASS_CTYPE_MUSIC_MOD:
+			return "MOD";
 		case BASS_CTYPE_MUSIC_MTM:
 			return "MTM";
 		case BASS_CTYPE_MUSIC_S3M:
@@ -69,8 +75,50 @@ public:
 			return "XM";
 		case BASS_CTYPE_MUSIC_IT:
 			return "IT";
+		// check add-ons...
+#define BASS_CTYPE_STREAM_CD	0x10200
+		case BASS_CTYPE_STREAM_CD:
+			return "CDA";
+#define BASS_CTYPE_STREAM_WMA	0x10300
+		case BASS_CTYPE_STREAM_WMA:
+			return "WMA";
+#define BASS_CTYPE_STREAM_FLAC	0x10900
+		case BASS_CTYPE_STREAM_FLAC:
+			return "FLAC";
+#define BASS_CTYPE_STREAM_OFR	0x10600
+		case BASS_CTYPE_STREAM_OFR:
+			return "OFR/OFS";//"Optimfrog";
+#define BASS_CTYPE_STREAM_APE	0x10700
+		case BASS_CTYPE_STREAM_APE:
+			return "APE";
+#define BASS_CTYPE_STREAM_MPC	0x10a00
+		case BASS_CTYPE_STREAM_MPC:
+			return "MPC";
+#define BASS_CTYPE_STREAM_AAC	0x10b00
+		case BASS_CTYPE_STREAM_AAC:
+			return "AAC";
+#define BASS_CTYPE_STREAM_MP4	0x10b01
+		case BASS_CTYPE_STREAM_MP4:
+			return "MP4";
+#define BASS_CTYPE_STREAM_SPX	0x10c00
+		case BASS_CTYPE_STREAM_SPX:
+			return "Speex";
+#define BASS_CTYPE_STREAM_ALAC	0x10e00
+		case BASS_CTYPE_STREAM_ALAC:
+			return "ALAC";
+#define BASS_CTYPE_STREAM_TTA	0x10f00
+		case BASS_CTYPE_STREAM_TTA:
+			return "TTA";
+#define BASS_CTYPE_STREAM_AC3	0x11000
+		case BASS_CTYPE_STREAM_AC3:
+			return "AC3";
 		default:
-			return NULL;
+#define BASS_CTYPE_STREAM_WV	0x10500
+#define BASS_CTYPE_STREAM_WV_LH	0x10503
+			if (ChannelInfo.ctype >= BASS_CTYPE_STREAM_WV && ChannelInfo.ctype <= BASS_CTYPE_STREAM_WV_LH)
+				return "Wavpack";
+			else
+				return NULL;
 		}
 	}
 

@@ -10,6 +10,36 @@
 
 
 //-- for common functions
+void load_addons(const char * fldr)
+{
+	if (PathFileExists(fldr)) {
+		// look for plugins (in the executable's directory)
+		WIN32_FIND_DATA fd;
+		HANDLE fh;
+		char path[MAX_PATH];
+
+		lstrcpy(path, fldr);
+		PathAppend(path, "bass*.dll");
+		fh=FindFirstFile(path,&fd);
+		if (fh != INVALID_HANDLE_VALUE) {
+			do {
+				lstrcpy(path, fldr);
+				PathAppend(path, fd.cFileName);
+				if (BASS_PluginLoad(path)) { // plugin loaded...
+					listAddons.push_back(fd.cFileName); // add file name to list
+				}
+			} while (FindNextFile(fh,&fd));
+			FindClose(fh);
+		}
+	}
+}
+
+void free_addons(HPLUGIN handle)
+{
+	listAddons.clear();
+	BASS_PluginFree(handle);
+}
+
 bool create_bass (DWORD device)
 {
 	if (device == 0)
@@ -19,12 +49,17 @@ bool create_bass (DWORD device)
 
 	BASS_SetConfig(BASS_CONFIG_NET_TIMEOUT, 10000);
 
-	
-	return BASS_Init(device, nSampleRate, 0, NULL, NULL) ? true : false;
+	BOOL ret = BASS_Init(device, nSampleRate, 0, NULL, NULL);
+
+	load_addons(strAddonsDir); // load add-ons
+
+	return !!ret;
 }
 
 bool destroy_bass (void)
 {
+	free_addons(0); // free all addons
+
 	return BASS_Free() ? true : false;
 }
 
@@ -64,8 +99,7 @@ bass::bass( const char * _path, bool _is_decode, bool _use_32fp )
         is_seekable = strrchr(m_strPath, '.') > strrchr(m_strPath, '/'); // internet files are also seekable
 
 		r = NULL;
-	}
-	else {
+	} else {
 		is_url = false;
 		is_seekable = true;
 
@@ -117,14 +151,13 @@ bool bass::seek(double ms)
 	if (ChannelInfo.ctype & BASS_CTYPE_MUSIC_MOD) {
 		ret = BASS_ChannelSetPosition(m_hBass, MAKELONG((unsigned int)(ms/1000), 0xffff)) ? true : false;
 		starttime = timeGetTime() - (DWORD)ms;
-	}
-	else {
+	} else {
 		ret = BASS_ChannelSetPosition(m_hBass, BASS_ChannelSeconds2Bytes(m_hBass, (float)(ms/1000))) ? true : false;
 	}
 
 
 	if (!is_decode) {
-		ret = BASS_ChannelPreBuf(m_hBass) ? true : false;
+		ret = BASS_ChannelPreBuf(m_hBass, 0) ? true : false;
 
 		// then, fade-in
 		fade_volume(QCDCallbacks.Service(opGetVolume, NULL, 0, 0), uFadeIn);
@@ -156,8 +189,7 @@ void bass::update_stream_title(char* meta, bass* pBass)
 			u = strdup(u+11);
 			strchr(t, ';')[-1] = '\0';
 			strchr(u, '\'')[0] = '\0';
-		}
-		else {
+		} else {
 			for (t = meta; *t; t += strlen(meta)+1) {
 				if (!strnicmp(t, "TITLE=", 6)) { // found OGG title
 					t = strdup(t+6);
@@ -252,19 +284,15 @@ void CALLBACK bass::stream_status_proc(void *buffer, DWORD length, DWORD user)
                             bStreamSaving = 1;
 
 							fwrite(buffer, sizeof(char), length, pBass->m_StreamFile);
-						}
-						else
+						} else
 							bStreamSaving = 0;
-					}
-					else
+					} else
 						bStreamSaving = 0;
 
 					SendMessage(hwndStreamSavingBar, WM_INITDIALOG, 0, 0);
-				}
-				else
+				} else
 					fwrite(buffer, sizeof(char), length, pBass->m_StreamFile);
-			}
-			else {
+			} else {
 				if (pBass->m_StreamFile) {
 					fclose(pBass->m_StreamFile);
 					pBass->m_StreamFile = NULL;
@@ -329,13 +357,11 @@ void bass::init_rg()
 		if (uReplayGainMode == 1 ) { // track gain
 			rg_gain = track_gain ? track_gain : album_gain;
 			rg_peak = track_peak ? track_peak : album_peak;
-		}
-		else if (uReplayGainMode == 2) { // album gain
+		} else if (uReplayGainMode == 2) { // album gain
 			rg_gain = album_gain ? album_gain : track_gain;
 			rg_peak = album_peak ? album_peak : track_peak;
 		}
-	}
-	else { // replaygain for local media without rg info or stream media
+	} else { // replaygain for local media without rg info or stream media
 		rg_gain = 0.0;
 		rg_peak = 0.0;
 	}
@@ -384,7 +410,7 @@ int bass::init ( bool fullinit )
 			QCDCallbacks.Service(opSetStatusMessage, "connecting...", TEXT_TOOLTIP, 0);
 
 			if ( (m_hBass = BASS_StreamCreateURL(m_strPath, 0, 
-				BASS_STREAM_META | BASS_STREAM_STATUS | BASS_STREAM_BLOCK | 
+				BASS_STREAM_STATUS | BASS_STREAM_BLOCK | 
 				(is_decode ? BASS_STREAM_DECODE : 0) | 
 				(use_32fp ? BASS_SAMPLE_FLOAT : 0), 
 				stream_status_proc, (DWORD)this)) ) {
@@ -412,19 +438,16 @@ int bass::init ( bool fullinit )
 						BASS_ChannelSetDSP(m_hBass, &rg_dsp_proc, (DWORD)this, 1 ); // set our replaygain dsp for playback mode
 
 					return 1;
-				}
-			else
+				} else
 				return BASS_ERROR_FILEFORM == BASS_ErrorGetCode() ? -1 : 0;
-		}
-		else
+		} else
 			return 1;
-	}
-	else { // for local file
+	} else { // for local file
 		if ( (m_hBass = BASS_StreamCreateFile(FALSE, m_strPath, 0, 0, 
 			(is_decode ? BASS_STREAM_DECODE : 0) | 
 			(use_32fp ? BASS_SAMPLE_FLOAT : 0))) ) { // for mp* and wav files
 				size = BASS_StreamGetFilePosition(m_hBass, BASS_FILEPOS_END);
-				length = (DWORD)BASS_ChannelBytes2Seconds( m_hBass, BASS_StreamGetLength(m_hBass) );
+				length = (DWORD)BASS_ChannelBytes2Seconds( m_hBass, BASS_ChannelGetLength(m_hBass) );
 
 				BASS_ChannelGetInfo(m_hBass, &ChannelInfo);
 
@@ -438,12 +461,11 @@ int bass::init ( bool fullinit )
 				}
 
 				return 1;
-		}
-		else if ( (m_hBass = BASS_MusicLoad(FALSE, m_strPath, 0, 0, 
+		} else if ( (m_hBass = BASS_MusicLoad(FALSE, m_strPath, 0, 0, 
 			BASS_MUSIC_RAMPS | BASS_MUSIC_CALCLEN | 
 			(is_decode ? BASS_MUSIC_DECODE : 0) | 
 			(use_32fp ? BASS_SAMPLE_FLOAT : 0), 0)) ) { // for mod files
-				size = BASS_MusicGetLength(m_hBass, TRUE);
+				size = BASS_ChannelGetLength(m_hBass);
 				length = (DWORD)BASS_ChannelBytes2Seconds(m_hBass, size);
 
 				BASS_ChannelGetInfo(m_hBass, &ChannelInfo);
@@ -456,8 +478,7 @@ int bass::init ( bool fullinit )
 				}
 
 				return 1;
-		}
-		else
+		} else
 			return BASS_ERROR_FILEFORM == BASS_ErrorGetCode() ? -1 : 0;
 	}
 }
@@ -542,7 +563,7 @@ bool bass::play(void)
 
 	if (starttime == 0) starttime = timeGetTime();
 
-	return BASS_ChannelPreBuf(m_hBass) && BASS_ChannelPlay(m_hBass, FALSE) ? true : false;
+	return BASS_ChannelPreBuf(m_hBass, 0) && BASS_ChannelPlay(m_hBass, FALSE) ? true : false;
 }
 
 bool bass::pause(int flags)
@@ -562,8 +583,7 @@ bool bass::pause(int flags)
 
 		pausetime = timeGetTime() - starttime;
 		return BASS_ChannelPause(m_hBass) ? true : false;
-	}
-	else
+	} else
 	{
 		bool ret = BASS_ChannelPlay(m_hBass, FALSE) ? true : false;
         starttime = timeGetTime() - pausetime;
@@ -649,8 +669,7 @@ bool bass::set_eq(bool enabled, char const * bands) // default 10 bands for QCD
 
 		for (i = 0; i < 10; i++)
 			ret = BASS_FXSetParameters(eqfx[i], &eq[i]) ? true : false;
-	}
-	else {
+	} else {
 		for (int i = 0; i < 10; i++) {
 			if (eqfx[i]) {
 				ret = BASS_ChannelRemoveFX(m_hBass, eqfx[i]) ? true: false;
