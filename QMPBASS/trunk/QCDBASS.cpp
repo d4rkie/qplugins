@@ -27,9 +27,9 @@
 // : Encoding doesn't work
 
 // Feature Reqeusts
-// : Add FLAC support via addon
 // : Shoutcast stream titles. Currently only the songname tag is supported,
 //-----------------------------------------------------------------------------
+// 10-10-05 : Added add-ons support based on BASS v2.2
 // 11-05-05 : Added ID3v2 tag reader
 // 11-05-05 : Extra preamp slider for files with RG
 // 11-05-05 : Fixed CloseHandle(thread_handle) failed
@@ -66,7 +66,7 @@ cfg_int uPrefPage("QCDBASS", "PrefPage", 0);	// pref page number
 cfg_int xPrefPos("QCDBASS", "xPrefPos", 200);	// left side of property sheet
 cfg_int yPrefPos("QCDBASS", "yPrefPos", 300);	// left side of property sheet
 
-cfg_string strExtensions("QCDBASS", "Extensions", "WAV:MP3:MP2:MP1:OGG:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
+cfg_string strExtensions("QCDBASS", "Extensions", "WAV:MP3:MP2:MP1:OGG:AIFF:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
 cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0); // 0=decode, 1...=use internal output module
 cfg_int bUse32FP("QCDBASS", "Use32FP", TRUE); // enable 32-bit floating-point sample resolution
 cfg_int uPriority("QCDBASS", "Priority", 2); // thread priority, 0=normal, 1=higher, 2=highest, 3=critcal
@@ -95,9 +95,13 @@ cfg_int bSaveStreamsBasedOnTitle("QCDBASS", "SaveStreamsBasedOnTitle", TRUE); //
 cfg_int xStreamSavingBar("QCDBASS", "xStreamSavingBar", 0); // left side of stream saving bar
 cfg_int yStreamSavingBar("QCDBASS", "yStreamSavingBar", 0); // top side of stream saving bar
 
+cfg_string strAddonsDir("QCDBASS", "AddonsDir", "", MAX_PATH); // path of addons' directory
+
 HWND hwndConfig = NULL; // config property sheet
 HWND hwndAbout = NULL; // about dialog box
 HWND hwndStreamSavingBar = NULL; // stream saving bar
+
+list<string> listAddons;
 
 UINT uCurDeviceNum = uDeviceNum;
 
@@ -245,6 +249,14 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	bSaveStreamsBasedOnTitle.load(inifile);
 	xStreamSavingBar.load(inifile);
 	yStreamSavingBar.load(inifile);
+	strAddonsDir.load(inifile);
+	char path[MAX_PATH];
+	GetModuleFileName(NULL, path, MAX_PATH);
+	PathRemoveFileSpec(path);
+	if(strAddonsDir.is_empty()) // set to default (plug-ins dir)
+		lstrcpy((LPTSTR)(LPCTSTR)strAddonsDir, path);
+
+	listAddons.clear();
 
 	ModInfo->moduleString = "BASS Sound System "PLUGIN_VERSION;
 	ModInfo->moduleExtensions = (LPTSTR)(LPCTSTR)strExtensions;
@@ -302,6 +314,7 @@ void ShutDown(int flags)
 	bSaveStreamsBasedOnTitle.save(inifile);
 	xStreamSavingBar.save(inifile);
 	yStreamSavingBar.save(inifile);
+	strAddonsDir.save(inifile);
 
 	// remove plug-in menu
 	remove_menu();

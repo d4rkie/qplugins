@@ -5,7 +5,11 @@
 #include "cfg_var.h"
 #include "bass_lib.h"
 
-#define PLUGIN_VERSION "v1.0 beta8.4"
+#include <string>
+#include <list>
+using namespace std;
+
+#define PLUGIN_VERSION "v1.0 beta9.0"
 
 //#include "ConStream.h"
 //extern ConStream dLog;
@@ -54,11 +58,15 @@ extern cfg_int bSaveStreamsBasedOnTitle; // save streams based on stream title
 extern cfg_int xStreamSavingBar; // left side of stream saving bar
 extern cfg_int yStreamSavingBar; // top side of stream saving bar
 
+extern cfg_string strAddonsDir; // path of addons' directory
+
 // handle for UI
 extern HWND hwndConfig; // config property
 extern HWND hwndAbout; // about dialog box
 extern HWND hwndStreamSavingBar; // stream saving bar
 
+extern list<string> listAddons; // Pointer to a buffer containing pairs of null-terminated filename strings.
+								// The last string in the buffer must be terminated by two NULL characters.
 // for plug-in menu
 extern void reset_menu(void);
 
