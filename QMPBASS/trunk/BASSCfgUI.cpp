@@ -12,7 +12,7 @@ const unsigned int PREAMP_RANGE = 24;
 LPCTSTR noise_shaping_table[] = { "None", "Low", "Medium", "High" };
 LPCTSTR replaygain_table[] = { "Disabled", "Use Track Gain", "Use Album Gain" };
 
-BOOL bOKGeneral = FALSE, bOKAdvanced = FALSE, bOKStreaming = FALSE, bOKStreamSaving = FALSE;
+BOOL bOKGeneral = FALSE, bOKAdvanced = FALSE, bOKStreaming = FALSE, bOKStreamSaving = FALSE, bOKAddons = FALSE;
 BOOL bCancelAll = FALSE;
 void LoadResString(HINSTANCE hInstance, UINT uID, LPTSTR lpBuffer, int nBufferMax)
 {
@@ -38,7 +38,7 @@ LPCDLGTEMPLATE LoadResDialog(HINSTANCE hInstance, int nTemplate)
 
 HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
 {
-    PROPSHEETPAGE psp[4];
+    PROPSHEETPAGE psp[5];
     PROPSHEETHEADER psh;
 
     psp[0].dwSize = sizeof(PROPSHEETPAGE);
@@ -69,6 +69,13 @@ HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
     psp[3].pfnDlgProc = (DLGPROC)StreamSavingDlgProc;
     psp[3].lParam = 0;
     psp[3].pfnCallback = NULL;
+    psp[4].dwSize = sizeof(PROPSHEETPAGE);
+    psp[4].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
+    psp[4].hInstance = hInstance;
+	psp[4].pResource = LoadResDialog(hInstance, IDD_ADDONS);
+    psp[4].pfnDlgProc = (DLGPROC)AddonsDlgProc;
+    psp[4].lParam = 0;
+    psp[4].pfnCallback = NULL;
 
     psh.dwSize = sizeof(PROPSHEETHEADER);
     psh.dwFlags = PSH_DEFAULT | PSH_MODELESS | PSH_PROPSHEETPAGE/* | PSH_USECALLBACK*/;
@@ -105,7 +112,7 @@ void DestroyPropertySheet(HWND hwndPage)
 		DestroyWindow(hwndConfig);
 		hwndConfig = NULL;
 
-		bOKGeneral = bOKAdvanced = bOKStreaming = bOKStreamSaving = FALSE;
+		bOKGeneral = bOKAdvanced = bOKStreaming = bOKStreamSaving = bOKAddons = FALSE;
 		bCancelAll = FALSE;
 	}
 	else
@@ -196,8 +203,6 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 		case IDC_GET_INFO:
 			{
 				BASS_INFO info;
-				ZeroMemory(&info, sizeof(BASS_INFO));
-				info.size = sizeof(BASS_INFO);
 				if (BASS_GetInfo(&info)) {
 					TCHAR buf[2*MAX_PATH];
 					_stprintf(buf, _T(
@@ -641,6 +646,93 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 	return FALSE;
 }
 
+
+INT_PTR CALLBACK AddonsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+	case WM_INITDIALOG:
+		{
+			if ( !strAddonsDir.is_empty())
+				SetDlgItemText(hwndDlg, IDC_ADDONS_DIR, strAddonsDir);
+
+			SendDlgItemMessage(hwndDlg, IDC_ADDONS_LIST, LB_RESETCONTENT, 0, 0);
+			for ( list<string>::iterator it = listAddons.begin(); it != listAddons.end(); it++) {
+				SendDlgItemMessage(hwndDlg, IDC_ADDONS_LIST, LB_ADDSTRING, 0, (LPARAM)(*it).c_str());
+			}
+		}
+
+		return TRUE;
+	case WM_COMMAND:
+		switch(LOWORD(wParam))
+		{
+		case IDC_ADDONS_DIR:
+			{
+				TCHAR szBuffer[MAX_PATH];
+				if (browse_folder(szBuffer, _T("Select a folder to load BASS add-ons: "), hwndDlg) && 
+					lstrcmpi(strAddonsDir, szBuffer) ) {
+						SetDlgItemText(hwndDlg, IDC_ADDONS_DIR, szBuffer);
+
+						PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
+					}
+			}
+
+			break;
+		}
+
+		return TRUE;
+	case WM_NOTIFY:
+		{
+			LPPSHNOTIFY lppsn = (LPPSHNOTIFY)lParam;
+			switch (lppsn->hdr.code)
+			{
+			case PSN_KILLACTIVE:
+				{
+					SetWindowLong(hwndDlg, DWL_MSGRESULT, FALSE);
+				}
+
+				break;
+			case PSN_APPLY:
+				{
+					TCHAR szBuffer[MAX_PATH];
+					GetDlgItemText(hwndDlg, IDC_ADDONS_DIR, szBuffer, MAX_PATH);
+					if (PathFileExists(szBuffer)) {
+						MessageBox(hwndDlg, _T("You've changed the directory of BASS add-ons!\n"
+							"\n"
+							"You should: \n"
+							"1. Add extension to the general tab.\n"
+							"2. Retart the plug-in/player.\n"
+							"to take effect."), 
+							_T("Restart Plug-in"), 
+							MB_OK | MB_ICONINFORMATION);
+ 
+						lstrcpy((LPTSTR)(LPCTSTR)strAddonsDir, szBuffer);
+					}
+
+					if (lppsn->lParam == TRUE)  { // for OK button
+						bOKAddons = TRUE;
+						DestroyPropertySheet(hwndDlg);
+					}
+					else // for Apply button
+						SetWindowLong(hwndDlg, DWL_MSGRESULT, PSNRET_NOERROR);
+				}
+
+				break;
+			case PSN_QUERYCANCEL:
+				{
+					bCancelAll = TRUE;
+					DestroyPropertySheet(hwndDlg);
+				}
+
+				break;
+			}
+		}
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
 
 //-- for About dialog box
 HWND DoAboutDlg(HINSTANCE hInstance, HWND hwndParent)

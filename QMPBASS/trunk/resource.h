@@ -1,5 +1,5 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
+// Microsoft Visual C++ generated include file.
 // Used by QCDBASS.rc
 //
 #define ID_PLUGINMENU_SETTINGS          101
@@ -13,6 +13,7 @@
 #define IDD_ABOUT                       109
 #define IDD_STREAM_SAVING_BAR           110
 #define IDD_ADVANCED                    111
+#define IDD_ADDONS                      112
 #define IDC_HARD_LIMITER                1002
 #define IDC_PRIORITY                    1003
 #define IDC_PREAMP                      1003
@@ -34,10 +35,7 @@
 #define IDC_SHOW_AVG_BITRATE            1018
 #define IDC_FADE_IN                     1019
 #define IDC_FADE_IN_UD                  1020
-#define IDC_FADE_IN2                    1021
-#define IDC_SLIDER1                     1021
 #define IDC_FADE_OUT                    1021
-#define IDC_FADE_IN_UD2                 1022
 #define IDC_EXTENSIONS                  1022
 #define IDC_FADE_OUT_UD                 1022
 #define IDC_SPEAKERS                    1023
@@ -45,6 +43,8 @@
 #define IDC_PA                          1025
 #define IDC_RG_PA                       1026
 #define IDC_PLUGIN_VERSION              1027
+#define IDC_ADDONS_LIST                 1028
+#define IDC_ADDONS_DIR                  1030
 #define IDC_STREAM_SAVING_BAR_GO        1058
 #define IDC_STREAM_SAVING_BAR_SKIP_TITLE 1059
 #define IDC_STREAM_SAVING_BAR_BROWSE    1060
@@ -56,9 +56,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        112
+#define _APS_NEXT_RESOURCE_VALUE        113
 #define _APS_NEXT_COMMAND_VALUE         40002
-#define _APS_NEXT_CONTROL_VALUE         1028
+#define _APS_NEXT_CONTROL_VALUE         1031
 #define _APS_NEXT_SYMED_VALUE           103
 #endif
 #endif
