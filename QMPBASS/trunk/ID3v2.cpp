@@ -64,7 +64,7 @@ BOOL ID3v2::GetHeader(ID3Header *pHeader, ID3ExHeader *pExHeader = NULL)
 
 	pHeader->bValid = true;
 
-	if (pExHeader && (pHeader->nFlags & 0x40 == 0x40) )
+	if (pExHeader && ((pHeader->nFlags & 0x40) == 0x40) )
 		GetExtendedHeader(pExHeader);
 
 	return 1;
@@ -101,7 +101,7 @@ BOOL ID3v2::GetExtendedHeader(ID3ExHeader *pExHeader)
 	pExHeader->nPadding = MAKELONG(MAKEWORD(nExHeader[3], nExHeader[2]), MAKEWORD(nExHeader[1], nExHeader[0]));
 
 	// If CRC32 value present, then read it	
-	if (pExHeader->nFlags & 0x8000 == 0x8000)
+	if ((pExHeader->nFlags & 0x8000) == 0x8000)
 	{
 		iRet = m_pFile->read(&nExHeader, 4);
 		if (iRet <= 0) return 0;
