@@ -4,6 +4,7 @@
 
 #include "QCDBASS.h"
 
+#include "Hyperlinks.h"
 #include "bass.h"
 
 #include <tchar.h>
@@ -660,6 +661,9 @@ INT_PTR CALLBACK AddonsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 			for ( list<string>::iterator it = listAddons.begin(); it != listAddons.end(); it++) {
 				SendDlgItemMessage(hwndDlg, IDC_ADDONS_LIST, LB_ADDSTRING, 0, (LPARAM)(*it).c_str());
 			}
+
+			SetWindowLong(GetDlgItem(hwndDlg, IDC_ADDONS_LINK), GWL_USERDATA, (long)_T("http://www.un4seen.com/bass.html#addons"));
+			ConvertStaticToHyperlink(hwndDlg, IDC_ADDONS_LINK);
 		}
 
 		return TRUE;

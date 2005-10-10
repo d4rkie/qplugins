@@ -45,6 +45,8 @@
 #define IDC_PLUGIN_VERSION              1027
 #define IDC_ADDONS_LIST                 1028
 #define IDC_ADDONS_DIR                  1030
+#define IDC_ADDONS_MORE                 1031
+#define IDC_ADDONS_LINK                 1031
 #define IDC_STREAM_SAVING_BAR_GO        1058
 #define IDC_STREAM_SAVING_BAR_SKIP_TITLE 1059
 #define IDC_STREAM_SAVING_BAR_BROWSE    1060
@@ -58,7 +60,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        113
 #define _APS_NEXT_COMMAND_VALUE         40002
-#define _APS_NEXT_CONTROL_VALUE         1031
+#define _APS_NEXT_CONTROL_VALUE         1032
 #define _APS_NEXT_SYMED_VALUE           103
 #endif
 #endif
