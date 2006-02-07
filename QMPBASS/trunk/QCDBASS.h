@@ -9,10 +9,8 @@
 #include <list>
 using namespace std;
 
-#define PLUGIN_VERSION "v1.0 beta9.0"
+#define PLUGIN_VERSION "v1.0 beta9.1"
 
-//#include "ConStream.h"
-//extern ConStream dLog;
 
 typedef struct
 {
@@ -67,6 +65,8 @@ extern HWND hwndStreamSavingBar; // stream saving bar
 
 extern list<string> listAddons; // Pointer to a buffer containing pairs of null-terminated filename strings.
 								// The last string in the buffer must be terminated by two NULL characters.
+extern list<std::string> listExtensions; // List of supported extensions
+
 // for plug-in menu
 extern void reset_menu(void);
 

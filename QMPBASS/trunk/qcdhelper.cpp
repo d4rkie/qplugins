@@ -27,7 +27,7 @@ char *qcd_get_proxy ( const char *url )
     bool port_80 = true;
 
     if ( url ) {
-        char *proto = strstr ( url, "://" );
+        const char *proto = strstr ( url, "://" );
         if ( proto ) url = (const char *)proto + 3;
         while ( *url ) {
             char ch = *url++;

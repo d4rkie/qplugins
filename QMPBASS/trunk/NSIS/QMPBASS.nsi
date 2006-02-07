@@ -74,5 +74,6 @@ Section "Main"
   File "bass.dll"
   
   Call SetPluginPath
-  File "QCDBASS.dll"
+  Delete $OUTDIR\QCDBASS.dll
+  File "QMPBASS.dll"
 SectionEnd

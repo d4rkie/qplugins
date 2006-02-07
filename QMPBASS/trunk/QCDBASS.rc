@@ -13,7 +13,7 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// ÖÐÎÄ(ÖÐ»ªÈËÃñ¹²ºÍ¹ú) resources
+// Chinese (P.R.C.) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 #ifdef _WIN32
@@ -46,12 +46,12 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-#endif    // ÖÐÎÄ(ÖÐ»ªÈËÃñ¹²ºÍ¹ú) resources
+#endif    // Chinese (P.R.C.) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// µ¤ÂóÓï resources
+// Danish resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DAN)
 #ifdef _WIN32
@@ -65,7 +65,7 @@ LANGUAGE LANG_DANISH, SUBLANG_DEFAULT
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,1,8,0
+ FILEVERSION 0,1,9,1
  PRODUCTVERSION 1,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -82,12 +82,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", " "
-            VALUE "FileDescription", "QCDBASS"
-            VALUE "FileVersion", "0, 1, 8, 0"
-            VALUE "InternalName", "QCDBASS"
+            VALUE "FileDescription", "QMPBASS"
+            VALUE "FileVersion", "0, 1, 9, 1"
+            VALUE "InternalName", "QMPBASS"
             VALUE "LegalCopyright", "Copyright © 2005"
-            VALUE "OriginalFilename", "QCDBASS.dll"
-            VALUE "ProductName", "  QCDBASS"
+            VALUE "OriginalFilename", "QMPBASS.dll"
+            VALUE "ProductName", "  QMPBASS"
             VALUE "ProductVersion", "1, 0, 0, 0"
         END
     END
@@ -97,12 +97,12 @@ BEGIN
     END
 END
 
-#endif    // µ¤ÂóÓï resources
+#endif    // Danish resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Ó¢Óï(ÃÀ¹ú) resources
+// English (U.S.) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 #ifdef _WIN32
@@ -120,12 +120,10 @@ STYLE DS_SETFONT | WS_CHILD | WS_VISIBLE | WS_DISABLED | WS_CAPTION
 CAPTION "General"
 FONT 8, "MS Sans Serif", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_PRIORITY,"msctls_trackbar32",TBS_AUTOTICKS | 
-                    TBS_VERT | WS_TABSTOP,17,78,15,57
+    CONTROL         "",IDC_PRIORITY,"msctls_trackbar32",TBS_AUTOTICKS | TBS_VERT | WS_TABSTOP,17,78,15,57
     CONTROL         "&Use 32-bit floating-point sample data",IDC_USE_32FP,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,44,193,10
-    COMBOBOX        IDC_DEVICE,83,18,136,100,CBS_DROPDOWNLIST | 
-                    CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_DEVICE,83,18,136,100,CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
     LTEXT           "Output Method: ",IDC_STATIC,18,20,61,8
     GROUPBOX        "Thread Priority",IDC_STATIC,7,66,85,77
     LTEXT           "Highest",IDC_STATIC,36,95,29,8
@@ -134,8 +132,7 @@ BEGIN
     LTEXT           "Critical",IDC_STATIC,36,81,33,8
     GROUPBOX        "Output",IDC_STATIC,7,7,256,55
     GROUPBOX        "Misc",IDC_STATIC,100,66,163,41
-    CONTROL         "Use &BASS's Internal Equalizer",IDC_EQENABLED,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,110,78,132,10
+    CONTROL         "Use &BASS's Internal Equalizer",IDC_EQENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,110,78,132,10
     PUSHBUTTON      "&Info...",IDC_GET_INFO,223,17,33,14
     CONTROL         "Show variable bitrate if possible",IDC_SHOW_AVG_BITRATE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,110,91,148,10
@@ -150,41 +147,28 @@ FONT 8, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     GROUPBOX        "For Playback Only",IDC_STATIC,7,7,266,45
     LTEXT           "Fade-In: ",IDC_STATIC,16,20,37,8
-    EDITTEXT        IDC_FADE_IN,60,18,38,13,ES_CENTER | ES_AUTOHSCROLL | 
-                    ES_NUMBER
-    CONTROL         "",IDC_FADE_IN_UD,"msctls_updown32",UDS_SETBUDDYINT | 
-                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | 
-                    UDS_NOTHOUSANDS | UDS_HOTTRACK,88,20,10,13
+    EDITTEXT        IDC_FADE_IN,60,18,38,13,ES_CENTER | ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_FADE_IN_UD,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS | UDS_HOTTRACK,88,20,10,13
     LTEXT           "ms",IDC_STATIC,102,21,9,8
     LTEXT           "Fade-Out: ",IDC_STATIC,16,36,41,8
-    EDITTEXT        IDC_FADE_OUT,60,33,38,13,ES_CENTER | ES_AUTOHSCROLL | 
-                    ES_NUMBER
-    CONTROL         "",IDC_FADE_OUT_UD,"msctls_updown32",UDS_SETBUDDYINT | 
-                    UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | 
-                    UDS_NOTHOUSANDS | UDS_HOTTRACK,88,36,10,13
+    EDITTEXT        IDC_FADE_OUT,60,33,38,13,ES_CENTER | ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_FADE_OUT_UD,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS | UDS_HOTTRACK,88,36,10,13
     LTEXT           "ms",IDC_STATIC,102,39,9,8
     GROUPBOX        "For Decoding Only",IDC_STATIC,7,54,266,105
     LTEXT           "&Preamp: ",IDC_STATIC,17,69,33,8
-    CONTROL         "",IDC_PREAMP,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | 
-                    WS_TABSTOP,44,65,100,15
+    CONTROL         "",IDC_PREAMP,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,44,65,100,15
     CTEXT           "+24 dB",IDC_PA,146,69,25,8,0,WS_EX_STATICEDGE
-    CONTROL         "6dB &hard limiter",IDC_HARD_LIMITER,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,192,69,80,10
-    CONTROL         "E&nable dithering",IDC_DITHER,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,16,88,80,10
+    CONTROL         "6dB &hard limiter",IDC_HARD_LIMITER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,192,69,80,10
+    CONTROL         "E&nable dithering",IDC_DITHER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,88,80,10
     LTEXT           "Noise &shaping: ",IDC_STATIC,134,88,57,8
-    COMBOBOX        IDC_NOISE_SHAPING,192,86,58,100,CBS_DROPDOWNLIST | 
-                    CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_REPLAYGAIN_MODE,123,119,104,100,CBS_DROPDOWNLIST | 
-                    CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_NOISE_SHAPING,192,86,58,100,CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_REPLAYGAIN_MODE,123,119,104,100,CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
     LTEXT           "Replaygain mode: ",IDC_STATIC,51,120,69,8
     LTEXT           "Speakers: ",IDC_STATIC,146,36,41,8,NOT WS_VISIBLE
-    COMBOBOX        IDC_SPEAKERS,192,34,48,200,CBS_DROPDOWNLIST | NOT 
-                    WS_VISIBLE | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_SPEAKERS,192,34,48,200,CBS_DROPDOWNLIST | NOT WS_VISIBLE | WS_VSCROLL | WS_TABSTOP
     GROUPBOX        "Replaygain",IDC_STATIC,10,105,260,51
     LTEXT           "&Preamp: ",IDC_STATIC,59,139,33,8
-    CONTROL         "",IDC_RG_PREAMP,"msctls_trackbar32",TBS_BOTH | 
-                    TBS_NOTICKS | WS_TABSTOP,90,135,100,15
+    CONTROL         "",IDC_RG_PREAMP,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,90,135,100,15
     CTEXT           "+24 dB",IDC_RG_PA,192,139,25,8,0,WS_EX_STATICEDGE
 END
 
@@ -193,12 +177,8 @@ STYLE DS_SETFONT | WS_CHILD | WS_VISIBLE | WS_DISABLED | WS_CAPTION
 CAPTION "Streaming"
 FONT 8, "MS Sans Serif", 400, 0, 0x1
 BEGIN
-    EDITTEXT        IDC_BUFFER_LENGTH,83,22,26,14,ES_CENTER | ES_AUTOHSCROLL | 
-                    ES_NUMBER
-    CONTROL         "",IDC_BUFFER_LENGTH_UD,"msctls_updown32",
-                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
-                    UDS_ARROWKEYS | UDS_NOTHOUSANDS | UDS_HOTTRACK,99,23,10,
-                    14
+    EDITTEXT        IDC_BUFFER_LENGTH,83,22,26,14,ES_CENTER | ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_BUFFER_LENGTH_UD,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS | UDS_HOTTRACK,99,23,10,14
     LTEXT           "Buffer length: ",IDC_STATIC,19,24,61,8
     LTEXT           "seconds",IDC_STATIC,113,25,29,8
     GROUPBOX        "Stream Buffering",IDC_STATIC,7,7,196,41
@@ -215,16 +195,12 @@ BEGIN
     LTEXT           "Save streamed file to: ",IDC_STATIC,20,44,93,8
     PUSHBUTTON      "Select Folder",IDC_STREAM_SAVING_PATH,19,57,211,14
     GROUPBOX        "Option",IDC_STATIC,7,7,236,73
-    CONTROL         "Enable stream saving",IDC_ENABLE_STREAM_SAVING,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,19,25,96,10
-    CONTROL         "Auto-show Save Bar when saving streams",
-                    IDC_AUTOSHOW_STREAM_SAVING_BAR,"Button",BS_AUTOCHECKBOX | 
-                    BS_MULTILINE | WS_TABSTOP,145,19,89,20
-    GROUPBOX        "Streams with metadata (eg: ShoutCast)",IDC_STATIC,7,86,
-                    236,49
-    CONTROL         "Save streams to separate files based on stream title (if possible)",
-                    IDC_SAVE_STREAMS_BASED_ON_TITLE,"Button",BS_AUTOCHECKBOX | 
-                    BS_MULTILINE | WS_TABSTOP,19,104,176,20
+    CONTROL         "Enable stream saving",IDC_ENABLE_STREAM_SAVING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,19,25,96,10
+    CONTROL         "Auto-show Save Bar when saving streams",IDC_AUTOSHOW_STREAM_SAVING_BAR,
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,145,19,89,20
+    GROUPBOX        "Streams with metadata (eg: ShoutCast)",IDC_STATIC,7,86,236,49
+    CONTROL         "Save streams to separate files based on stream title (if possible)",IDC_SAVE_STREAMS_BASED_ON_TITLE,
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,19,104,176,20
 END
 
 IDD_STREAM_SAVING_BAR DIALOGEX 0, 0, 130, 15
@@ -232,18 +208,12 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP
 EXSTYLE WS_EX_TOPMOST | WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT
 FONT 8, "MS Sans Serif", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_STREAM_SAVING_BAR_GO,"Button",BS_OWNERDRAW | 
-                    BS_FLAT | WS_GROUP | WS_TABSTOP,3,3,9,9
-    CONTROL         "",IDC_STREAM_SAVING_BAR_SKIP_TITLE,"Button",
-                    BS_OWNERDRAW | BS_FLAT | WS_GROUP | WS_TABSTOP,13,3,9,9
-    LTEXT           "",IDC_STREAM_SAVING_BAR_STATUS,26,3,67,10,
-                    SS_CENTERIMAGE
-    CONTROL         "",IDC_STREAM_SAVING_BAR_SETPATH,"Button",BS_OWNERDRAW | 
-                    BS_FLAT | WS_GROUP | WS_TABSTOP,97,3,9,9
-    CONTROL         "",IDC_STREAM_SAVING_BAR_BROWSE,"Button",BS_OWNERDRAW | 
-                    BS_FLAT | WS_GROUP | WS_TABSTOP,107,3,9,9
-    CONTROL         "",IDC_STREAM_SAVING_BAR_CLOSE,"Button",BS_OWNERDRAW | 
-                    BS_FLAT | WS_GROUP | WS_TABSTOP,117,3,9,9
+    CONTROL         "",IDC_STREAM_SAVING_BAR_GO,"Button",BS_OWNERDRAW | BS_FLAT | WS_GROUP | WS_TABSTOP,3,3,9,9
+    CONTROL         "",IDC_STREAM_SAVING_BAR_SKIP_TITLE,"Button",BS_OWNERDRAW | BS_FLAT | WS_GROUP | WS_TABSTOP,13,3,9,9
+    LTEXT           "",IDC_STREAM_SAVING_BAR_STATUS,26,3,67,10,SS_CENTERIMAGE
+    CONTROL         "",IDC_STREAM_SAVING_BAR_SETPATH,"Button",BS_OWNERDRAW | BS_FLAT | WS_GROUP | WS_TABSTOP,97,3,9,9
+    CONTROL         "",IDC_STREAM_SAVING_BAR_BROWSE,"Button",BS_OWNERDRAW | BS_FLAT | WS_GROUP | WS_TABSTOP,107,3,9,9
+    CONTROL         "",IDC_STREAM_SAVING_BAR_CLOSE,"Button",BS_OWNERDRAW | BS_FLAT | WS_GROUP | WS_TABSTOP,117,3,9,9
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 211, 118
@@ -252,15 +222,12 @@ CAPTION "About BASS Sound System Plug-in"
 FONT 8, "MS Sans Serif", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "&OK",IDOK,80,97,50,14
-    CONTROL         105,IDC_STATIC,"Static",SS_BITMAP | SS_REALSIZEIMAGE,7,6,
-                    63,31
-    CTEXT           "BASS Sound System Plug-in for Quintessential Player",
-                    IDC_STATIC,84,6,108,16
+    CONTROL         105,IDC_STATIC,"Static",SS_BITMAP | SS_REALSIZEIMAGE,7,6,63,31
+    CTEXT           "BASS Sound System Plug-in for Quintessential Player",IDC_STATIC,84,6,108,16
     LTEXT           "Author: Shao Hao",IDC_STATIC,7,57,65,8
     LTEXT           "Plug-in Ver: ",IDC_STATIC,7,73,53,8
     LTEXT           "BASS Core Ver: ",IDC_STATIC,117,66,61,8
-    LTEXT           "Use Decoding Core of BASS, or use all of BASS -- choose whatever you like!",
-                    IDC_STATIC,76,36,128,24
+    LTEXT           "Use Decoding Core of BASS, or use all of BASS -- choose whatever you like!",IDC_STATIC,76,36,128,24
     LTEXT           "",IDC_BASS_VERSION,179,66,25,8
     LTEXT           "",IDC_PLUGIN_VERSION,65,73,40,8
 END
@@ -270,8 +237,7 @@ STYLE DS_SETFONT | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "Add-ons"
 FONT 8, "MS Sans Serif", 400, 0, 0x0
 BEGIN
-    LISTBOX         IDC_ADDONS_LIST,17,36,193,85,LBS_NOINTEGRALHEIGHT | 
-                    WS_VSCROLL | WS_TABSTOP
+    LISTBOX         IDC_ADDONS_LIST,17,36,193,85,LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
     GROUPBOX        "Avaliable add-ons: ",IDC_STATIC,7,7,213,132
     PUSHBUTTON      "Select Folder",IDC_ADDONS_DIR,17,19,193,14
     LTEXT           "Get More Add-ons",IDC_ADDONS_LINK,150,126,65,8
@@ -344,7 +310,7 @@ END
 
 IDB_LOGO_BASS           BITMAP                  "logo_bass.bmp"
 IDB_STREAM_SAVING_BAR   BITMAP                  "ss_bar.bmp"
-#endif    // Ó¢Óï(ÃÀ¹ú) resources
+#endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

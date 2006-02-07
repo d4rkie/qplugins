@@ -502,7 +502,7 @@ int bass::get_data(void *out_buffer, int *out_size)
 
 	*out_size -= todo;
 
-	if (!*out_size) return -1; // means the end of the file
+	if (*out_size <= 0) return -1; // means the end of the file
 
 	return 1;
 }
@@ -648,7 +648,8 @@ bool bass::set_eq(bool enabled, char const * bands) // default 10 bands for QCD
 	bool ret = false;
 
 	if (enabled) {
-		for (int i = 0; i < 10; i++)
+		int i = 0; // Moved here to preserve VC++ 6.0 compability
+		for (i = 0; i < 10; i++)
             if (!eqfx[i]) eqfx[i] = BASS_ChannelSetFX(m_hBass, BASS_FX_PARAMEQ, 0);
 
 		BASS_FXPARAMEQ eq[10];

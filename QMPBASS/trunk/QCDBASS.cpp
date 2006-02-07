@@ -29,6 +29,7 @@
 // Feature Reqeusts
 // : Shoutcast stream titles. Currently only the songname tag is supported,
 //-----------------------------------------------------------------------------
+// 02-02-05 : Fixed adding of .1 files etc. (+IsExtentionSupported())
 // 10-10-05 : Added add-ons support based on BASS v2.2
 // 11-05-05 : Added ID3v2 tag reader
 // 11-05-05 : Extra preamp slider for files with RG
@@ -38,9 +39,9 @@
 // 18-03-05 : Fixed wrong replaygain value for files with no RG info
 //-----------------------------------------------------------------------------
 
-#include "QCDBASS.h"
+#pragma warning(disable:4786)		// Disable STL list warnings
 
-// ConStream dLog;			// Debug output stream
+#include "QCDBASS.h"
 
 #include "mmreg.h"
 #include <memory>
@@ -59,49 +60,50 @@ BOOL	encoding		= FALSE;
 BOOL	paused			= FALSE;
 INT64	decode_pos_ms	= 0;
 
-DWORD WINAPI __stdcall DecodeThread(void *b);	// decoding thread only for decode mode
-DWORD WINAPI __stdcall PlayThread(void *b);		// playing thread only for system mode
+DWORD WINAPI __stdcall DecodeThread(void *b);		// decoding thread only for decode mode
+DWORD WINAPI __stdcall PlayThread(void *b);			// playing thread only for system mode
 
-cfg_int uPrefPage("QCDBASS", "PrefPage", 0);	// pref page number
-cfg_int xPrefPos("QCDBASS", "xPrefPos", 200);	// left side of property sheet
-cfg_int yPrefPos("QCDBASS", "yPrefPos", 300);	// left side of property sheet
+cfg_int uPrefPage("QCDBASS", "PrefPage", 0);		// pref page number
+cfg_int xPrefPos("QCDBASS", "xPrefPos", 200);		// left side of property sheet
+cfg_int yPrefPos("QCDBASS", "yPrefPos", 300);		// left side of property sheet
 
-cfg_string strExtensions("QCDBASS", "Extensions", "WAV:MP3:MP2:MP1:OGG:AIFF:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
-cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0); // 0=decode, 1...=use internal output module
-cfg_int bUse32FP("QCDBASS", "Use32FP", TRUE); // enable 32-bit floating-point sample resolution
-cfg_int uPriority("QCDBASS", "Priority", 2); // thread priority, 0=normal, 1=higher, 2=highest, 3=critcal
-cfg_int bEqEnabled("QCDBASS", "EQEnabled", TRUE); // enable internal equalizer
-cfg_int bShowVBR("QCDBASS", "ShowVBR", TRUE); // display VBR bitrate
-cfg_int nSampleRate("QCDBASS", "SampleRate", 44100); // Output sample rate
+cfg_string strExtensions("QCDBASS", "Extensions", "MP3:OGG:WAV:MP2:MP1:AIFF:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
+cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0);		// 0=decode, 1...=use internal output module
+cfg_int bUse32FP("QCDBASS", "Use32FP", TRUE);		// enable 32-bit floating-point sample resolution
+cfg_int uPriority("QCDBASS", "Priority", 2);		// thread priority, 0=normal, 1=higher, 2=highest, 3=critcal
+cfg_int bEqEnabled("QCDBASS", "EQEnabled", TRUE);	// enable internal equalizer
+cfg_int bShowVBR("QCDBASS", "ShowVBR", TRUE);		// display VBR bitrate
+cfg_int nSampleRate("QCDBASS", "SampleRate", 44100);// Output sample rate
 
-cfg_int uFadeIn("QCDBASS", "FadeIn", 1000); // fade-in sound
-cfg_int uFadeOut("QCDBASS", "FadeOut", 3000); // fade-out sound
+cfg_int uFadeIn("QCDBASS", "FadeIn", 1000);			// fade-in sound
+cfg_int uFadeOut("QCDBASS", "FadeOut", 3000);		// fade-out sound
 
-cfg_int nPreAmp("QCDBASS", "PreAmp", 0); // preamp
-cfg_int nRGPreAmp("QCDBASS", "RGPreAmp", 0); // preamp
-cfg_int bHardLimiter("QCDBASS", "HardLimiter", 0); // 6dB hard limiter
-cfg_int bDither("QCDBASS", "Dither", 0); // dither
-cfg_int uNoiseShaping("QCDBASS", "NoiseShaping", 1); // noise shaping
-cfg_int uReplayGainMode("QCDBASS", "ReplayGainMode", 0); // replaygain mode
+cfg_int nPreAmp("QCDBASS", "PreAmp", 0);			// preamp
+cfg_int nRGPreAmp("QCDBASS", "RGPreAmp", 0);		// preamp
+cfg_int bHardLimiter("QCDBASS", "HardLimiter", 0);	// 6dB hard limiter
+cfg_int bDither("QCDBASS", "Dither", 0);			// dither
+cfg_int uNoiseShaping("QCDBASS", "NoiseShaping", 1);	// noise shaping
+cfg_int uReplayGainMode("QCDBASS", "ReplayGainMode", 0);// replaygain mode
 
-cfg_int uBufferLen("QCDBASS", "BufferLen", 10); // stream buffer lengthe in milliseconds
-cfg_int bStreamTitle("QCDBASS", "StreamTitle", TRUE); // enable stream title
+cfg_int uBufferLen("QCDBASS", "BufferLen", 10);			// stream buffer lengthe in milliseconds
+cfg_int bStreamTitle("QCDBASS", "StreamTitle", TRUE);	// enable stream title
 
-cfg_int bStreamSaving("QCDBASS", "StreamSaving", FALSE); // enable stream saving
-cfg_string strStreamSavingPath("QCDBASS", "StreamSavingPath", "", MAX_PATH); // path to saving streamed files
+cfg_int bStreamSaving("QCDBASS", "StreamSaving", FALSE);// enable stream saving
+cfg_string strStreamSavingPath("QCDBASS", "StreamSavingPath", "", MAX_PATH);  // path to saving streamed files
 cfg_int bAutoShowStreamSavingBar("QCDBASS", "AutoShowStreamSavingBar", TRUE); // auto show stream saving bar
 cfg_int bSaveStreamsBasedOnTitle("QCDBASS", "SaveStreamsBasedOnTitle", TRUE); // save streams based on stream title
 
-cfg_int xStreamSavingBar("QCDBASS", "xStreamSavingBar", 0); // left side of stream saving bar
-cfg_int yStreamSavingBar("QCDBASS", "yStreamSavingBar", 0); // top side of stream saving bar
+cfg_int xStreamSavingBar("QCDBASS", "xStreamSavingBar", 0);		// left side of stream saving bar
+cfg_int yStreamSavingBar("QCDBASS", "yStreamSavingBar", 0);		// top side of stream saving bar
 
-cfg_string strAddonsDir("QCDBASS", "AddonsDir", "", MAX_PATH); // path of addons' directory
+cfg_string strAddonsDir("QCDBASS", "AddonsDir", "", MAX_PATH);	// path of addons' directory
 
-HWND hwndConfig = NULL; // config property sheet
-HWND hwndAbout = NULL; // about dialog box
-HWND hwndStreamSavingBar = NULL; // stream saving bar
+HWND hwndConfig = NULL;				// config property sheet
+HWND hwndAbout = NULL;				// about dialog box
+HWND hwndStreamSavingBar = NULL;	// stream saving bar
 
 list<string> listAddons;
+list<std::string> listExtensions;
 
 UINT uCurDeviceNum = uDeviceNum;
 
@@ -117,11 +119,11 @@ void show_error(const char *message,...)
 
 void insert_menu(void)
 {
-	QCDCallbacks.Service(opSetPluginMenuItem, (void *)hInstance, 0, (long)("BASS Plug-in"));
-	QCDCallbacks.Service(opSetPluginMenuItem, (void *)hInstance, ID_PLUGINMENU_SETTINGS, (long)("Settings"));
-	QCDCallbacks.Service(opSetPluginMenuItem, (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, (long)("Enable stream saving"));
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, 0, (long)("BASS Plug-in"));
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SETTINGS, (long)("Settings"));
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, (long)("Enable stream saving"));
 	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, bStreamSaving ? MF_CHECKED : MF_UNCHECKED);
-	QCDCallbacks.Service(opSetPluginMenuItem, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, (long)("Show stream saving bar"));
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, (long)("Show stream saving bar"));
 	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, hwndStreamSavingBar ? MF_CHECKED : MF_UNCHECKED);
 }
 
@@ -257,6 +259,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 		lstrcpy((LPTSTR)(LPCTSTR)strAddonsDir, path);
 
 	listAddons.clear();
+	listExtensions.clear();
 
 	ModInfo->moduleString = "BASS Sound System "PLUGIN_VERSION;
 	ModInfo->moduleExtensions = (LPTSTR)(LPCTSTR)strExtensions;
@@ -264,8 +267,6 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 
 	// insert plug-in menu
 	insert_menu();
-
-	// dLog.OpenConsole();
 
 	// Init BASS
 	if (create_bass(uDeviceNum)) {
@@ -331,34 +332,70 @@ void ShutDown(int flags)
 		DestroyWindow(hwndStreamSavingBar);
 		hwndStreamSavingBar = NULL;
 	}
-
-	// dLog.CloseConsole();
 }
 
 //-----------------------------------------------------------------------------
 
+bool IsExtenstionSupported(const char* strExt)
+{
+	//OutputDebugString(":IsExtenstionSupported()");
+
+	if (listExtensions.empty()) { // Build the list
+		OutputDebugString(" -- Building extension list:");
+		TCHAR* token;
+		TCHAR* str = _tcsdup((LPCTSTR)strExtensions);
+		token = _tcstok(str, _T(":")); // Get first token
+		while(token != NULL)
+		{
+			listExtensions.push_back(string(token));
+			OutputDebugString(token);
+			token = _tcstok(NULL, _T(":")); // Get next token
+		}
+		OutputDebugString(" -- Done!");
+		free(str);
+	}
+
+	// Search the list
+	list<std::string>::const_iterator it;
+	for(it = listExtensions.begin(); it != listExtensions.end(); ++it)
+	{
+		//OutputDebugString(((std::string)*it).c_str());
+		if (!lstrcmpi(((std::string)*it).c_str(), strExt))
+			return TRUE;		
+	}
+	
+	//OutputDebugString(":IsExtenstionSupported() - return FALSE");
+	return FALSE;
+}
+
 int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 {
+	//OutputDebugString(":GetMediaSupported()");
+	//OutputDebugString(medianame);
+
 	if (!medianame || !*medianame)
 		return FALSE;
 
-	if ( (PathIsURL(medianame) && strnicmp(medianame, "uvox://", 7)) || // support url but no for AAC stream
-		(lstrlen(medianame) > 2 && StrStrI(strExtensions, PathFindExtension(medianame)+1)) ) { // or local file but not driver (Maybe CD latter)
-
-		// Copy from bass constructor, but no need to create bass object + file_reader
-		if ( PathIsURL(medianame) ) {
-			mediaInfo->mediaType = DIGITAL_STREAM_MEDIA;
-			mediaInfo->op_canSeek = strrchr(medianame, '.') > strrchr(medianame, '/'); // internet files are also seekable
-		}
-		else {
-			mediaInfo->mediaType = DIGITAL_FILE_MEDIA;
-			mediaInfo->op_canSeek = true;
-		}
-
+	if (PathIsURL(medianame)) {
+		if (!StrNCmpI(medianame, "uvox://", 7))
+			return FALSE; // no support for AAC stream
+		mediaInfo->mediaType = DIGITAL_STREAM_MEDIA;
+		mediaInfo->op_canSeek = strrchr(medianame, '.') > strrchr(medianame, '/'); // internet files are also seekable
 		return TRUE;
 	}
-	else
-		return FALSE;
+	else {
+		if (lstrlen(medianame) < 3) // No support for CD drives etc.
+			return FALSE;
+
+		if (IsExtenstionSupported(PathFindExtension(medianame)+1)) {
+			mediaInfo->mediaType = DIGITAL_FILE_MEDIA;
+			mediaInfo->op_canSeek = true;
+			return TRUE;
+		}
+	}
+
+	//OutputDebugString("Not supported!");
+	return FALSE;
 }
 
 //-----------------------------------------------------------------------------
@@ -812,11 +849,11 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		wf.nBlockAlign = wf.nChannels * wf.wBitsPerSample / 8;
 		wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign;
 		if (!QCDCallbacks.toPlayer.OutputOpen(decoderInfo->playingFile, &wf)) {
-			show_error("Error: Failed openning output plugin!");
+			show_error("Failed opening output device!");
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
 			done = TRUE; // cannot open sound device
 		}
-	}
+	}	
 
 	const DWORD BUFFER_SIZE = 576*numchannels*(bitspersample/8); // get 576 samples as winamp does, maybe safest^_^
 	// alloc decoding buffer
@@ -910,14 +947,14 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				decode_pos_ms = (unsigned long)(decoderInfo->pDecoder->get_current_time());
 
 				if (out_size) {
-					wd.bytelen = out_size;
-					wd.data = pRawData;
-					wd.markerend = 0;
-					wd.markerstart = (unsigned int)decode_pos_ms;
-					wd.bps = bDither ? 16 : bitspersample;
-					wd.nch = numchannels;
-					wd.numsamples = wd.bytelen / (wd.nch*wd.bps/8);
-					wd.srate = samplerate;
+					wd.bytelen		= out_size;
+					wd.data			= pRawData;
+					wd.markerend	= 0;
+					wd.markerstart	= (unsigned int)decode_pos_ms;
+					wd.bps			= bDither ? 16 : bitspersample;
+					wd.nch			= numchannels;
+					wd.numsamples	= wd.bytelen / (wd.nch*wd.bps/8);
+					wd.srate		= samplerate;
 
 					if (!QCDCallbacks.toPlayer.OutputWrite(&wd))
 						done = TRUE;

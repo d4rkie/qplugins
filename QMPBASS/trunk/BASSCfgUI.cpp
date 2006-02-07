@@ -254,12 +254,14 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 				break;
 			case PSN_APPLY:
 				{
+					uDeviceNum	= SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
+					bUse32FP	= IsDlgButtonChecked(hwndDlg, IDC_USE_32FP);
+					uPriority	= 3-SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_GETPOS, 0, 0);
+					bEqEnabled	= IsDlgButtonChecked(hwndDlg, IDC_EQENABLED);
+					bShowVBR	= IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE);
+
 					GetDlgItemText(hwndDlg, IDC_EXTENSIONS, (LPTSTR)(LPCTSTR)strExtensions, MAX_PATH);
-					uDeviceNum = SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
-					bUse32FP = IsDlgButtonChecked(hwndDlg, IDC_USE_32FP);
-					uPriority = 3-SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_GETPOS, 0, 0);
-					bEqEnabled = IsDlgButtonChecked(hwndDlg, IDC_EQENABLED);
-					bShowVBR = IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE);
+					listExtensions.clear();
 
 					if (lppsn->lParam == TRUE)  { // for OK button
 						bOKGeneral = TRUE;
