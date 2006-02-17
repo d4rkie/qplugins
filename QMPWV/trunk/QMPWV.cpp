@@ -104,6 +104,11 @@ void ShutDown(int flags)
 	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
 	cfgUI.SetIniFileName( inifile);
 	cfgUI.SaveSettings();
+	
+	if ( !decoderInfo.pDecoder) {
+		delete decoderInfo.pDecoder;
+		decoderInfo.pDecoder = NULL;
+	}
 }
 
 //-----------------------------------------------------------------------------
