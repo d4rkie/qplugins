@@ -90,7 +90,7 @@ CAPTION "About"
 FONT 8, "MS Sans Serif", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",1,84,92,50,14
-    CTEXT           "Version 2.0\nLast modified February 2006",IDC_STATIC,23,
+    CTEXT           "Version 2.1\nLast modified February 2006",IDC_STATIC,23,
                     51,172,18
     CTEXT           "WavPack audio file support",IDC_STATIC,23,22,172,8
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105

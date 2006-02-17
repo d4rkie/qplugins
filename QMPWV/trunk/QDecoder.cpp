@@ -14,7 +14,7 @@
 
 
 QDecoder::QDecoder(void)
-: QDecoderBase(_T("QPlugins WavPack decoder"), _T("2.0"), _T("WV"))
+: QDecoderBase(_T("QPlugins WavPack decoder"), _T("2.1"), _T("WV"))
 , m_wpc(NULL)
 , sample_buffer(NULL)
 {
