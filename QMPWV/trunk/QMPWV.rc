@@ -128,6 +128,22 @@ BEGIN
 END
 #endif    // APSTUDIO_INVOKED
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_RG_DISABLE          "Disable"
+    IDS_RG_TRACK            "Track Gain"
+    IDS_RG_ALBUM            "Album Gain"
+    IDS_CLIPPING_CLIP       "Just Clip Peaks"
+    IDS_CLIPPING_SOFTLY     "Softly Clip Peaks"
+    IDS_CLIPPING_SCALE      "Scale Track To Prevent Clips"
+END
+
 #endif    // Ó¢Óï(ÃÀ¹ú) resources
 /////////////////////////////////////////////////////////////////////////////
 
