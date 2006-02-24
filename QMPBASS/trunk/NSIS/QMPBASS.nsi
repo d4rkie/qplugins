@@ -34,7 +34,7 @@ Function SetPluginPath
   ${If} ${FileExists} "$INSTDIR\QMPlayer.exe" ; is QMP avaliable
     StrCpy $QIsQMP "True"
     StrCpy $1 "$INSTDIR\Plugins"
-    ReadINIStr $9 "$INSTDIR\QMP.ini" "QMPlayer" "PluginFolder"
+    ReadINIStr $9 "$INSTDIR\QMP.ini" "Folders" "PluginFolder"
 	${If} ${FileExists} $9
       ;if setting not empty, and is valid, set as folder
 	  StrCpy $1 $9
