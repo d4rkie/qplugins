@@ -6,7 +6,7 @@
 #ifndef BASS_H
 #define BASS_H
 
-#ifdef WIN32 // Windows
+#ifdef _WIN32 // Windows
 #include <wtypes.h>
 typedef unsigned __int64 QWORD;
 #else // OSX
@@ -87,6 +87,7 @@ then the 3D flags (BASS_SAMPLE_3D and BASS_MUSIC_3D) are ignored when
 loading/creating a sample/stream/music. */
 #define BASS_DEVICE_LATENCY	256	// calculate device latency (BASS_INFO struct)
 #define BASS_DEVICE_SPEAKERS 2048	// force enabling of speaker assignment
+#define BASS_DEVICE_NOSPEAKER 4096	// ignore speaker arrangement
 
 // DirectSound interfaces (for use with BASS_GetDSoundObject)
 #define BASS_OBJECT_DS		1	// IDirectSound
@@ -313,7 +314,7 @@ not change. */
 /* Turn off 3D processing on the channel, the sound will be played
 in the center. */
 
-#ifdef WIN32
+#ifdef _WIN32
 // EAX environments, use with BASS_SetEAXParameters
 enum
 {
@@ -530,6 +531,7 @@ RETURN : TRUE = continue recording, FALSE = stop */
 #define BASS_TAG_HTTP		3	// HTTP headers : array of null-terminated strings
 #define BASS_TAG_ICY		4	// ICY headers : array of null-terminated strings
 #define BASS_TAG_META		5	// ICY metadata : null-terminated string
+#define BASS_TAG_VENDOR		9	// OGG encoder : null-terminated string
 
 // BASS_MusicSet/GetAttribute options
 #define BASS_MUSIC_ATTRIB_AMPLIFY	0
@@ -541,7 +543,7 @@ RETURN : TRUE = continue recording, FALSE = stop */
 #define BASS_MUSIC_ATTRIB_VOL_CHAN	0x100 // + channel #
 #define BASS_MUSIC_ATTRIB_VOL_INST	0x200 // + instrument #
 
-#ifdef WIN32
+#ifdef _WIN32
 // DX8 effect types, use with BASS_ChannelSetFX
 enum
 {
@@ -693,7 +695,7 @@ DWORD BASSDEF(BASS_GetConfig)(DWORD option);
 DWORD BASSDEF(BASS_GetVersion)();
 char *BASSDEF(BASS_GetDeviceDescription)(DWORD device);
 int BASSDEF(BASS_ErrorGetCode)();
-#ifdef WIN32
+#ifdef _WIN32
 BOOL BASSDEF(BASS_Init)(int device, DWORD freq, DWORD flags, HWND win, const GUID *dsguid);
 #else
 BOOL BASSDEF(BASS_Init)(int device, DWORD freq, DWORD flags, void *win, void *dsguid);
@@ -701,7 +703,7 @@ BOOL BASSDEF(BASS_Init)(int device, DWORD freq, DWORD flags, void *win, void *ds
 BOOL BASSDEF(BASS_SetDevice)(DWORD device);
 DWORD BASSDEF(BASS_GetDevice)();
 BOOL BASSDEF(BASS_Free)();
-#ifdef WIN32
+#ifdef _WIN32
 void *BASSDEF(BASS_GetDSoundObject)(DWORD object);
 #endif
 BOOL BASSDEF(BASS_GetInfo)(BASS_INFO *info);
@@ -721,7 +723,7 @@ BOOL BASSDEF(BASS_Get3DFactors)(float *distf, float *rollf, float *doppf);
 BOOL BASSDEF(BASS_Set3DPosition)(const BASS_3DVECTOR *pos, const BASS_3DVECTOR *vel, const BASS_3DVECTOR *front, const BASS_3DVECTOR *top);
 BOOL BASSDEF(BASS_Get3DPosition)(BASS_3DVECTOR *pos, BASS_3DVECTOR *vel, BASS_3DVECTOR *front, BASS_3DVECTOR *top);
 void BASSDEF(BASS_Apply3D)();
-#ifdef WIN32
+#ifdef _WIN32
 BOOL BASSDEF(BASS_SetEAXParameters)(int env, float vol, float decay, float damp);
 BOOL BASSDEF(BASS_GetEAXParameters)(DWORD *env, float *vol, float *decay, float *damp);
 #endif
@@ -791,7 +793,7 @@ HDSP BASSDEF(BASS_ChannelSetDSP)(DWORD handle, DSPPROC *proc, DWORD user, int pr
 BOOL BASSDEF(BASS_ChannelRemoveDSP)(DWORD handle, HDSP dsp);
 BOOL BASSDEF(BASS_ChannelSetLink)(DWORD handle, DWORD chan);
 BOOL BASSDEF(BASS_ChannelRemoveLink)(DWORD handle, DWORD chan);
-#ifdef WIN32
+#ifdef _WIN32
 BOOL BASSDEF(BASS_ChannelSetEAXMix)(DWORD handle, float mix);
 BOOL BASSDEF(BASS_ChannelGetEAXMix)(DWORD handle, float *mix);
 HFX BASSDEF(BASS_ChannelSetFX)(DWORD handle, DWORD type, DWORD priority);
