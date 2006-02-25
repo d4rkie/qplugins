@@ -13,8 +13,6 @@ const unsigned int PREAMP_RANGE = 24;
 LPCTSTR noise_shaping_table[] = { "None", "Low", "Medium", "High" };
 LPCTSTR replaygain_table[] = { "Disabled", "Use Track Gain", "Use Album Gain" };
 
-BOOL bOKGeneral = FALSE, bOKAdvanced = FALSE, bOKStreaming = FALSE, bOKStreamSaving = FALSE, bOKAddons = FALSE;
-BOOL bCancelAll = FALSE;
 void LoadResString(HINSTANCE hInstance, UINT uID, LPTSTR lpBuffer, int nBufferMax)
 {
 	ResInfo ri;
@@ -39,6 +37,8 @@ LPCDLGTEMPLATE LoadResDialog(HINSTANCE hInstance, int nTemplate)
 
 HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
 {
+	TCHAR buf[50];
+
     PROPSHEETPAGE psp[5];
     PROPSHEETHEADER psh;
 
@@ -79,45 +79,56 @@ HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
     psp[4].pfnCallback = NULL;
 
     psh.dwSize = sizeof(PROPSHEETHEADER);
-    psh.dwFlags = PSH_DEFAULT | PSH_MODELESS | PSH_PROPSHEETPAGE/* | PSH_USECALLBACK*/;
+    psh.dwFlags = PSH_DEFAULT | PSH_MODELESS | PSH_PROPSHEETPAGE | PSH_USECALLBACK;
     psh.hwndParent = hwndParent;
     psh.hInstance = hInstance;
-    psh.pszCaption = _T("Config BASS Sound System Plug-in");
+	LoadResString(hInstance, IDS_CONFIG_SHEET_TITLE, buf, sizeof(buf));
+    psh.pszCaption = buf;
     psh.nPages = sizeof(psp) / sizeof(PROPSHEETPAGE);
     psh.nStartPage = uPrefPage;
     psh.ppsp = (LPCPROPSHEETPAGE) &psp;
-    psh.pfnCallback = NULL;//(PFNPROPSHEETCALLBACK)ConfigSheetProc;
+    psh.pfnCallback = (PFNPROPSHEETCALLBACK)ConfigSheetProc;
 
 	return (HWND)PropertySheet(&psh);
 }
 
+WNDPROC oldProc;
+LRESULT CALLBACK NewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if ( uMsg == WM_COMMAND && (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)) {
+		LRESULT lRet;
+
+		uPrefPage = PropSheet_HwndToIndex(hwnd, PropSheet_GetCurrentPageHwnd(hwnd));
+
+		lRet = CallWindowProc(oldProc, hwnd, uMsg, wParam, lParam);
+
+		if ( !PropSheet_GetCurrentPageHwnd(hwnd)) {
+			RECT rc;
+			GetWindowRect(hwndConfig, &rc);
+			xPrefPos = rc.left;
+			yPrefPos = rc.top;
+
+			DestroyWindow(hwndConfig);
+			hwndConfig = NULL;
+		}
+
+		return lRet;
+	}
+
+	if ( uMsg == WM_SYSCOMMAND && (wParam & 0xFFF0) == SC_CLOSE) {
+		SendMessage(hwnd, WM_CLOSE, 0, 0);
+		return 0L;
+	}
+
+    return CallWindowProc(oldProc, hwnd, uMsg, wParam, lParam);
+}
 int CALLBACK ConfigSheetProc(HWND hwndDlg, UINT uMsg, LPARAM lParam)
 {
 	if (uMsg == PSCB_INITIALIZED) {
-		// Add code here
+		oldProc = (WNDPROC)SetWindowLongPtr( hwndDlg, GWLP_WNDPROC, (LONG_PTR)NewProc);
 	}
 
 	return 0;
-}
-
-void DestroyPropertySheet(HWND hwndPage)
-{
-	if ( ( (bOKAdvanced && bOKStreaming && bOKStreamSaving) || bCancelAll ) && hwndConfig ) {
-		RECT rc;
-		GetWindowRect(hwndConfig, &rc);
-		xPrefPos = rc.left;
-		yPrefPos = rc.top;
-
-		uPrefPage = PropSheet_HwndToIndex(hwndConfig, PropSheet_GetCurrentPageHwnd(hwndConfig));
-
-		DestroyWindow(hwndConfig);
-		hwndConfig = NULL;
-
-		bOKGeneral = bOKAdvanced = bOKStreaming = bOKStreamSaving = bOKAddons = FALSE;
-		bCancelAll = FALSE;
-	}
-	else
-		SetWindowLong(hwndPage, DWL_MSGRESULT, PSNRET_NOERROR);
 }
 
 INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -205,36 +216,34 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 			{
 				BASS_INFO info;
 				if (BASS_GetInfo(&info)) {
-					TCHAR buf[2*MAX_PATH];
-					_stprintf(buf, _T(
-						"Total hardware memory: %ld\n"
-						"Free hardware memory: %ld\n"
-						"Free sample slot: %ld\n"
-						"Free 3D sample slot: %ld\n"
-						"Min. sample rate supported: %ld Hz\n"
-						"Max. sample rate supported: %ld Hz\n"
-						"EAX supported: %s\n"
-						"Min. buffer length: %ld milliseconds\n"
-						"DirectX version: %ld\n"
-						"Playback delay: %ld milliseconds\n"
-						"Speakers supported: %ld\n"
-						"Using driver file: %s"
-						), 
+					TCHAR buf1[2*MAX_PATH], buf2[2*MAX_PATH];
+					TCHAR buf3[10], buf4[10], buf5[10];
+
+					LoadResString(hInstance, IDS_DEVICE_INFO, buf2, sizeof(buf2));
+					LoadResString(hInstance, IDS_DEVICE_SUPPORT_YES, buf3, sizeof(buf3));
+					LoadResString(hInstance, IDS_DEVICE_SUPPORT_NO, buf4, sizeof(buf4));
+					LoadResString(hInstance, IDS_DEVICE_UNKNOWN, buf5, sizeof(buf5));
+
+                    wsprintf(buf1, buf2, 
 						info.hwsize, 
 						info.hwfree, 
 						info.freesam, 
 						info.free3d, 
 						info.minrate, info.maxrate, 
-						info.eax ? "Yes" : "No", 
+						info.eax ? buf3 : buf4, 
 						info.minbuf, 
 						info.dsver, 
 						info.latency, 
 						info.speakers, 
-						info.driver ? info.driver : "Unknown");
-					MessageBox(hwndDlg, buf, _T("Information on current using device"), MB_OK | MB_ICONINFORMATION);
+						info.driver ? info.driver : buf5);
+					LoadResString(hInstance, IDS_DEVICE_INFO_TITLE, buf2, sizeof(buf2));
+					MessageBox(hwndDlg, buf1, buf2, MB_OK | MB_ICONINFORMATION);
+				} else {
+					TCHAR buf1[50], buf2[10];
+					LoadResString(hInstance, IDS_DEVICE_INFO_ERROR, buf1, sizeof(buf1));
+					LoadResString(hInstance, IDS_ERROR_TITLE, buf2, sizeof(buf2));
+					MessageBox(hwndDlg, buf1, buf2, MB_OK | MB_ICONSTOP);
 				}
-				else
-					MessageBox(hwndDlg, "Failed to get information on current device", "Error", MB_OK | MB_ICONSTOP);
 			}
 
 			break;
@@ -263,19 +272,8 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 					GetDlgItemText(hwndDlg, IDC_EXTENSIONS, (LPTSTR)(LPCTSTR)strExtensions, MAX_PATH);
 					listExtensions.clear();
 
-					if (lppsn->lParam == TRUE)  { // for OK button
-						bOKGeneral = TRUE;
-						DestroyPropertySheet(hwndDlg);
-					}
-					else // for Apply button
+					if ( lppsn->lParam != TRUE) // just press Apply button
 						SetWindowLong(hwndDlg, DWL_MSGRESULT, PSNRET_NOERROR);
-				}
-
-				break;
-			case PSN_QUERYCANCEL:
-				{
-					bCancelAll = TRUE;
-					DestroyPropertySheet(hwndDlg);
 				}
 
 				break;
@@ -406,7 +404,11 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 					UINT tmp_in = GetDlgItemInt(hwndDlg, IDC_FADE_IN, NULL, FALSE);
 					UINT tmp_out = GetDlgItemInt(hwndDlg, IDC_FADE_OUT, NULL, FALSE);
 					if(tmp_in < 0 || tmp_in > 10000 || tmp_out < 0 || tmp_out > 10000) {
-						MessageBox(hwndDlg, "Invalid value!\nShould be integer between 0 to 10000.", "Error!", MB_OK | MB_ICONERROR);
+						TCHAR buf1[100], buf2[10];
+
+						LoadResString(hInstance, IDS_INVALID_VALUE1, buf1, sizeof(buf1));
+						LoadResString(hInstance, IDS_ERROR_TITLE, buf2, sizeof(buf2));
+						MessageBox(hwndDlg, buf1, buf2, MB_OK | MB_ICONERROR);
 
 						if (tmp_in < 0 || tmp_in > 10000)
 							SetDlgItemInt(hwndDlg, IDC_FADE_IN, uFadeIn, FALSE);
@@ -438,19 +440,8 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 					bHardLimiter	= IsDlgButtonChecked(hwndDlg, IDC_HARD_LIMITER);
 					bDither			= IsDlgButtonChecked(hwndDlg, IDC_DITHER);
 
-					if (lppsn->lParam == TRUE)  { // for OK button
-						bOKAdvanced = TRUE;
-						DestroyPropertySheet(hwndDlg);
-					}
-					else // for Apply button
+					if ( lppsn->lParam != TRUE) // just press Apply button
 						SetWindowLong(hwndDlg, DWL_MSGRESULT, PSNRET_NOERROR);
-				}
-
-				break;
-			case PSN_QUERYCANCEL:
-				{
-					bCancelAll = TRUE;
-					DestroyPropertySheet(hwndDlg);
 				}
 
 				break;
@@ -507,7 +498,12 @@ INT_PTR CALLBACK StreamingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
 				{
 					UINT tmp = GetDlgItemInt(hwndDlg, IDC_BUFFER_LENGTH, NULL, FALSE);
 					if(tmp < 5 || tmp > 60) {
-						MessageBox(hwndDlg, "Invalid value!\nShould be integer between 5 to 60.", "Error!", MB_OK | MB_ICONERROR);
+						TCHAR buf1[100], buf2[10];
+
+						LoadResString(hInstance, IDS_INVALID_VALUE2, buf1, sizeof(buf1));
+						LoadResString(hInstance, IDS_ERROR_TITLE, buf2, sizeof(buf2));
+						MessageBox(hwndDlg, buf1, buf2, MB_OK | MB_ICONERROR);
+
 						SetDlgItemInt(hwndDlg, IDC_BUFFER_LENGTH, uBufferLen, FALSE);
 
 						SetWindowLong(hwndDlg, DWL_MSGRESULT, TRUE);
@@ -527,19 +523,8 @@ INT_PTR CALLBACK StreamingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
 
 					bStreamTitle = IsDlgButtonChecked(hwndDlg, IDC_ENABLE_STREAM_TITLE);
 
-					if (lppsn->lParam == TRUE)  { // for OK button
-						bOKStreaming = TRUE;
-						DestroyPropertySheet(hwndDlg);
-					}
-					else // for Apply button
+					if ( lppsn->lParam != TRUE) // just press Apply button
 						SetWindowLong(hwndDlg, DWL_MSGRESULT, PSNRET_NOERROR);
-				}
-
-				break;
-			case PSN_QUERYCANCEL:
-				{
-					bCancelAll = TRUE;
-					DestroyPropertySheet(hwndDlg);
 				}
 
 				break;
@@ -582,9 +567,11 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 			break;
 		case IDC_STREAM_SAVING_PATH:
 			{
+				TCHAR buf[50];
 				TCHAR szBuffer[MAX_PATH];
-				if (browse_folder(szBuffer, _T("Select a folder to saving streamed files: "), hwndDlg) && 
-					lstrcmpi(strStreamSavingPath, szBuffer) ) {
+
+				LoadResString(hInstance, IDS_SAVING_FOLDER_TITLE, buf, sizeof(buf));
+				if (browse_folder(szBuffer, buf, hwndDlg) && lstrcmpi(strStreamSavingPath, szBuffer) ) {
 					SetDlgItemText(hwndDlg, IDC_STREAM_SAVING_PATH, szBuffer);
 
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
@@ -624,19 +611,8 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 
 					bSaveStreamsBasedOnTitle = IsDlgButtonChecked(hwndDlg, IDC_SAVE_STREAMS_BASED_ON_TITLE);
 
-					if (lppsn->lParam == TRUE)  { // for OK button
-						bOKStreamSaving = TRUE;
-						DestroyPropertySheet(hwndDlg);
-					}
-					else // for Apply button
+					if ( lppsn->lParam != TRUE) // just press Apply button
 						SetWindowLong(hwndDlg, DWL_MSGRESULT, PSNRET_NOERROR);
-				}
-
-				break;
-			case PSN_QUERYCANCEL:
-				{
-					bCancelAll = TRUE;
-					DestroyPropertySheet(hwndDlg);
 				}
 
 				break;
@@ -674,13 +650,15 @@ INT_PTR CALLBACK AddonsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 		{
 		case IDC_ADDONS_DIR:
 			{
+				TCHAR buf[50];
 				TCHAR szBuffer[MAX_PATH];
-				if (browse_folder(szBuffer, _T("Select a folder to load BASS add-ons: "), hwndDlg) && 
-					lstrcmpi(strAddonsDir, szBuffer) ) {
-						SetDlgItemText(hwndDlg, IDC_ADDONS_DIR, szBuffer);
 
-						PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
-					}
+				LoadResString(hInstance, IDS_ADDONS_FOLDER_TITLE, buf, sizeof(buf));
+				if (browse_folder(szBuffer, buf, hwndDlg) && lstrcmpi(strAddonsDir, szBuffer) ) {
+					SetDlgItemText(hwndDlg, IDC_ADDONS_DIR, szBuffer);
+
+					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
+				}
 			}
 
 			break;
@@ -702,32 +680,17 @@ INT_PTR CALLBACK AddonsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 				{
 					TCHAR szBuffer[MAX_PATH];
 					GetDlgItemText(hwndDlg, IDC_ADDONS_DIR, szBuffer, MAX_PATH);
-					if (PathFileExists(szBuffer)) {
-						MessageBox(hwndDlg, _T("You've changed the directory of BASS add-ons!\n"
-							"\n"
-							"You should: \n"
-							"1. Add extension to the general tab.\n"
-							"2. Retart the plug-in/player.\n"
-							"to take effect."), 
-							_T("Restart Plug-in"), 
-							MB_OK | MB_ICONINFORMATION);
+					if (PathFileExists(szBuffer) && lstrcmpi( szBuffer, strAddonsDir)) {
+						TCHAR buf1[200], buf2[20];
+						LoadResString(hInstance, IDS_ADDONS_WARNING, buf1, sizeof(buf1));
+						LoadResString(hInstance, IDS_ADDONS_WARNING_TITLE, buf2, sizeof(buf2));
+						MessageBox(hwndDlg, buf1, buf2, MB_OK | MB_ICONINFORMATION);
  
 						lstrcpy((LPTSTR)(LPCTSTR)strAddonsDir, szBuffer);
 					}
 
-					if (lppsn->lParam == TRUE)  { // for OK button
-						bOKAddons = TRUE;
-						DestroyPropertySheet(hwndDlg);
-					}
-					else // for Apply button
+					if ( lppsn->lParam != TRUE) // just press Apply button
 						SetWindowLong(hwndDlg, DWL_MSGRESULT, PSNRET_NOERROR);
-				}
-
-				break;
-			case PSN_QUERYCANCEL:
-				{
-					bCancelAll = TRUE;
-					DestroyPropertySheet(hwndDlg);
 				}
 
 				break;
@@ -813,6 +776,10 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 		return TRUE;
 	case WM_INITDIALOG:
 		{
+			TCHAR buf1[20], buf2[20];
+
+			LoadResString(hInstance, IDS_STREAM_SAVING_ON, buf1, sizeof(buf1));
+			LoadResString(hInstance, IDS_STREAM_SAVING_OFF, buf2, sizeof(buf2));
 			// fix our size and pos for better UI
 			// enlarge the whole bar
 			SetWindowPos(hwndDlg, 0, 0, 0, 268, 39, SWP_NOMOVE | SWP_NOZORDER);
@@ -825,7 +792,7 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 			SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_CLOSE), 0, 234, 6, 18, 18, SWP_NOZORDER);
 
 			EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SKIP_TITLE), bStreamSaving);
-			SetDlgItemText(hwndDlg, IDC_STREAM_SAVING_BAR_STATUS, bStreamSaving ? _T("Stream saving ON...") : _T("Stream saving OFF"));
+			SetDlgItemText(hwndDlg, IDC_STREAM_SAVING_BAR_STATUS, bStreamSaving ? buf1 :buf2);
 
 			// load image list
 			if (!himlStreamSavingBar)
@@ -879,13 +846,14 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 						if (bStreamSaving && decoderInfo.pDecoder->m_strCurTitle &&
 							*decoderInfo.pDecoder->m_strCurTitle)
 						{
-							lstrcpy(szToolTip, "Saving Stream...\r\nTitle: ");
-							lstrcat(szToolTip, decoderInfo.pDecoder->m_strCurTitle);
-							lstrcat(szToolTip, "\r\nTo Path: ");
-							lstrcat(szToolTip, strStreamSavingPath);
+							TCHAR buf[50];
+							LoadResString(hInstance, IDS_STREAM_SAVING_TOOLTIP, buf, sizeof(buf));
+							wsprintf(szToolTip, buf, decoderInfo.pDecoder->m_strCurTitle, strStreamSavingPath);
+						} else {
+							TCHAR buf[50];
+							LoadResString(hInstance, IDS_STREAM_SAVING_TOOLTIP_STATUS, buf, sizeof(buf));
+							lstrcpy(szToolTip, buf);
 						}
-						else
-							lstrcpy(szToolTip, "Stream Saving Status");
 
 						lpttd->lpszText = szToolTip;
 					}
@@ -948,11 +916,12 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 					break;
 				case IDC_STREAM_SAVING_BAR_SETPATH:
 					{
+						TCHAR buf[50];
 						TCHAR szBuffer[MAX_PATH];
-						if ( browse_folder(szBuffer, _T("Select a folder to saving streamed files: "), hwndDlg) && 
-							lstrcmpi(strStreamSavingPath, szBuffer) ) {
+
+						LoadResString(hInstance, IDS_SAVING_FOLDER_TITLE, buf, sizeof(buf));
+						if ( browse_folder(szBuffer, buf, hwndDlg) && lstrcmpi(strStreamSavingPath, szBuffer))
 							lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
-						}
 					}
 
 					break;
