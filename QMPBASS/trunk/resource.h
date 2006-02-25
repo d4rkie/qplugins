@@ -14,6 +14,25 @@
 #define IDD_STREAM_SAVING_BAR           110
 #define IDD_ADVANCED                    111
 #define IDD_ADDONS                      112
+#define IDS_CONFIG_SHEET_TITLE          113
+#define IDS_DEVICE_INFO                 114
+#define IDS_DEVICE_UNKNOWN              115
+#define IDS_DEVICE_SUPPORT_YES          116
+#define IDS_DEVICE_SUPPORT_NO           117
+#define IDS_DEVICE_INFO_TITLE           118
+#define IDS_DEVICE_INFO_ERROR           119
+#define IDS_ERROR_TITLE                 120
+#define IDS_INVALID_VALUE1              121
+#define IDS_SAVING_FOLDER_TITLE         122
+#define IDS_ADDONS_FOLDER_TITLE         123
+#define IDS_ADDONS_WARNING_TITLE        124
+#define IDS_ADDONS_WARNING              125
+#define IDS_STREAM_SAVING_ON            126
+#define IDS_STREAM_SAVING_OFF           127
+#define IDS_STREAM_SAVING_TOOLTIP       128
+#define IDS_STREAM_SAVING_TOOLTIP_STATUS 129
+#define IDS_ERROR_INVALID_VALUE2        130
+#define IDS_INVALID_VALUE2              130
 #define IDC_HARD_LIMITER                1002
 #define IDC_PRIORITY                    1003
 #define IDC_PREAMP                      1003
@@ -58,7 +77,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        113
+#define _APS_NEXT_RESOURCE_VALUE        114
 #define _APS_NEXT_COMMAND_VALUE         40002
 #define _APS_NEXT_CONTROL_VALUE         1032
 #define _APS_NEXT_SYMED_VALUE           103
