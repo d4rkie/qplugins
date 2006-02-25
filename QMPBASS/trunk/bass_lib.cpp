@@ -219,11 +219,11 @@ void bass::update_stream_title(char* meta, bass* pBass)
 				pBass->m_strCurTitle = strdup(t);
 
 				if (bStreamTitle){
-					QCDCallbacks.Service(opSetTrackTitle, pBass->m_strCurTitle, (long)pBass->m_StreamFile, DIGITAL_STREAM_MEDIA);
+					QCDCallbacks.Service(opSetTrackTitle, pBass->m_strCurTitle, (long)pBass->m_strPath, DIGITAL_STREAM_MEDIA);
 				}
 			}
 
-			if (u)
+			if (u && *u)
 				QCDCallbacks.Service(opSetBrowserUrl, u, 0, 0);
 		}
 	}
