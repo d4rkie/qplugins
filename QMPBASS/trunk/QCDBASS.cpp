@@ -21,11 +21,9 @@
 // Bugs
 // : The bass plugin retaining the file open when you press the stop button
 // : Volume in system mode with 32bit is very low/not mirrored to backspeakers (Not looked into yet)
-// : BASS is allowing qmp to add files with an extension of .1 to the media library.
-//     These are backup files created by Quick Par during the file repair process.
-//     The file names will look something like xxx.ape.1. They are unplayable unless renamed.
 // : Encoding doesn't work
-
+//     (Tokelil: Talked to Paul about this, and he will add float support to the wav encoding plug-in)
+//
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
