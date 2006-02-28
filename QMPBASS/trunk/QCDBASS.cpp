@@ -282,7 +282,6 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 void ShutDown(int flags)
 {
 	Stop(decoderInfo.playingFile, STOPFLAG_FORCESTOP);
-
 	destroy_bass();
 
 	// save config
@@ -402,13 +401,12 @@ int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 
 int GetTrackExtents(const char* medianame, TrackExtents *ext, int flags)
 {
-	std::auto_ptr<bass> p_info(new bass(medianame));
-
-	if ( p_info->init(false) ) {
+	bass p_info(medianame);
+	if ( p_info.init(false) ) {
 		ext->track = 1;
 		ext->start = 0;
-		ext->end = (UINT)p_info->get_length() * 1000;
-		ext->bytesize = (UINT)p_info->get_size();
+		ext->end = (UINT)p_info.get_length() * 1000;
+		ext->bytesize = (UINT)p_info.get_size();
 		ext->unitpersec = 1000;
 
 		return TRUE;
