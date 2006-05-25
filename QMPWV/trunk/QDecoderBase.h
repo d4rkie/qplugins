@@ -8,9 +8,11 @@
 ////////////////////////////////////////////////////////////////////
 #pragma once
 
+
+#include "stdafx.h"
+
 #include "QCDInputDLL.h"
 
-#include <atlstr.h>
 
 class QDecoderBase
 {
@@ -41,11 +43,7 @@ public:
 	virtual int GetAudioInfo(AudioInfo * pai) = 0;
 
 public:
-	LPCTSTR GetFullName(void)
-	{
-
-		return m_strFullName;
-	}
+	LPCTSTR GetFullName(void) {	return m_strFullName; }
 	LPCTSTR GetExtensions(void) { return m_strExtensions; }
 	BOOL IsOurFile(LPCTSTR lpszFileName)
 	{
@@ -81,7 +79,7 @@ protected:
 		va_start(args, lpszMsg);
 		vsprintf(foo, lpszMsg, args);
 		va_end(args);
-		MessageBox( hwndPlayer, foo, "FAAD2 MP4 Plug-in Error", MB_ICONSTOP);
+		MessageBox( hwndPlayer, foo, "QDecoder Plug-in Error", MB_ICONSTOP);
 	}
 
 protected:

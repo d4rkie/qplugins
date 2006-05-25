@@ -204,8 +204,12 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 		else
 			ret = decoderInfo.pDecoder->OpenFile( medianame);
 
-		if ( ret != 1)
+		if ( ret != 1) {
+			delete decoderInfo.pDecoder;
+			decoderInfo.pDecoder = NULL;
+
 			return ret;
+		}
 
 		// create decoding thread
 		DWORD thread_id;
@@ -231,7 +235,7 @@ int Stop(const char* medianame, int flags)
 
 		decoderInfo.killThread = 1;
 		if ( WaitForSingleObject( decoderInfo.thread_handle, 2000) == WAIT_TIMEOUT) {
-//			MessageBox(hwndPlayer, "ape thread kill timeout", "debug", 0);
+//			MessageBox(hwndPlayer, "thread kill timeout", "debug", 0);
 //			TerminateThread(decoderInfo.thread_handle, 0);
 		}
 		CloseHandle( decoderInfo.thread_handle);
@@ -359,14 +363,12 @@ DWORD WINAPI DecodeThread(LPVOID lpParameter)
 			break;
 		} else { /******************* DECODE TO BUFFER ****************/
 			// set track seekable flag
-			if ( !done && !outputOpened)
+			if ( !outputOpened)
 				QCDCallbacks.Service( opSetTrackSeekable, (void *)(LPCTSTR)decoderInfo->playingFile, decoderInfo->pDecoder->IsSeekable(), 0);
 
 			// decoding
-			if ( !done) {
-				if ( !decoderInfo->pDecoder->Decode( &wd))
-					done = 1;
-			}
+			if ( !decoderInfo->pDecoder->Decode( &wd))
+				done = 1;
 
 			// open output
 			if ( !done && !outputOpened) {
@@ -374,7 +376,7 @@ DWORD WINAPI DecodeThread(LPVOID lpParameter)
 				decoderInfo->pDecoder->GetWaveFormFormat( &wf);
 
 				if ( !QCDCallbacks.toPlayer.OutputOpen( decoderInfo->playingFile, &wf)) {
-					MessageBox( hwndPlayer, "Error: Open playback plug-in failed!", "FAAD MPEG4 AAC plug-in", MB_ICONINFORMATION);
+					MessageBox( hwndPlayer, "Error: Open playback plug-in failed!", "Decoder plug-in error", MB_ICONINFORMATION);
 					QCDCallbacks.toPlayer.PlayStopped( decoderInfo->playingFile);
 					done = TRUE; // cannot open sound device
 
