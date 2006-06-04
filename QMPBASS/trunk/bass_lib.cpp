@@ -25,7 +25,7 @@ void load_addons(const char * fldr)
 			do {
 				lstrcpy(path, fldr);
 				PathAppend(path, fd.cFileName);
-				if (BASS_PluginLoad(path)) { // plugin loaded...
+				if (BASS_PluginLoad(path, 0)) { // plugin loaded...
 					listAddons.push_back(fd.cFileName); // add file name to list
 				}
 			} while (FindNextFile(fh,&fd));
@@ -243,7 +243,7 @@ void CALLBACK bass::stream_title_sync(HSYNC handle, DWORD channel, DWORD data, D
 	update_stream_title((char *)data, (bass*) user);
 }
 
-void CALLBACK bass::stream_status_proc(void *buffer, DWORD length, DWORD user)
+void CALLBACK bass::stream_status_proc(const void *buffer, DWORD length, DWORD user)
 {
 	bass* pBass = (bass*)user;
 	if (!pBass) {
@@ -253,7 +253,7 @@ void CALLBACK bass::stream_status_proc(void *buffer, DWORD length, DWORD user)
 
 	if (buffer) {
 		if (!length)
-			QCDCallbacks.Service(opSetStatusMessage, buffer, TEXT_TOOLTIP, 0);
+			QCDCallbacks.Service(opSetStatusMessage, (void *)buffer, TEXT_TOOLTIP, 0);
 		else { // saving stream media to local files
 			if (bStreamSaving) {
 				if (!pBass->m_StreamFile) {
@@ -414,17 +414,17 @@ int bass::init ( bool fullinit )
 				(is_decode ? BASS_STREAM_DECODE : 0) | 
 				(use_32fp ? BASS_SAMPLE_FLOAT : 0), 
 				stream_status_proc, (DWORD)this)) ) {
-					char *icy=BASS_StreamGetTags(m_hBass, BASS_TAG_ICY);
+					const char *icy=BASS_ChannelGetTags(m_hBass, BASS_TAG_ICY);
 					if (icy) {
 						for (;*icy;icy+=strlen(icy)+1) {
 							if (!memcmp(icy, "icy-name:", 9))
-								QCDCallbacks.Service(opSetTrackAlbum, icy+9, (long)m_strPath, DIGITAL_STREAM_MEDIA);// set broadcast name as album name
+								QCDCallbacks.Service(opSetTrackAlbum, (void *)(icy+9), (long)m_strPath, DIGITAL_STREAM_MEDIA);// set broadcast name as album name
 							if (!memcmp(icy, "icy-br:", 7))
 								bitrate = atoi(icy+7) * 1000; // get bitrate info of the broadcast
 						}
 					}
 
-					update_stream_title(BASS_StreamGetTags(m_hBass, BASS_TAG_META), this);
+					update_stream_title((char *)BASS_ChannelGetTags(m_hBass, BASS_TAG_META), this);
 					BASS_ChannelSetSync(m_hBass, BASS_SYNC_META, 0, &stream_title_sync, (DWORD)this);
 					//QCDCallbacks.Service(opSetTrackArtist, "", (long)path, DIGITAL_STREAM_MEDIA); // no artist name is need any more
 

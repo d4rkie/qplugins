@@ -720,7 +720,7 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		{
 			DWORD ver = BASS_GetVersion();
             TCHAR buf[10];
-			_stprintf( buf, _T("v%d.%d"), LOWORD(ver), HIWORD(ver) );
+			_stprintf( buf, _T("v%d.%d.%d.%d"), HIBYTE(HIWORD(ver)), LOBYTE(HIWORD(ver)), HIBYTE(LOWORD(ver)), HIBYTE(LOWORD(ver)));
 			SetDlgItemText(hwndDlg, IDC_BASS_VERSION, buf);
 
 			SetDlgItemText(hwndDlg, IDC_PLUGIN_VERSION, PLUGIN_VERSION);

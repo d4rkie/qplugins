@@ -27,6 +27,7 @@
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 04-06-06 : Updated to support BASS v2.3.0.0
 // 02-25-06 : 1. Fixed stream title display bug (for QCD only).
 //            2. New mechanism of destroying config sheet.
 // 02-02-05 : Fixed adding of .1 files etc. (+IsExtentionSupported())

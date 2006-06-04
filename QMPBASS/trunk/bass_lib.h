@@ -175,5 +175,6 @@ private:
 	// static void update_stream_title(char * meta);
 	static void update_stream_title(char* meta, bass* pBass);
 	static void CALLBACK stream_title_sync(HSYNC handle, DWORD channel, DWORD data, DWORD user);
-	static void CALLBACK stream_status_proc(void *buffer, DWORD length, DWORD user);
+	static void CALLBACK stream_status_proc(const void *buffer, DWORD length, DWORD user);
 };
+
