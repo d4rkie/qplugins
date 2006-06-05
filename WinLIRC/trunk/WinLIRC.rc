@@ -1,0 +1,323 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Danish resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DAN)
+#ifdef _WIN32
+LANGUAGE LANG_DANISH, SUBLANG_DEFAULT
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\WinLIRC.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""         // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_CONFIG, DIALOG
+    BEGIN
+        LEFTMARGIN, 6
+        RIGHTMARGIN, 272
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 239
+    END
+
+    IDD_MODIFY, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 153
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 58
+    END
+
+    IDD_CUSTOM, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 153
+        TOPMARGIN, 3
+        BOTTOMMARGIN, 111
+    END
+
+    IDD_ABOUT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 205
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 135
+    END
+
+    IDD_HELP, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 261
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 214
+    END
+
+    IDD_OPTIONS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 283
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 82
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_CONFIG DIALOG DISCARDABLE  0, 0, 278, 249
+STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
+FONT 8, "Tahoma"
+BEGIN
+    DEFPUSHBUTTON   "&Add",IDC_ADD_BTN,57,196,50,14
+    GROUPBOX        "Assigned buttons",IDC_STATIC,6,50,266,165
+    CONTROL         "List1",IDC_LIST,"SysListView32",LVS_REPORT | 
+                    LVS_SINGLESEL | WS_BORDER | WS_TABSTOP,8,61,262,132
+    PUSHBUTTON      "&Remove",IDC_REMOVE_BTN,113,196,50,14
+    PUSHBUTTON      "&Modify",IDC_MODIFY_BTN,169,196,50,14
+    PUSHBUTTON      "&Options",IDC_OPTIONS_BTN,85,220,50,14
+    PUSHBUTTON      "&Help",IDC_HELP_BTN,141,220,50,14
+    GROUPBOX        "Status",IDC_STATIC,6,4,266,42
+    CTEXT           "Not connected",IDC_CONNECTION_STATUS,16,14,123,8
+    PUSHBUTTON      "&Connect",IDC_RECONNECT_BTN,42,27,71,14
+    CTEXT           "WinLIRC is running",IDC_WinLIRC_STATUS,139,14,123,8
+    PUSHBUTTON      "Launch WinLIRC",IDC_LAUNCH_WINLIRC_BTN,165,27,71,14
+END
+
+IDD_MODIFY DIALOG DISCARDABLE  0, 0, 160, 65
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Modify button"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,26,44,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,83,44,50,14
+    RTEXT           "Remote button:",IDC_STATIC,7,10,59,8
+    EDITTEXT        IDC_MODIFY_BUTTON,70,7,83,14,ES_AUTOHSCROLL
+    RTEXT           "Action:",IDC_STATIC,24,26,42,8
+    COMBOBOX        IDC_MODIFY_ACTION,70,24,83,38,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+END
+
+IDD_CUSTOM DIALOG DISCARDABLE  0, 0, 160, 118
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Custom Command"
+FONT 8, "Tahoma"
+BEGIN
+    EDITTEXT        IDC_CUSTOM_COMMAND,77,43,37,14,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    RTEXT           "WM_COMMAND:",IDC_STATIC,7,46,65,8
+    EDITTEXT        IDC_CUSTOM_REPEATCOUNT,77,59,37,14,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    CONTROL         "Spin1",IDC_CUSTOM_REPEATSPIN,"msctls_updown32",
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | 
+                    UDS_ARROWKEYS,133,49,11,14
+    DEFPUSHBUTTON   "OK",IDOK,21,97,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,81,97,50,14
+    RTEXT           "Repeat: ",IDC_STATIC,7,62,65,8
+    CONTROL         "Send once",IDC_CUSTOM_SENDONCE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,77,77,51,10
+    RTEXT           "Remote button:",IDC_STATIC,7,14,65,8
+    EDITTEXT        IDC_CUSTOM_BUTTON_NAME,77,11,74,14,ES_AUTOHSCROLL
+    RTEXT           "Command name:",IDC_STATIC,7,30,65,8
+    EDITTEXT        IDC_CUSTOM_COMMAND_NAME,77,27,74,14,ES_AUTOHSCROLL
+    GROUPBOX        "",IDC_STATIC,7,3,146,88
+END
+
+IDD_ABOUT DIALOG DISCARDABLE  0, 0, 212, 142
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About"
+FONT 8, "Tahoma"
+BEGIN
+    DEFPUSHBUTTON   "&Close",IDOK,80,121,50,14
+    EDITTEXT        IDC_ABOUT_EDIT1,7,7,198,109,ES_CENTER | ES_MULTILINE | 
+                    ES_AUTOHSCROLL | ES_READONLY | ES_WANTRETURN | NOT 
+                    WS_BORDER | NOT WS_TABSTOP
+END
+
+IDD_HELP DIALOG DISCARDABLE  0, 0, 268, 222
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Help"
+FONT 8, "Tahoma"
+BEGIN
+    DEFPUSHBUTTON   "&Close",IDOK,108,200,50,14
+    EDITTEXT        IDC_HELP_EDIT1,7,7,254,188,ES_MULTILINE | ES_READONLY | 
+                    ES_WANTRETURN | NOT WS_BORDER | WS_VSCROLL | NOT 
+                    WS_TABSTOP
+END
+
+IDD_OPTIONS DIALOG DISCARDABLE  0, 0, 290, 89
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Options"
+FONT 8, "Tahoma"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,89,68,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,150,68,50,14
+    GROUPBOX        "",IDC_STATIC,7,4,276,59
+    CONTROL         "Debug messages",IDC_OPTIONS_DEBUGMESSAGES,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,135,47,71,10
+    CONTROL         "Show error messages",IDC_OPTIONS_SHOWERRORS,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,19,47,83,10
+    CONTROL         "Launch WinLIRC on start",IDC_OPTIONS_LAUNCH_WINLIRC,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,19,34,96,10
+    RTEXT           "WinLIRC path:",IDC_STATIC,8,17,59,8
+    EDITTEXT        IDC_OPTIONS_PATH,72,14,144,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    PUSHBUTTON      "&Browse...",IDC_OPTIONS_BROWSE_BTN,218,13,50,14
+    CONTROL         "Connect on start",IDC_OPTIONS_CONNECT_ON_START,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,135,34,70,10
+END
+
+#endif    // Danish resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,2,0,1
+ PRODUCTVERSION 1,2,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "\0"
+            VALUE "FileDescription", "WinLIRC DLL\0"
+            VALUE "FileVersion", "1, 2, 0, 1\0"
+            VALUE "InternalName", "WinLIRC\0"
+            VALUE "LegalCopyright", "Copyright (C) 2004\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "WinLIRC.DLL\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "WinLIRC Dynamic Link Library\0"
+            VALUE "ProductVersion", "1, 2, 0, 0\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDP_SOCKETS_INIT_FAILED "Windows sockets initialization failed."
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE 9, 1
+#pragma code_page(1252)
+#endif //_WIN32
+#include "res\WinLIRC.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"         // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
