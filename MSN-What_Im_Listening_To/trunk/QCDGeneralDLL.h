@@ -65,7 +65,7 @@ BOOL IsPlaying();
 
 // Microsoft Messenger functins
 void SendToMSN(MSNMessages* msn);
-void StartTimer();
+void StartTimer(UINT nForced = 0);
 
 void RegDB_Fix(BOOL bFix);
 void RegDB_Insert();

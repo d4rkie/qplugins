@@ -37,8 +37,10 @@
 #include "Config.h"
 #include "About.h"
 
+#pragma warning(disable:4002)		// Disable "too many actual parameters for macro INFO"
+
 // Constants
-static       CHAR*   PLUGIN_NAME   = "MSN \"What I'm Listening To\" v2.5";
+static       CHAR*   PLUGIN_NAME   = "MSN \"What I'm Listening To\" v2.5.1";
 static const WCHAR   INI_SECTION[] = L"MSN-WILT";
 static const WCHAR*  REGKEY_MSN    = L"Software\\Microsoft\\MSNMessenger";
 static const WCHAR*  REGKEY_WMP    = L"Software\\Microsoft\\Active Setup\\Installed Components\\{6BF52A52-394A-11d3-B153-00C04F79FAA6}";
@@ -333,6 +335,8 @@ INT RegDB_GetMSNBuild()
 //-----------------------------------------------------------------------------
 void SendToMSN(MSNMessages *msn)
 {
+	INFO("SendToMSN()");
+
 	// Send empty if not showing video info
 	if (settings.bVideo == FALSE) {
 		long nReturn = QCDCallbacks->Service(opGetMediaType, 0, -1, 0);
@@ -383,6 +387,7 @@ void SendToMSN(MSNMessages *msn)
 
 void CurrentSong(MSNMessages *msn)
 {
+	INFO("CurrentSong()");
 	static const long STRSIZE = 100;
 	WCHAR strTemp[STRSIZE];
 	WCHAR strTitle[STRSIZE];
@@ -412,6 +417,7 @@ void CurrentSong(MSNMessages *msn)
 
 void UpdateSong()
 {
+	INFO("UpdateSong()");
 	WCHAR strTemp[MAX_PATH];
 	ZeroMemory(strTrackPlaying, MAX_PATH*sizeof(WCHAR));
 	QCDCallbacks->Service(opGetTrackFile, strTemp, MAX_PATH*sizeof(WCHAR), -1);
@@ -422,6 +428,8 @@ void UpdateSong()
 	CurrentSong(&msn);
 	msn.msncommand = 1;
 	SendToMSN(&msn);
+
+	QBlog_InsertInRegDB();
 }
 
 //-----------------------------------------------------------------------------
@@ -431,19 +439,21 @@ void ClearSong()
 	MSNMessages msn;
 	ZeroMemory(&msn, sizeof(msn));
 	SendToMSN(&msn);
+
+	QBlog_CleanUpRegDB();
 }
 
 //-----------------------------------------------------------------------------
 
-void StartTimer()
+void StartTimer(UINT nForced)
 {
 	if (nDelayTimerID) {
 		KillTimer(NULL, nDelayTimerID);
 		nDelayTimerID = 0;
 	}
 
-	if (settings.nDelay > 0)
-		nDelayTimerID = SetTimer(NULL, 0, settings.nDelay, DelayTimerProc);
+	if (settings.nDelay > 0 || nForced > 0)
+		nDelayTimerID = SetTimer(NULL, 0, (settings.nDelay >= nForced) ? settings.nDelay : nForced, DelayTimerProc);
 	else
 		UpdateSong();
 }
@@ -572,7 +582,7 @@ LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		*/
 		// Set info
 		case WM_PN_INFOCHANGED : {
-			//TRACE("--> lparam: %X\n", lparam);
+			INFO("-WM_PN_INFOCHANGED: wparam: %X, lparam: %X", wparam, lparam);
 
 			// Check that it's not a cd/dvd that was inserted
 			if (lparam <= 'Z')
@@ -585,25 +595,30 @@ LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		}
 			// Fall through
 		case WM_PN_TRACKCHANGED :
-			// Fall through
+			INFO("-WM_PN_TRACKCHANGED: wparam: %X, lparam: %X", wparam, lparam);
+			if (!bIsEncoding)
+				StartTimer(1);
+			break;
 
 		case WM_PN_PLAYSTARTED :
 		{
+			INFO("-WM_PN_PLAYSTARTED: wparam: %X, lparam: %X", wparam, lparam);
 			if (!bIsEncoding)
 				StartTimer();
-			QBlog_InsertInRegDB();
 			break;
 		}
 		case WM_PN_PLAYSTOPPED :
+			INFO("-WM_PN_PLAYSTOPPED: wparam: %X, lparam: %X", wparam, lparam);
 			// Fallthrough
 		case WM_PN_PLAYDONE :
+			INFO("-WM_PN_PLAYDONE: wparam: %X, lparam: %X", wparam, lparam);
 			ZeroMemory(strTrackPlaying, MAX_PATH);
 			ClearSong();
-			QBlog_CleanUpRegDB();
 			break;
 
 		case WM_PN_PLAYPAUSED :
 		{
+			INFO("-WM_PN_PLAYPAUSED: wparam: %X, lparam: %X", wparam, lparam);
 			MSNMessages msn;
 			ZeroMemory(&msn, sizeof(msn));
 			msn.msncommand = 1;
