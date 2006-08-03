@@ -49,7 +49,6 @@ BOOL	isPaused = 0;
 DWORD WINAPI DecodeThread(LPVOID lpParameter);
 
 CConfigDlg * g_pdlgCfg;
-CAboutDlg g_dlgAbout;
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -655,7 +654,9 @@ void Configure(int flags)
 
 void About(int flags)
 {
-	g_dlgAbout.DoModal( (HWND)QCDCallbacks.Service( opGetPropertiesWnd, NULL, 0, 0));
+	CAboutDlg dlgAbout;
+
+	dlgAbout.DoModal( (HWND)QCDCallbacks.Service( opGetPropertiesWnd, NULL, 0, 0));
 }
 
 //-----------------------------------------------------------------------------
