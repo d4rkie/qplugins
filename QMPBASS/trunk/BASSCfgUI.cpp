@@ -12,6 +12,7 @@
 const unsigned int PREAMP_RANGE = 24;
 LPCTSTR noise_shaping_table[] = { "None", "Low", "Medium", "High" };
 LPCTSTR replaygain_table[] = { "Disabled", "Use Track Gain", "Use Album Gain" };
+BOOL firstShow;
 
 void LoadResString(HINSTANCE hInstance, UINT uID, LPTSTR lpBuffer, int nBufferMax)
 {
@@ -120,11 +121,20 @@ LRESULT CALLBACK NewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return 0L;
 	}
 
+	// set propertysheet first, do it only once
+	if ( uMsg == WM_SIZE) {
+		SetWindowPos( hwnd, NULL, xPrefPos, yPrefPos, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
+		firstShow = FALSE;
+	}
+
     return CallWindowProc(oldProc, hwnd, uMsg, wParam, lParam);
 }
 int CALLBACK ConfigSheetProc(HWND hwndDlg, UINT uMsg, LPARAM lParam)
 {
 	if (uMsg == PSCB_INITIALIZED) {
+		firstShow = TRUE;
+
 		oldProc = (WNDPROC)SetWindowLongPtr( hwndDlg, GWLP_WNDPROC, (LONG_PTR)NewProc);
 	}
 
@@ -137,9 +147,6 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	{
 	case WM_INITDIALOG:
 		{
-			// set propertysheet first, do it only once
-			SetWindowPos(GetParent(hwndDlg), HWND_TOP, xPrefPos, yPrefPos, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-
 			SetDlgItemText(hwndDlg, IDC_EXTENSIONS, strExtensions);
 
 			// init device list
