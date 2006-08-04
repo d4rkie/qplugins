@@ -797,6 +797,7 @@ HRECORD BASSDEF(BASS_RecordStart)(DWORD freq, DWORD chans, DWORD flags, RECORDPR
 float BASSDEF(BASS_ChannelBytes2Seconds)(DWORD handle, QWORD pos);
 QWORD BASSDEF(BASS_ChannelSeconds2Bytes)(DWORD handle, float pos);
 DWORD BASSDEF(BASS_ChannelGetDevice)(DWORD handle);
+BOOL BASSDEF(BASS_ChannelSetDevice)(DWORD handle, DWORD device);
 DWORD BASSDEF(BASS_ChannelIsActive)(DWORD handle);
 BOOL BASSDEF(BASS_ChannelGetInfo)(DWORD handle, BASS_CHANNELINFO *info);
 const char *BASSDEF(BASS_ChannelGetTags)(DWORD handle, DWORD tags);
