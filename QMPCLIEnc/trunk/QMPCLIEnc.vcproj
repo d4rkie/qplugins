@@ -87,7 +87,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;QMPCLIENC_EXPORTS"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				UsePrecompiledHeader="2"
+				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Debug/QMPCLIEnc.pch"
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
@@ -147,12 +147,6 @@
 				RelativePath=".\CLIEncoder.cpp">
 			</File>
 			<File
-				RelativePath=".\CLIEncoderPreset.cpp">
-			</File>
-			<File
-				RelativePath=".\CLIEncoderUI.cpp">
-			</File>
-			<File
 				RelativePath=".\QFile.cpp">
 			</File>
 			<File
@@ -174,18 +168,27 @@
 						BrowseInformation="1"/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath=".\QMPTagService.cpp">
+			</File>
+			<File
+				RelativePath=".\stdafx.cpp">
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl">
 			<File
+				RelativePath=".\AboutDlg.h">
+			</File>
+			<File
 				RelativePath=".\CLIEncoder.h">
 			</File>
 			<File
-				RelativePath=".\CLIEncoderPreset.h">
+				RelativePath=".\ParentDlg.h">
 			</File>
 			<File
-				RelativePath=".\CLIEncoderUI.h">
+				RelativePath=".\PresetsDlg.h">
 			</File>
 			<File
 				RelativePath="QCDEncodeDLL.h">
@@ -197,13 +200,25 @@
 				RelativePath="QCDModEncode.h">
 			</File>
 			<File
+				RelativePath=".\QCDModTagEditor.h">
+			</File>
+			<File
 				RelativePath=".\QFile.h">
 			</File>
 			<File
 				RelativePath=".\QMPCLIEnc.h">
 			</File>
 			<File
+				RelativePath=".\QMPTagService.h">
+			</File>
+			<File
 				RelativePath=".\resource.h">
+			</File>
+			<File
+				RelativePath=".\SettingsDlg.h">
+			</File>
+			<File
+				RelativePath=".\stdafx.h">
 			</File>
 		</Filter>
 		<Filter
@@ -215,5 +230,8 @@
 		</Filter>
 	</Files>
 	<Globals>
+		<Global
+			Name="RESOURCE_FILE"
+			Value="QMPCLIEnc.rc"/>
 	</Globals>
 </VisualStudioProject>
