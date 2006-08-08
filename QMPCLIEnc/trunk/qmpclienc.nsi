@@ -4,65 +4,92 @@
 !include "LogicLib.nsh"
 
 ;*********************
-; Name and Setup
+; Setup compiler
 ;*********************
-Name "QMP Command Line Encoder(CLI) Plug-in"
-OutFile "enc_qmpclienc.exe"
-
 SetCompressor /SOLID lzma
 InstallColors /WINDOWS
 Icon "qmp.ico"
 XPStyle on
-BrandingText "QMP Plug-in Installer"
+BrandingText "QCD/QMP Plug-in Installer"
 
-;*********************
-; Get QMP Install Path
-;*********************
+; The name of the installer
+Name "Command Line Encoder(CLI) Plug-in"
+; The file to write
+OutFile "enc_CommandLineEncoder.exe"
+; The default installation directory
 InstallDir "$PROGRAMFILES\Quintessential Media Player"
-InstallDirRegKey HKEY_LOCAL_MACHINE "SOFTWARE\Quinnware\Quintessential Media Player" ""
-;DirShow show
-DirText "Select the folder to install this plug-in:"
 
+; Select dir text
+DirText "Select QCD/QMP install folder:"
 
 ;**********************
-; Get QMP Plugin Folder
+; Get QCD Plugin Folder
+;**********************
+Var QIsQMP ; is QMP or QCD?
+
+;**********************
+; Get QCD Plugin Folder
 ;**********************
 Function SetPluginPath
-;default install path
-  StrCpy $1 "$INSTDIR"
-
-;if this is qmp folder, default to plugin subfolder
-  ${If} ${FileExists} "$INSTDIR\qmplayer.exe"
+  ${If} ${FileExists} "$INSTDIR\QMPlayer.exe" ; is QMP avaliable
+    StrCpy $QIsQMP "True"
     StrCpy $1 "$INSTDIR\Plugins"
-
-;read players plugin folder setting
-    ReadINIStr $9 "$INSTDIR\QMP.ini" "QMPlayer" "PluginFolder"
-
-;if setting not empty, and is valid, set as folder
-    ${If} $9 != ""
-    ${AndIf} ${FileExists} $9
-      StrCpy $1 $9
-    ${EndIf}
-
+    ReadINIStr $9 "$INSTDIR\QMP.ini" "Folders" "PluginFolder"
+	${If} ${FileExists} $9
+      ;if setting not empty, and is valid, set as folder
+	  StrCpy $1 $9
+	${EndIf}
+  ${ElseIf} ${FileExists} "$INSTDIR\QCDPlayer.exe" ; is QCD avaliable
+	StrCpy $QIsQMP "False"
+    StrCpy $1 "$INSTDIR\Plugins"
+    ReadINIStr $9 "$INSTDIR\QCD.ini" "QCD Player" "PluginFolder"
+	${If} ${FileExists} $9
+      ;if setting not empty, and is valid, set as folder
+	  StrCpy $1 $9
+	${EndIf}
+  ${Else} ; set default when nothing
+	StrCpy $QIsQMP "True";
+    StrCpy $1 "$INSTDIR"
   ${EndIf}
 
-;set final out path
   SetOutPath $1
 FunctionEnd
 
+Function .onInit
+  ; Fill default install path to Quinn Player
+  ReadRegStr $INSTDIR HKLM "Software\Quinnware\Quintessential Media Player" ""
+  ${Unless} ${FileExists} "$INSTDIR\QMPlayer.exe" ; no QMP
+    ReadRegStr $INSTDIR HKLM "Software\Quinnware\Quintessential Player" ""
+    ${Unless} ${FileExists} "$INSTDIR\QCDPlayer.exe" ; no QCD
+	  Strcpy $INSTDIR "$PROGRAMFILES\Quintessential Media Player" ; set to default
+	${EndUnless}
+  ${EndUnless}
+FunctionEnd
 
-;************************
-; install your files here
-;************************
-Section
+;**********************
+; Main
+;**********************
+Section "Main"
   Call SetPluginPath
 
-  File "Release\QMPCLIEnc.dll"
-  ${If} ${FileExists} "$OUTDIR\QMPCLIEnc.ep"
-    MessageBox MB_YESNO|MB_DEFBUTTON2 "Do you want to install the default Encoder Preset file (.ep)?$\r$\nNote: This will overwrite the preset file which you're using!!" IDYES 0 IDNO noep
-      File "QMPCLIEnc.ep"
-noep:
+  ; Put file there
+  ${If} $QIsQMP == "True"
+    File "/oname=QMPCLIEnc.dll" "Release\QMPCLIEnc.dll"
+    ${If} ${FileExists} "$OUTDIR\QMPCLIEnc.xml"
+      MessageBox MB_YESNO|MB_DEFBUTTON2 "Do you want to install the default Encoder Preset file (.xml)?$\r$\nNote: This will overwrite the preset file which you're using!!" IDYES 0 IDNO qmpnoep
+        File "/oname=QMPCLIEnc.xml" "QMPCLIEnc.xml"
+qmpnoep:
+    ${Else}
+      File "/oname=QMPCLIEnc.xml" "QMPCLIEnc.xml"
+    ${EndIf}
   ${Else}
-    File "QMPCLIEnc.ep"
-  ${EndIf}
+    File "/oname=QCDCLIEnc.dll" "Release\QMPCLIEnc.dll"
+      ${If} ${FileExists} "$OUTDIR\QCDCLIEnc.xml"
+      MessageBox MB_YESNO|MB_DEFBUTTON2 "Do you want to install the default Encoder Preset file (.ep)?$\r$\nNote: This will overwrite the preset file which you're using!!" IDYES 0 IDNO qcdnoep
+        File "/oname=QCDCLIEnc.xml" "QMPCLIEnc.xml"
+qcdnoep:
+    ${Else}
+      File "/oname=QCDCLIEnc.xml" "QMPCLIEnc.xml"
+    ${EndIf}
+  ${Endif}
 SectionEnd
