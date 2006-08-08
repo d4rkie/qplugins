@@ -19,24 +19,38 @@
 //
 //-----------------------------------------------------------------------------
 
+#include "stdafx.h"
+
 #include ".\qmpclienc.h"
+
+#include "ParentDlg.h"
+#include "AboutDlg.h"
+
+#include "QMPTagService.h"
 
 #define PLUGIN_NAME "CLI Encoder"
 #define PLUGIN_FULL_NAME "Commandline Encoder"
-#define PLUGIN_VERSION "v1.0b4"
+#define PLUGIN_VERSION "v1.5"
 
 HINSTANCE		hInstance, hBrandInstance;
 HWND			hwndParent;
 QCDModInitEnc	QCDCallbacks;
 
-QCLIEncoderPreset	g_cliEP;
-QCLIEncoder			g_cliEnc;
-ENCODER_PRESET		g_epCur;
-BOOL				g_bNoWAVHeader;
-BOOL				g_bShowConsole;
-TCHAR				g_szEPFile[MAX_PATH];
+CString		g_strPath;
+CString		g_strParameter;
+CString		g_strExtension;
+QCLIEncoder	g_cliEnc;
+BOOL		g_bDoTag;
+BOOL		g_bNoWAVHeader;
+BOOL		g_bShowConsole;
+TCHAR		g_szEPFile[MAX_PATH];
 
 int	prefPageID;
+CString g_strSrc, g_strDst, g_strExt;
+
+CParentDlg * g_pdlgParent;
+
+INT_PTR CALLBACK PPPDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 //-----------------------------------------------------------------------------
 
@@ -76,37 +90,38 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 	modInfo->moduleString = PLUGIN_FULL_NAME " " PLUGIN_VERSION;
 	modInfo->moduleExtensions = PLUGIN_NAME;
 
-	hwndParent = (HWND)QCDCallbacks.Service(opGetParentWnd, 0, 0, 0);
+	hwndParent = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
 
 	// load settings
-	QCDCallbacks.Service(opGetPluginSettingsFile, inifile, MAX_PATH, 0);
+	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
 
 	char value[MAX_PATH];
-	GetPrivateProfileString(PLUGIN_NAME, _T("Path"), _T("LAME.EXE"), value, MAX_PATH, inifile);
-	g_epCur.m_strPath = value;
-	GetPrivateProfileString(PLUGIN_NAME, _T("Parameter"), _T("--alt-preset standard - %d"), value, MAX_PATH, inifile);
-	g_epCur.m_strParameter = value;
-	GetPrivateProfileString(PLUGIN_NAME, _T("Extension"), _T("mp3"), value, MAX_PATH, inifile);
-	g_epCur.m_strExtension = value;
+	GetPrivateProfileString( PLUGIN_NAME, _T("Path"), _T("LAME.EXE"), value, MAX_PATH, inifile);
+	g_strPath = value;
+	GetPrivateProfileString( PLUGIN_NAME, _T("Parameter"), _T("--alt-preset standard - %d"), value, MAX_PATH, inifile);
+	g_strParameter = value;
+	GetPrivateProfileString( PLUGIN_NAME, _T("Extension"), _T("mp3"), value, MAX_PATH, inifile);
+	g_strExtension = value;
 
-	g_bNoWAVHeader = GetPrivateProfileInt(PLUGIN_NAME, _T("NoWAVHeader"), 0, inifile);
-	g_bShowConsole = GetPrivateProfileInt(PLUGIN_NAME, _T("ShowConsole"), 0, inifile);
+	g_bDoTag = GetPrivateProfileInt( PLUGIN_NAME, _T("DoTag"), 1, inifile);
+	g_bNoWAVHeader = GetPrivateProfileInt( PLUGIN_NAME, _T("NoWAVHeader"), 0, inifile);
+	g_bShowConsole = GetPrivateProfileInt( PLUGIN_NAME, _T("ShowConsole"), 0, inifile);
 
 	GetModuleFileName( hInstance, g_szEPFile, MAX_PATH);
 	CString tmp = g_szEPFile;
-	tmp.Format( _T("%s.ep"), tmp.Left( tmp.ReverseFind( '.')));
-	GetPrivateProfileString(PLUGIN_NAME, _T("EPFile"), tmp, g_szEPFile, MAX_PATH, inifile);
+	tmp.Format( _T("%s.xml"), tmp.Left( tmp.ReverseFind( '.')));
+	GetPrivateProfileString( PLUGIN_NAME, _T("EPFile"), tmp, g_szEPFile, MAX_PATH, inifile);
 
 
 	// init config dialog
 	PluginPrefPage prefPage;
 	prefPage.struct_size = sizeof(prefPage);
 	prefPage.hModule = hInstance;
-	prefPage.lpTemplate = MAKEINTRESOURCEW(IDD_PARENT);
+	prefPage.lpTemplate = MAKEINTRESOURCEW(IDD_PPP);
 	prefPage.lpDisplayText = L"CLI Encoder";
-	prefPage.lpDialogFunc = ParentDlgProc;
+	prefPage.lpDialogFunc = PPPDlgProc;
 	prefPage.nCategory = PREFPAGE_CATEGORY_ENCODEFORMAT;
-	prefPageID = QCDCallbacks.Service(opSetPluginPage, &prefPage, 0, 0);
+	prefPageID = QCDCallbacks.Service( opSetPluginPage, &prefPage, 0, 0);
 
 	// return TRUE for successful initialization
 	return TRUE;
@@ -119,57 +134,62 @@ void ShutDown(int flags)
 	char inifile[MAX_PATH];
 	char value[32];
 
-	Complete(0); // forece completing
+	Complete(0); // force completing
 
-	QCDCallbacks.Service(opGetPluginSettingsFile, inifile, MAX_PATH, 0);
+	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
 
-	WritePrivateProfileString(PLUGIN_NAME, _T("Path"), g_epCur.m_strPath, inifile);
-	WritePrivateProfileString(PLUGIN_NAME, _T("Parameter"), g_epCur.m_strParameter, inifile);
-	WritePrivateProfileString(PLUGIN_NAME, _T("Extension"), g_epCur.m_strExtension, inifile);
+	WritePrivateProfileString( PLUGIN_NAME, _T("Path"), g_strPath, inifile);
+	WritePrivateProfileString( PLUGIN_NAME, _T("Parameter"), g_strParameter, inifile);
+	WritePrivateProfileString( PLUGIN_NAME, _T("Extension"), g_strExtension, inifile);
 
+	wsprintf(value, _T("%i"), g_bDoTag);
+	WritePrivateProfileString( PLUGIN_NAME, _T("DoTag"), value, inifile);
 	wsprintf(value, _T("%i"), g_bNoWAVHeader);
-	WritePrivateProfileString(PLUGIN_NAME, _T("NoWAVHeader"), value, inifile);
+	WritePrivateProfileString( PLUGIN_NAME, _T("NoWAVHeader"), value, inifile);
 	wsprintf(value, _T("%i"), g_bShowConsole);
-	WritePrivateProfileString(PLUGIN_NAME, _T("ShowConsole"), value, inifile);
+	WritePrivateProfileString( PLUGIN_NAME, _T("ShowConsole"), value, inifile);
 
-	WritePrivateProfileString(PLUGIN_NAME, _T("EPFile"), g_szEPFile, inifile);
+	WritePrivateProfileString( PLUGIN_NAME, _T("EPFile"), g_szEPFile, inifile);
 }
 
 //-----------------------------------------------------------------------------
 
 BOOL Open(LPCSTR outFile, LPCSTR srcFile, WAVEFORMATEX *wf, LPSTR openedFilename, int openedFilenameSize)
 {
-	CString cmdline, src, dst, tmp;
+	CString cmdline, tmp;
 	BOOL temp_mode = FALSE;
 
-	// det-file
-	dst = outFile;
-	dst += '.';
-	dst += g_epCur.m_strExtension;
+	// destination file
+	g_strDst = outFile;
+	g_strDst += '.';
+	g_strDst += g_strExtension;
 
-	// src-file
-	src = srcFile;
+	// source file
+	g_strSrc = srcFile;
 
-	// make commandline
-	tmp = g_epCur.m_strPath;
-	tmp.Trim('\"');
+	// remember extension for tagging
+	g_strExt = g_strExtension;
+
+	// make command line
+	tmp = g_strPath;
+	tmp.Remove('\"');
 
 	cmdline = '\"';
-	cmdline += tmp + _T("\" ") + g_epCur.m_strParameter;
+	cmdline += tmp + _T("\" ") + g_strParameter;
 
 	// fix for .vbs script file
-	if ( g_epCur.m_strPath.Mid( g_epCur.m_strPath.ReverseFind( '.'), 4) == _T(".vbs")) {
+	if ( g_strPath.Mid( g_strPath.ReverseFind( '.'), 4) == _T(".vbs")) {
 		tmp = _T("cscript.exe ");
 		cmdline = tmp + cmdline;
 	}
 
 	// Start CLI Encoder
 	if ( !g_cliEnc.Initialize(hwndParent, g_bNoWAVHeader, g_bShowConsole) || 
-        !g_cliEnc.Start(cmdline, dst, wf))
+        !g_cliEnc.Start(cmdline, g_strDst, wf))
 		return FALSE;
 
 	// copy filename of opened file back
-	lstrcpy( openedFilename, dst);
+	lstrcpy( openedFilename, g_strDst);
 
 
 	// The following is recommended since encoders take a lot of CPU and 
@@ -213,6 +233,9 @@ BOOL Complete(int flags)
 {
     g_cliEnc.Stop();
 
+	if ( flags && g_bDoTag) // tagging for normal complete only!
+		TransferTag( g_strSrc, g_strDst, g_strExt);
+
 	return TRUE;
 }
 
@@ -220,18 +243,50 @@ BOOL Complete(int flags)
 
 void Configure(int flags)
 {
-	QCDCallbacks.Service(opShowPluginPage, hInstance, prefPageID, 0);
+	QCDCallbacks.Service( opShowPluginPage, hInstance, prefPageID, 0);
 }
 
 //-----------------------------------------------------------------------------
 
 void About(int flags)
 {
-	DialogBoxIndirect(hInstance, 
-		LoadResDialog(IDD_ABOUT), 
-		(HWND)QCDCallbacks.Service(opGetPropertiesWnd, NULL, 0, 0), 
-		(DLGPROC)AboutDlgProc);
+	CAboutDlg dlgAbout;
+
+	dlgAbout.DoModal( (HWND)QCDCallbacks.Service( opGetPropertiesWnd, NULL, 0, 0));
 }
 
 //-----------------------------------------------------------------------------
+
+INT_PTR CALLBACK PPPDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch ( uMsg)
+	{
+	case WM_INITDIALOG:
+		{
+			if ( g_pdlgParent == NULL) {
+				g_pdlgParent = new CParentDlg;
+				g_pdlgParent->Create( hwndDlg);
+			}
+
+			g_pdlgParent->ShowWindow( SW_SHOW);
+		}
+
+		return TRUE;
+	case WM_PN_DIALOGSAVE:
+		{
+			if ( g_pdlgParent) {
+				if ( g_pdlgParent->IsWindow()) {
+					g_pdlgParent->SendMessage( WM_PN_DIALOGSAVE);
+					g_pdlgParent->DestroyWindow();
+				}
+
+				delete g_pdlgParent; g_pdlgParent = NULL;
+			}
+		}
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
 
