@@ -1,6 +1,8 @@
 // QFile.cpp : 实现文件
 //
 
+#include "stdafx.h"
+
 #include ".\qfile.h"
 
 
@@ -33,9 +35,10 @@ QFile::~QFile(void)
 
 // QFile 成员函数
 
-BOOL QFile::Open(LPCTSTR lpszFileName, UINT nOpenFlags)
+BOOL QFile::Open(LPCSTR lpszFileName, UINT nOpenFlags, BOOL bUnicode)
 {
 	if ( Close()) {
+		// map read/write mode
 		DWORD dwAccess = 0;
 		switch (nOpenFlags & 3)
 		{
@@ -51,7 +54,34 @@ BOOL QFile::Open(LPCTSTR lpszFileName, UINT nOpenFlags)
 		default:
 			return FALSE; // invalid share mode
 		}
-		
+
+		// map share mode
+		DWORD dwShareMode = 0;
+		switch (nOpenFlags & 0x70)    // map compatibility mode to exclusive
+		{
+		default:
+			return FALSE;  // invalid share mode?
+		case shareCompat:
+		case shareExclusive:
+			dwShareMode = 0;
+			break;
+		case shareDenyWrite:
+			dwShareMode = FILE_SHARE_READ;
+			break;
+		case shareDenyRead:
+			dwShareMode = FILE_SHARE_WRITE;
+			break;
+		case shareDenyNone:
+			dwShareMode = FILE_SHARE_WRITE | FILE_SHARE_READ;
+			break;
+		}
+
+		// map modeNoInherit flag
+		SECURITY_ATTRIBUTES sa;
+		sa.nLength = sizeof(sa);
+		sa.lpSecurityDescriptor = NULL;
+		sa.bInheritHandle = (nOpenFlags & modeNoInherit) == 0;
+
 		// map creation flags
 		DWORD dwCreateFlag;
 		if ( nOpenFlags & modeCreate) {
@@ -63,13 +93,29 @@ BOOL QFile::Open(LPCTSTR lpszFileName, UINT nOpenFlags)
 		else
 			dwCreateFlag = OPEN_EXISTING;
 
-		// attempt file creation
-		m_hFile = ::CreateFile( lpszFileName, 
-			dwAccess, 
-			0, NULL, 
-			dwCreateFlag, 
-			FILE_ATTRIBUTE_NORMAL, NULL);
+		// special system-level access flags
 
+		// Random access and sequential scan should be mutually exclusive
+
+		DWORD dwFlags = FILE_ATTRIBUTE_NORMAL;
+		if (nOpenFlags & osNoBuffer)
+			dwFlags |= FILE_FLAG_NO_BUFFERING;
+		if (nOpenFlags & osWriteThrough)
+			dwFlags |= FILE_FLAG_WRITE_THROUGH;
+		if (nOpenFlags & osRandomAccess)
+			dwFlags |= FILE_FLAG_RANDOM_ACCESS;
+		if (nOpenFlags & osSequentialScan)
+			dwFlags |= FILE_FLAG_SEQUENTIAL_SCAN;
+
+		// attempt file creation
+		if ( bUnicode)
+			m_hFile = ::CreateFileW( (LPCWSTR)lpszFileName, 
+			dwAccess, dwShareMode, &sa, dwCreateFlag, dwFlags, 
+			NULL);
+		else
+			m_hFile = ::CreateFile( lpszFileName, 
+			dwAccess, dwShareMode, &sa, dwCreateFlag, dwFlags, 
+			NULL);
 		if ( m_hFile == INVALID_HANDLE_VALUE)
 			return FALSE;
 		else
