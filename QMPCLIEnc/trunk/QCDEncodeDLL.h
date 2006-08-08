@@ -26,7 +26,7 @@
 #define QCDENCODEDLL_H
 
 extern HINSTANCE		hInstance;
-extern HWND				hwndPlayer;
+extern HWND				hwndParent;
 extern QCDModInitEnc	QCDCallbacks;
 
 // Calls from the Player
