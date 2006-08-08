@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Encoders>
+	<Encoder name="LAME">
+		<Preset name="Best Quality (320 kbps)"
+				path="LAME.EXE"
+				parameter="-b 320 - %d"
+				extension="mp3"
+		/>
+		<Preset name="High Quality (~230 kbps)"
+				path="LAME.EXE"
+				parameter="-V 0 --vbr-new - %d"
+				extension="mp3"
+		/>
+		<Preset name="High Quality (~210 kbps)"
+				path="LAME.EXE"
+				parameter="-V 1 --vbr-new - %d"
+				extension="mp3"
+		/>
+		<Preset name="High Quality (~190 kbps)"
+				path="LAME.EXE"
+				parameter="-V 2 --vbr-new - %d"
+				extension="mp3"
+		/>
+		<Preset name="High Quality (~175 kbps)"
+				path="LAME.EXE"
+				parameter="-V 3 --vbr-new - %d"
+				extension="mp3"
+		/>
+		<Preset name="Portable (~160 kbps)"
+				path="LAME.EXE"
+				parameter="-V 4 --vbr-new - %d"
+				extension="mp3"
+		/>
+		<Preset name="Portable (~130 kbps)"
+				path="LAME.EXE"
+				parameter="-V 5 --vbr-new - %d"
+				extension="mp3"
+		/>
+		<Preset name="Portable (~115 kbps)"
+				path="LAME.EXE"
+				parameter="-V 6 --vbr-new - %d"
+				extension="mp3"
+		/>
+		<Preset name="Voice Mono (~80 kbps)"
+				path="LAME.EXE"
+				parameter="--abr 56 -mm - %d"
+				extension="mp3"
+		/>
+	</Encoder>
+	<Encoder name="MPC">
+		<Preset name="Standard (~170 kbps)"
+				path="MPPENC.EXE"
+				parameter="--quality 5 - %d"
+				extension="mpc"
+		/>
+		<Preset name="Xtreme (~200 kbps)"
+				path="MPPENC.EXE"
+				parameter="--quality 6 - %d"
+				extension="mpc"
+		/>
+		<Preset name="Insane (~220 kbps)"
+				path="MPPENC.EXE"
+				parameter="--quality 7 - %d"
+				extension="mpc"
+		/>
+	</Encoder>
+	<Encoder name="FAAC">
+		<Preset name="-q 100"
+				path="FAAC.EXE"
+				parameter="-w -q 100 -c 16000 - -o %d"
+				extension="mp4"
+		/>
+		<Preset name="-q 150"
+				path="FAAC.EXE"
+				parameter="-w -q 150 -c 21000 - -o %d"
+				extension="mp4"
+		/>
+	</Encoder>
+	<Encoder name="Vorbis">
+		<Preset name="-q 4"
+				path="OGGENC.EXE"
+				parameter="-q 4 - -o %d"
+				extension="ogg"
+		/>
+		<Preset name="-q 5"
+				path="OGGENC.EXE"
+				parameter="-q 5 - -o %d"
+				extension="ogg"
+		/>
+		<Preset name="-q 6"
+				path="OGGENC.EXE"
+				parameter="-q 6 - -o %d"
+				extension="ogg"
+		/>
+	</Encoder>
+	<Encoder name="Speex">
+		<Preset name="vbr"
+				path="SPEEXENC.EXE"
+				parameter="--vbr - %d"
+				extension="spx"
+		/>
+	</Encoder>
+	<Encoder name="Monkey's Audio">
+		<Preset name="Fast (-c1000)"
+				path="MAC.EXE"
+				parameter="%s %d -c1000"
+				extension="ape"
+		/>
+		<Preset name="Normal (-c2000)"
+				path="MAC.EXE"
+				parameter="%s %d -c2000"
+				extension="ape"
+		/>
+		<Preset name="High (-c3000)"
+				path="MAC.EXE"
+				parameter="%s %d -c3000"
+				extension="ape"
+		/>
+		<Preset name="Extra High (-c4000)"
+				path="MAC.EXE"
+				parameter="%s %d -c4000"
+				extension="ape"
+		/>
+		<Preset name="Insane (-c5000)"
+				path="MAC.EXE"
+				parameter="%s %d -c5000"
+				extension="ape"
+		/>
+	</Encoder>
+	<Encoder name="WavPack">
+		<Preset name="Default"
+				path="WAVPACK.EXE"
+				parameter="-h - %d"
+				extension="wv"
+		/>
+	</Encoder>
+	<Encoder name="FLAC">
+		<Preset name="Default"
+				path="FLAC.EXE"
+				parameter="- -o %d"
+				extension="flac"
+		/>
+		<Preset name="Fast"
+				path="FLAC.EXE"
+				parameter="--fast - -o %d"
+				extension="flac"
+		/>
+		<Preset name="Best"
+				path="FLAC.EXE"
+				parameter="--best - -o %d"
+				extension="flac"
+		/>
+	</Encoder>
+	<Encoder name="OptimFrog">
+		<Preset name="Default"
+				path="OFR.EXE"
+				parameter="--encode - --output %d"
+				extension="ofr"
+		/>
+	</Encoder>
+	<Encoder name="OptimFrog DualStream">
+		<Preset name="Default"
+				path="OFS.EXE"
+				parameter="--encode --quality 3 - --output %d"
+				extension="ofs"
+		/>
+	</Encoder>
+	<Encoder name="TTA">
+		<Preset name="Default"
+				path="TTAENC.EXE"
+				parameter="-e -o %d %s"
+				extension="tta"
+		/>
+	</Encoder>
+</Encoders>
