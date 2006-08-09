@@ -81,7 +81,6 @@ public:
 			::ShowWindow( (HWND)tie.lParam, SW_HIDE);
 			m_ctrlTab.GetItem( sel, &tie);
 			::ShowWindow( (HWND)tie.lParam, SW_SHOW);
-			::SetFocus( (HWND)tie.lParam);
 
 			SetWindowLongPtr( GWLP_USERDATA, sel);
 		}
