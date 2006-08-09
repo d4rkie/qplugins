@@ -28,11 +28,13 @@ public:
 
 protected:
 	CFont m_fntEditFont;
+	CRect m_rcEdit;
 
 public:
 	// Map
 	BEGIN_MSG_MAP(CTreeEdit)
 		MSG_WM_GETDLGCODE(OnGetDlgCode)
+		MSG_WM_SIZE(OnSize)
 	END_MSG_MAP()
 
 	UINT OnGetDlgCode(LPMSG lpMessage)
@@ -40,22 +42,26 @@ public:
 		return DLGC_WANTALLKEYS;
 	}
 
-	BOOL SubclassWindow(HWND hWnd, CRect & rcRect)
+	void OnSize(UINT nSide, CSize size)
+	{
+		SetWindowPos( NULL, m_rcEdit.left, m_rcEdit.top, m_rcEdit.Width(), m_rcEdit.Height(), SWP_NOZORDER);
+
+		SetFont( m_fntEditFont);
+
+		SetMargins( ITEM_EDIT_MARGIN, ITEM_EDIT_MARGIN);
+	}
+
+	BOOL SubclassWindow(HWND hWnd, CRect rcRect, CFont & font)
 	{
 		if ( CWindowImpl< CTreeEdit, CEdit >::SubclassWindow(hWnd)) {
-			SetWindowPos( NULL, rcRect.left + 2, rcRect.top + 3, rcRect.Width() - 5, rcRect.Height() - 5, SWP_NOZORDER);
+			rcRect.left += 2;
+			rcRect.top += 2;
+			rcRect.right -=3;
+			rcRect.bottom -= 2;
 
-			// get system message font
-			CLogFont logFont;
-			logFont.SetMessageBoxFont();
-			if ( !m_fntEditFont.IsNull())
-				m_fntEditFont.DeleteObject();
-			if ( m_fntEditFont.CreateFontIndirect( &logFont ) == NULL)
-				return FALSE;
+			m_rcEdit = rcRect;
 
-			SetFont( m_fntEditFont);
-
-			SetMargins( ITEM_EDIT_MARGIN, ITEM_EDIT_MARGIN);
+            m_fntEditFont = font;
 
 			return TRUE;
 		} else {
@@ -340,7 +346,7 @@ public:
 		CRect rect;
 		GetSelectedItem().GetRect( &rect, TRUE);
 
-		m_wndEdit.SubclassWindow( edit.m_hWnd, rect);
+		m_wndEdit.SubclassWindow( edit.m_hWnd, rect, m_fntTreeFont);
 
 		return FALSE;
 	}
@@ -349,7 +355,7 @@ public:
 	{
 		m_wndEdit.UnsubclassWindow();
 
-		return TRUE;
+		return FALSE;
 	}
 
 	LRESULT OnBeginDrag(LPNMHDR lpNMHDR)
@@ -486,7 +492,7 @@ public:
 
 		// draw selected background and border
 		if ( bSelected) {
-			BOOL bControlFocus = ( GetFocus() == m_hWnd);
+			BOOL bControlFocus = ( GetFocus() == m_hWnd || GetFocus() == GetEditControl() );
 			CRect rcSelect( rcItem);
 
 			CPen penBorder;
@@ -536,7 +542,8 @@ public:
 			dcPaint.SelectFont( m_fntTreeFont);
 			dcPaint.SetTextColor( m_rgbItemText);
 			dcPaint.SetBkMode( TRANSPARENT);
-			dcPaint.DrawText( strItemText, strItemText.GetLength(), rcItemText, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_VCENTER);
+			if ( !GetEditControl().m_hWnd || !bSelected)
+				dcPaint.DrawText( strItemText, strItemText.GetLength(), rcItemText, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_VCENTER);
 		}
 
 		dcPaint.RestoreDC( nContextState);
