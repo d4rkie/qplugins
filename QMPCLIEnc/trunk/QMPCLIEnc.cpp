@@ -98,7 +98,7 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 	char value[MAX_PATH];
 	GetPrivateProfileString( PLUGIN_NAME, _T("Path"), _T("LAME.EXE"), value, MAX_PATH, inifile);
 	g_strPath = value;
-	GetPrivateProfileString( PLUGIN_NAME, _T("Parameter"), _T("--alt-preset standard - %d"), value, MAX_PATH, inifile);
+	GetPrivateProfileString( PLUGIN_NAME, _T("Parameter"), _T("-V 2 --vbr-new - %d"), value, MAX_PATH, inifile);
 	g_strParameter = value;
 	GetPrivateProfileString( PLUGIN_NAME, _T("Extension"), _T("mp3"), value, MAX_PATH, inifile);
 	g_strExtension = value;
@@ -184,8 +184,8 @@ BOOL Open(LPCSTR outFile, LPCSTR srcFile, WAVEFORMATEX *wf, LPSTR openedFilename
 	}
 
 	// Start CLI Encoder
-	if ( !g_cliEnc.Initialize(hwndParent, g_bNoWAVHeader, g_bShowConsole) || 
-        !g_cliEnc.Start(cmdline, g_strDst, wf))
+	g_cliEnc.Initialize(hwndParent, g_bNoWAVHeader, g_bShowConsole);
+	if ( !g_cliEnc.Start(cmdline, g_strDst, wf))
 		return FALSE;
 
 	// copy filename of opened file back
