@@ -161,9 +161,11 @@ LPTSTR QFile::ReadString(LPTSTR lpsz, UINT nMax)
 
 	BOOL end = FALSE;
 	if ( Read(&byte_r, 1)) {
+		UINT n;
+
 		byte_w = byte_r;
-		for ( UINT n = 0; n < nMax - 1 && Read( &byte_r, 1); n++) {
-			if ( byte_w == 0x0d && byte_r == 0x0a) { // OK, we've reached the end of a line
+		for ( n = 0; n < nMax - 1 && Read( &byte_r, 1); n++) {
+			if ( byte_w == 0x0d && byte_r == 0x0a) { // OK, we have reached the end of a line
 				end = TRUE;
 				break;
 			} else {
