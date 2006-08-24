@@ -4,6 +4,7 @@
 
 #include "QMPCLIEnc.h"
 #include "TreeCtrl.h"
+#include "ToolTipDialog.h"
 #import <msxml3.dll>
 
 
@@ -11,7 +12,8 @@
 
 class CPresetsDlg :
 	public CDialogImpl< CPresetsDlg >, 
-	public CWinDataExchange< CPresetsDlg >
+	public CWinDataExchange< CPresetsDlg >, 
+	public CToolTipDialog< CPresetsDlg >
 {
 public:
 	CPresetsDlg(void)
@@ -33,6 +35,7 @@ public:
 
 	// Maps
 	BEGIN_MSG_MAP(CPresetsDlg)
+		CHAIN_MSG_MAP(CToolTipDialog< CPresetsDlg >)
 		MSG_WM_INITDIALOG(OnInitDialog)
 		COMMAND_ID_HANDLER_EX(IDC_NEW, OnNew)
 		COMMAND_ID_HANDLER_EX(IDC_DELETE, OnDelete)
@@ -91,6 +94,11 @@ public:
 
 		// fill tree view
 		_fillTree();
+
+		// set property of tool tip control
+		GetTT().SetDelayTime( TTDT_AUTOPOP, 10000); // set the show delay to 10 seconds
+		GetTT().SetMaxTipWidth( 500); // enable multi-line tooltips
+
 
 		return TRUE;
 	}

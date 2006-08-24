@@ -3,13 +3,15 @@
 #include "stdafx.h"
 
 #include "QMPCLIEnc.h"
+#include "ToolTipDialog.h"
 
 
 //////////////////////////////////////////////////////////////////////////
 
 class CSettingsDlg :
 	public CDialogImpl< CSettingsDlg >, 
-	public CWinDataExchange< CSettingsDlg >
+	public CWinDataExchange< CSettingsDlg >, 
+	public CToolTipDialog< CSettingsDlg >
 {
 public:
 	CSettingsDlg(void) {}
@@ -21,9 +23,12 @@ public:
 
 	// Maps
 	BEGIN_MSG_MAP(CSettingsDlg)
+		CHAIN_MSG_MAP(CToolTipDialog< CSettingsDlg >)
 		MSG_WM_INITDIALOG(OnInitDialog)
 		COMMAND_ID_HANDLER_EX(IDC_BROWSE_PATH, OnBrowsePath)
 		MESSAGE_HANDLER_EX(WM_PN_DIALOGSAVE, OnDialogSave)
+		//MESSAGE_RANGE_HANDLER_EX(WM_MOUSEFIRST, WM_MOUSELAST, OnMouseMessage)
+		//NOTIFY_CODE_HANDLER_EX(TTN_GETDISPINFO, OnToolTipNotify)
 	END_MSG_MAP()
 
 	// DDX
@@ -42,6 +47,18 @@ public:
 		// DDX controls, Hook it.
 		DoDataExchange( FALSE);
 
+		//// Create the tool tip control
+		//m_ctrlToolTip.Create( m_hWnd, NULL, NULL, TTS_NOPREFIX | TTS_BALLOON);
+		//m_ctrlToolTip.SetMaxTipWidth( 500);
+
+		//// add tools
+		//CToolInfo ti(TTF_SUBCLASS, GetDlgItem( IDC_PARAMETER));
+		//m_ctrlToolTip.AddTool( ti);
+
+		// set property of tool tip control
+		GetTT().SetDelayTime( TTDT_AUTOPOP, 10000); // set the show delay to 10 seconds
+		GetTT().SetMaxTipWidth( 500); // enable multi-line tooltips
+
 		return TRUE;
 	}
 
@@ -53,6 +70,28 @@ public:
 			SetDlgItemText( IDC_PATH, fileDlg.m_szFileName);
 	}
 
+	//LRESULT OnToolTipNotify(LPNMHDR lpNMHDR)
+	//{
+	//	LPNMTTDISPINFO lpTTDI = (LPNMTTDISPINFO)lpNMHDR;
+
+	//	if ( lpTTDI->hdr.idFrom == (UINT_PTR)GetDlgItem( IDC_PARAMETER).m_hWnd) { // Tool tip for parameter edit control
+	//		m_strToolTip.LoadString( IDS_TT_PARAMETER);
+	//		lpTTDI->lpszText = (LPTSTR)(LPCTSTR)m_strToolTip;
+	//	}
+
+	//	return TRUE;
+	//}
+
+	//LRESULT OnMouseMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
+	//{
+	//	MSG msg = { m_hWnd, uMsg, wParam, lParam };
+	//	if ( m_ctrlToolTip.IsWindow())
+	//		m_ctrlToolTip.RelayEvent( &msg);
+	//	
+	//	SetMsgHandled( FALSE);
+	//	return TRUE;
+	//}
+
 	LRESULT OnDialogSave(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		DoDataExchange( TRUE);
@@ -61,5 +100,7 @@ public:
 
 
 private: // DDX Vars
+	CToolTipCtrl m_ctrlToolTip;
+	CString m_strToolTip;
 };
 
