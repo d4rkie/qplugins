@@ -5,6 +5,8 @@
 
 #pragma once
 
+#pragma warning ( disable : 4996 )
+
 // Change these values to use different versions
 #ifndef WINVER
 #define WINVER			0x0500
