@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="QMPCLIEnc"
 	ProjectGUID="{51C48787-9E7F-4DB0-B6F3-965573419924}"
+	RootNamespace="QMPCLIEnc"
 	>
 	<Platforms>
 		<Platform
@@ -184,6 +185,7 @@
 			/>
 			<Tool
 				Name="VCBscMakeTool"
+				SuppressStartupBanner="true"
 			/>
 			<Tool
 				Name="VCFxCopTool"
