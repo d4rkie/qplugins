@@ -46,6 +46,28 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDC_PARAMETER           "REQUIRE\r\n   ""-"": Stdin for most pipeline encoders.\r\n  ""%d"": Output file determined by player.\r\n\r\nOPTIONAL\r\n  ""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_PAR                 "REQUIRE\r\n   ""-"": Stdin for most pipeline encoders.\r\n  ""%d"": Output file determined by player.\r\n\r\nOPTIONAL\r\n  ""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_NO_WAV_HEADER       "NOT RECOMMEND\r\n  Plug-in will not send the wav header data to encoder.\r\n  Only for some special encoders. Use on your own risk."
+    IDC_SHOW_CONSOLE        "OPTIONAL\r\n  Display the console window when encode from a internal \r\n  temporary file to final output file.\r\n  Only available when the ""%s"" parameter is enabled."
+END
+
 #endif    // 中文(中华人民共和国) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -101,28 +123,22 @@ BEGIN
     PUSHBUTTON      "...",IDC_BROWSE_PATH,239,20,13,14
     EDITTEXT        IDC_PARAMETER,54,38,198,14,ES_AUTOHSCROLL
     EDITTEXT        IDC_EXTENSION,54,56,40,14,ES_AUTOHSCROLL
-    CONTROL         "Don't write WAV header",IDC_NO_WAV_HEADER,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,15,121,93,10
-    CONTROL         "Show console window",IDC_SHOW_CONSOLE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,15,132,85,10
+    CONTROL         "Don't write WAV header",IDC_NO_WAV_HEADER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,121,93,10
+    CONTROL         "Show console window",IDC_SHOW_CONSOLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,132,85,10
     LTEXT           "Encoder Path: ",IDC_STATIC,11,23,48,8
     LTEXT           "Extension: ",IDC_STATIC,11,57,37,8
     LTEXT           "Paramater: ",IDC_STATIC,11,41,39,8
     GROUPBOX        "Encoder Settings",IDC_STATIC,7,7,252,70
     GROUPBOX        "Generic Settings",IDC_STATIC,7,109,252,38
     GROUPBOX        "Tagging",IDC_STATIC,7,80,252,25
-    CONTROL         "Create tags on new files",IDC_DO_TAG,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,15,91,94,10
+    CONTROL         "Create tags on new files",IDC_DO_TAG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,91,94,10
 END
 
 IDD_PRESETS DIALOGEX 0, 0, 266, 156
 STYLE DS_SETFONT | DS_FIXEDSYS | DS_CONTROL | WS_CHILD
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
-    CONTROL         "",IDC_EP_TREE,"SysTreeView32",TVS_HASBUTTONS | 
-                    TVS_HASLINES | TVS_LINESATROOT | TVS_EDITLABELS | 
-                    TVS_DISABLEDRAGDROP | TVS_SHOWSELALWAYS | TVS_NOTOOLTIPS | 
-                    WS_BORDER | WS_TABSTOP,7,7,194,71
+    CONTROL         "",IDC_EP_TREE,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_EDITLABELS | TVS_DISABLEDRAGDROP | TVS_SHOWSELALWAYS | TVS_NOTOOLTIPS | WS_BORDER | WS_TABSTOP,7,7,194,71
     EDITTEXT        IDC_PAT,64,93,173,14,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_BP,241,93,13,14
     EDITTEXT        IDC_PAR,55,111,199,14,ES_AUTOHSCROLL
@@ -139,16 +155,13 @@ BEGIN
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 219, 119
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
-    WS_SYSMENU
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,84,92,50,14
-    CTEXT           "Version 1.5\nLast modified August 2006",IDC_STATIC,23,
-                    56,172,16
-    CTEXT           "Ability to write audio data to various media formats with command line encoders.",
-                    IDC_STATIC,24,22,172,26
+    CTEXT           "Version 1.5\nLast modified August 2006",IDC_STATIC,23,56,172,16
+    CTEXT           "Ability to write audio data to various media formats with command line encoders.",IDC_STATIC,24,22,172,26
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,77,65,8
     LTEXT           "QPlugins",IDC_URL_VENDOR,129,77,33,8
