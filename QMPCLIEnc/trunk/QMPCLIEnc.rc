@@ -54,18 +54,19 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDC_PARAMETER           "REQUIRE\r\n   ""-"": Stdin for most pipeline encoders.\r\n  ""%d"": Output file determined by player.\r\n\r\nOPTIONAL\r\n  ""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
+    IDC_PARAMETER           """-"": Stdin for most pipeline encoders.\r\n""%d"": Output file determined by player.\r\n\r\n""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
 END
 
 STRINGTABLE 
 BEGIN
-    IDC_PAR                 "REQUIRE\r\n   ""-"": Stdin for most pipeline encoders.\r\n  ""%d"": Output file determined by player.\r\n\r\nOPTIONAL\r\n  ""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
+    IDC_EP_TREE             "Press ""F2"" key to edit lable.\r\nDouble click preset item to load it."
+    IDC_PAR                 """-"": Stdin for most pipeline encoders.\r\n""%d"": Output file determined by player.\r\n\r\n""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
 END
 
 STRINGTABLE 
 BEGIN
-    IDC_NO_WAV_HEADER       "NOT RECOMMEND\r\n  Plug-in will not send the wav header data to encoder.\r\n  Only for some special encoders. Use on your own risk."
-    IDC_SHOW_CONSOLE        "OPTIONAL\r\n  Display the console window when encode from a internal \r\n  temporary file to final output file.\r\n  Only available when the ""%s"" parameter is enabled."
+    IDC_NO_WAV_HEADER       "Plug-in will not send the wav header data to encoder.\r\nOnly for some special encoders. Caution use! or you know what it is."
+    IDC_SHOW_CONSOLE        "Display the console window when encode from a internal \r\ntemporary file to final output file.\r\nOnly available when the ""%s"" parameter is enabled."
 END
 
 #endif    // 中文(中华人民共和国) resources
