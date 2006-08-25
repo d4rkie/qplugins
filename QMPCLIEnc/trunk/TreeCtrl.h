@@ -331,9 +331,11 @@ public:
 				if ( aSelectedItems[ nItem ] != hSelectedItem)
 					SetCheckState( aSelectedItems[ nItem ], !bChecked);
 			}
-		} else if ( _istalnum( nChar)) {
+		} else if ( (nChar >= '0' && nChar <= '9') || (nChar >= 'A' && nChar <= 'Z')) {
 			m_hFirstSelected = NULL;
 			ResetSelected( GetRootItem());
+		} else if ( nChar == VK_F2) {
+			EditLabel( GetSelectedItem());
 		}
 
 		SetMsgHandled( FALSE);
