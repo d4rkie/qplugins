@@ -83,6 +83,11 @@ public:
 		{ m_TT.DelTool( hTool );}
 	void TTRemove( UINT idTool )
 		{ TTRemove( GetHWND( idTool ));}
+	
+	void TTSetTitle( HWND hTool, UINT uIcon, LPCTSTR lpstrTitle)
+		{ SetProp( hTool, "ICON", (HANDLE)uIcon); SetProp( hTool, "TITLE", (HANDLE)lpstrTitle);}
+	void TTSetTitle( UINT idTool, UINT uIcon, LPCTSTR lpstrTitle)
+		{ TTSetTitle( GetHWND( idTool), uIcon, lpstrTitle);}
 // Message map and handlers
 	BEGIN_MSG_MAP(CToolTipDialog)
 		MESSAGE_RANGE_HANDLER(WM_MOUSEFIRST,WM_MOUSELAST, OnMouse)
@@ -113,6 +118,11 @@ public:
 		int idTool = ::GetWindowLong( (HWND)lpTTDI->hdr.idFrom, GWL_ID );
 		m_strToolTip.LoadString( idTool );
 		lpTTDI->lpszText = (LPTSTR)(LPCTSTR)m_strToolTip;
+
+		LPTSTR title = (LPTSTR)GetProp( (HWND)lpTTDI->hdr.idFrom, "TITLE");
+		UINT icon = (UINT)GetProp( (HWND)lpTTDI->hdr.idFrom, "ICON");
+		if ( title)
+			m_TT.SetTitle( icon, title);
 
 		return TRUE;
 	}
