@@ -99,6 +99,9 @@ public:
 		GetTT().SetDelayTime( TTDT_AUTOPOP, 10000); // set the show delay to 10 seconds
 		GetTT().SetMaxTipWidth( 500); // enable multi-line tooltips
 
+		// set icon and title of tool tip control
+		TTSetTitle( IDC_EP_TREE, 1, "Tips");
+		TTSetTitle( IDC_PAR, 1, "REQUIRED");
 
 		return TRUE;
 	}
