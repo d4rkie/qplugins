@@ -10,6 +10,7 @@
 #include <tchar.h>
 
 const unsigned int PREAMP_RANGE = 24;
+LPCTSTR resolution_table[] = { "16 bit", "24 bit", "32 bit" };
 LPCTSTR noise_shaping_table[] = { "None", "Low", "Medium", "High" };
 LPCTSTR replaygain_table[] = { "Disabled", "Use Track Gain", "Use Album Gain" };
 BOOL firstShow;
@@ -121,7 +122,7 @@ LRESULT CALLBACK NewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return 0L;
 	}
 
-	// set propertysheet first, do it only once
+	// set property sheet first, do it only once
 	if ( uMsg == WM_SIZE) {
 		SetWindowPos( hwnd, NULL, xPrefPos, yPrefPos, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
@@ -147,22 +148,42 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	{
 	case WM_INITDIALOG:
 		{
+			int i;
+			LPTSTR p;
+
 			SetDlgItemText(hwndDlg, IDC_EXTENSIONS, strExtensions);
 
 			// init device list
 			SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_RESETCONTENT, 0, 0);
 			SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)_T("Decoding")); // add decoding first
-			LPTSTR p = NULL;
-			for (int count = 1; p = (LPTSTR)BASS_GetDeviceDescription(count); count++) {
+			p = NULL;
+			for ( i = 1; p = (LPTSTR)BASS_GetDeviceDescription(i); ++i) {
 				SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)p);
 			}
 			SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_SETCURSEL, uDeviceNum, 0);
 
-			CheckDlgButton(hwndDlg, IDC_USE_32FP, bUse32FP);
+			// init resolution list
+			SendDlgItemMessage(hwndDlg, IDC_RESOLUTION, CB_RESETCONTENT, 0, 0);
+			for ( i = 0; i < sizeof(resolution_table)/sizeof(resolution_table[0]); ++i) {
+				SendDlgItemMessage(hwndDlg, IDC_RESOLUTION, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)resolution_table[i]);
+			}
+			SendDlgItemMessage(hwndDlg, IDC_RESOLUTION, CB_SETCURSEL, (uResolution / 8 - 2), 0);
 
+			// init dither controls
+			CheckDlgButton( hwndDlg, IDC_DITHER, !!bDither);
+			for ( i = 0; i < sizeof(noise_shaping_table)/sizeof(noise_shaping_table[0]); ++i)
+				SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)noise_shaping_table[i]);
+			SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_SETCURSEL, uNoiseShaping, 0);
+			EnableWindow( GetDlgItem( hwndDlg, IDC_DITHER), uResolution < 24);
+			ShowWindow( GetDlgItem( hwndDlg, IDC_DITHER), uResolution > 24 ? SW_HIDE : SW_SHOW);
+			EnableWindow( GetDlgItem( hwndDlg, IDC_NOISE_SHAPING), bDither);
+			ShowWindow( GetDlgItem( hwndDlg, IDC_NOISE_SHAPING), uResolution > 24 ? SW_HIDE : SW_SHOW);
+
+			// init priority controls
 			SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_SETRANGE, TRUE, MAKELONG(0, 3));
 			SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_SETPOS, TRUE, 3-uPriority);
 
+			// init misc controls
 			CheckDlgButton(hwndDlg, IDC_EQENABLED, bEqEnabled);
 			CheckDlgButton(hwndDlg, IDC_SHOW_AVG_BITRATE, bShowVBR);
 		}
@@ -189,18 +210,38 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 
 			break;
 		case IDC_DEVICE:
+		case IDC_NOISE_SHAPING:
 			{
 				if (CBN_SELCHANGE == HIWORD(wParam))
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 			}
 
 			break;
-		case IDC_USE_32FP:
+		case IDC_RESOLUTION:
 			{
-				BOOL ck = IsDlgButtonChecked(hwndDlg, IDC_USE_32FP);
-				EnableWindow(GetDlgItem(PropSheet_IndexToHwnd(hwndConfig, 1), IDC_DITHER), ck);
-				EnableWindow(GetDlgItem(PropSheet_IndexToHwnd(hwndConfig, 1), IDC_NOISE_SHAPING), ck);
-				if ( bUse32FP != ck )
+				if ( CBN_SELCHANGE == HIWORD(wParam)) {
+					UINT res = 8 * ( 2 + SendDlgItemMessage( hwndDlg, IDC_RESOLUTION, CB_GETCURSEL, 0, 0));
+					if ( res > 24)
+						CheckDlgButton( hwndDlg, IDC_DITHER, FALSE); // disable dither for 32bit!
+					else if ( res < 24)
+						CheckDlgButton( hwndDlg, IDC_DITHER, !!bDither);
+					else
+						CheckDlgButton( hwndDlg, IDC_DITHER, TRUE); // enable dither for 24bit always
+					EnableWindow( GetDlgItem( hwndDlg, IDC_DITHER), res < 24);
+					ShowWindow( GetDlgItem( hwndDlg, IDC_DITHER), res > 24 ? SW_HIDE : SW_SHOW);
+					EnableWindow( GetDlgItem( hwndDlg, IDC_NOISE_SHAPING), res == 24 ? TRUE : bDither);
+					ShowWindow( GetDlgItem( hwndDlg, IDC_NOISE_SHAPING), res > 24 ? SW_HIDE : SW_SHOW);
+
+					PropSheet_Changed(GetParent( hwndDlg), hwndDlg);
+				}
+			}
+
+			break;
+		case IDC_DITHER:
+			{
+				BOOL ck = IsDlgButtonChecked(hwndDlg, IDC_DITHER);
+				EnableWindow( GetDlgItem( hwndDlg, IDC_NOISE_SHAPING), ck);
+				if ( bDither != ck )
 					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
 			}
 
@@ -270,11 +311,13 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 				break;
 			case PSN_APPLY:
 				{
-					uDeviceNum	= SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
-					bUse32FP	= IsDlgButtonChecked(hwndDlg, IDC_USE_32FP);
-					uPriority	= 3-SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_GETPOS, 0, 0);
-					bEqEnabled	= IsDlgButtonChecked(hwndDlg, IDC_EQENABLED);
-					bShowVBR	= IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE);
+					uDeviceNum		= SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
+					uResolution		= 8 * (2 + SendDlgItemMessage(hwndDlg, IDC_RESOLUTION, CB_GETCURSEL, 0, 0));
+					bDither			= IsDlgButtonChecked(hwndDlg, IDC_DITHER);
+					uNoiseShaping	= SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_GETCURSEL, 0, 0);
+					uPriority		= 3-SendDlgItemMessage(hwndDlg, IDC_PRIORITY, TBM_GETPOS, 0, 0);
+					bEqEnabled		= IsDlgButtonChecked(hwndDlg, IDC_EQENABLED);
+					bShowVBR		= IsDlgButtonChecked(hwndDlg, IDC_SHOW_AVG_BITRATE);
 
 					GetDlgItemText(hwndDlg, IDC_EXTENSIONS, (LPTSTR)(LPCTSTR)strExtensions, MAX_PATH);
 					listExtensions.clear();
@@ -328,12 +371,6 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			SetWindowText(GetDlgItem(hwndDlg, IDC_RG_PA), buffer);
 
 			CheckDlgButton(hwndDlg, IDC_HARD_LIMITER, !!bHardLimiter);
-			CheckDlgButton(hwndDlg, IDC_DITHER, !!bDither);
-			EnableWindow(GetDlgItem(hwndDlg, IDC_DITHER), bUse32FP);
-			for (i = 0; i < sizeof(noise_shaping_table)/sizeof(noise_shaping_table[0]); i++)
-				SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)noise_shaping_table[i]);
-			SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_SETCURSEL, uNoiseShaping, 0);
-			EnableWindow(GetDlgItem(hwndDlg, IDC_NOISE_SHAPING), bUse32FP && bDither);
 			for (i = 0; i < sizeof(replaygain_table)/sizeof(replaygain_table[0]); i++)
 				SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)replaygain_table[i]);
 			SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_SETCURSEL, uReplayGainMode, 0);
@@ -381,16 +418,6 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			}
 			
 			break;
-		case IDC_DITHER:
-			{
-				BOOL ck = IsDlgButtonChecked(hwndDlg, IDC_DITHER);
-				EnableWindow(GetDlgItem(hwndDlg, IDC_NOISE_SHAPING), bUse32FP && ck);
-				if ( bDither != ck )
-					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
-			}
-
-			break;
-		case IDC_NOISE_SHAPING:
 		case IDC_REPLAYGAIN_MODE:
 			{
 				if (CBN_SELCHANGE == HIWORD(wParam))
@@ -442,10 +469,8 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 					nPreAmp			= SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;
 					nRGPreAmp		= SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;
-					uNoiseShaping	= SendDlgItemMessage(hwndDlg, IDC_NOISE_SHAPING, CB_GETCURSEL, 0, 0);
 					uReplayGainMode	= SendDlgItemMessage(hwndDlg, IDC_REPLAYGAIN_MODE, CB_GETCURSEL, 0, 0);
 					bHardLimiter	= IsDlgButtonChecked(hwndDlg, IDC_HARD_LIMITER);
-					bDither			= IsDlgButtonChecked(hwndDlg, IDC_DITHER);
 
 					if ( lppsn->lParam != TRUE) // just press Apply button
 						SetWindowLong(hwndDlg, DWL_MSGRESULT, PSNRET_NOERROR);

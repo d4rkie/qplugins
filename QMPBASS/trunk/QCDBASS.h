@@ -9,7 +9,7 @@
 #include <list>
 using namespace std;
 
-#define PLUGIN_VERSION "v1.0 beta9.3"
+#define PLUGIN_VERSION "v1.0 beta9.4"
 
 
 typedef struct
@@ -30,7 +30,9 @@ extern cfg_int yPrefPos; // left side of property sheet
 
 extern cfg_string strExtensions;
 extern cfg_int uDeviceNum;
-extern cfg_int bUse32FP;
+extern cfg_int uResolution;
+extern cfg_int bDither; // dither
+extern cfg_int uNoiseShaping; // noise shaping
 extern cfg_int uPriority;
 extern cfg_int bEqEnabled;	// enable internal equalizer
 extern cfg_int bShowVBR;	// display VBR bitrate
@@ -41,8 +43,6 @@ extern cfg_int uFadeOut; // fade-out sound
 extern cfg_int nPreAmp; // preamp
 extern cfg_int nRGPreAmp; // RG_preamp
 extern cfg_int bHardLimiter; // 6dB hard limiter
-extern cfg_int bDither; // dither
-extern cfg_int uNoiseShaping; // noise shaping
 extern cfg_int uReplayGainMode; // replaygain mode
 
 extern cfg_int uBufferLen;

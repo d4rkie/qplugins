@@ -13,7 +13,7 @@
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shlwapi.lib")
 
-// some defination for the latest PSDK
+// some definition for the latest PSDK
 #ifndef BIF_NEWDIALOGSTYLE
 #define BIF_NEWDIALOGSTYLE	0x0040
 #define BIF_USENEWUI (BIF_NEWDIALOGSTYLE | BIF_EDITBOX)

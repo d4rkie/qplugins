@@ -532,7 +532,7 @@ int bass::decode ( void *out_buffer, int *out_size )
 		(*out_size)/(get_nch()*get_bps()/8), // # of wide samples
 		get_nch(), // Channels
 		get_bps(), // source_bps
-		dither ? 16 : get_bps(), // target_bps
+		uResolution, // target_bps
 		rg_scale_factor, 
 		hard_limiter, 
 		dither, 

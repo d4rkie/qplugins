@@ -31,12 +31,10 @@
 #define IDS_STREAM_SAVING_OFF           127
 #define IDS_STREAM_SAVING_TOOLTIP       128
 #define IDS_STREAM_SAVING_TOOLTIP_STATUS 129
-#define IDS_ERROR_INVALID_VALUE2        130
 #define IDS_INVALID_VALUE2              130
 #define IDC_HARD_LIMITER                1002
 #define IDC_PRIORITY                    1003
 #define IDC_PREAMP                      1003
-#define IDC_USE_32FP                    1004
 #define IDC_RG_PREAMP                   1004
 #define IDC_BUFFER_LENGTH_UD            1005
 #define IDC_DITHER                      1006
@@ -62,10 +60,11 @@
 #define IDC_PA                          1025
 #define IDC_RG_PA                       1026
 #define IDC_PLUGIN_VERSION              1027
+#define IDC_REPLAYGAIN_MODE2            1027
 #define IDC_ADDONS_LIST                 1028
 #define IDC_ADDONS_DIR                  1030
-#define IDC_ADDONS_MORE                 1031
 #define IDC_ADDONS_LINK                 1031
+#define IDC_RESOLUTION                  1032
 #define IDC_STREAM_SAVING_BAR_GO        1058
 #define IDC_STREAM_SAVING_BAR_SKIP_TITLE 1059
 #define IDC_STREAM_SAVING_BAR_BROWSE    1060
@@ -79,7 +78,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        114
 #define _APS_NEXT_COMMAND_VALUE         40002
-#define _APS_NEXT_CONTROL_VALUE         1032
+#define _APS_NEXT_CONTROL_VALUE         1033
 #define _APS_NEXT_SYMED_VALUE           103
 #endif
 #endif

@@ -27,6 +27,7 @@
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 08-29-06 : Add 24bit resolution support.
 // 04-06-06 : Updated to support BASS v2.3.0.0
 // 02-25-06 : 1. Fixed stream title display bug (for QCD only).
 //            2. New mechanism of destroying config sheet.
@@ -70,7 +71,9 @@ cfg_int yPrefPos("QCDBASS", "yPrefPos", 300);		// left side of property sheet
 
 cfg_string strExtensions("QCDBASS", "Extensions", "MP3:OGG:WAV:MP2:MP1:AIFF:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
 cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0);		// 0=decode, 1...=use internal output module
-cfg_int bUse32FP("QCDBASS", "Use32FP", TRUE);		// enable 32-bit floating-point sample resolution
+cfg_int uResolution("QCDBASS", "Resolution", 32);    // 16=16bit, 24=24bit, 32=32bit(floating point)
+cfg_int bDither("QCDBASS", "Dither", 0);			// dither
+cfg_int uNoiseShaping("QCDBASS", "NoiseShaping", 1);// noise shaping
 cfg_int uPriority("QCDBASS", "Priority", 2);		// thread priority, 0=normal, 1=higher, 2=highest, 3=critcal
 cfg_int bEqEnabled("QCDBASS", "EQEnabled", TRUE);	// enable internal equalizer
 cfg_int bShowVBR("QCDBASS", "ShowVBR", TRUE);		// display VBR bitrate
@@ -82,11 +85,9 @@ cfg_int uFadeOut("QCDBASS", "FadeOut", 3000);		// fade-out sound
 cfg_int nPreAmp("QCDBASS", "PreAmp", 0);			// preamp
 cfg_int nRGPreAmp("QCDBASS", "RGPreAmp", 0);		// preamp
 cfg_int bHardLimiter("QCDBASS", "HardLimiter", 0);	// 6dB hard limiter
-cfg_int bDither("QCDBASS", "Dither", 0);			// dither
-cfg_int uNoiseShaping("QCDBASS", "NoiseShaping", 1);	// noise shaping
 cfg_int uReplayGainMode("QCDBASS", "ReplayGainMode", 0);// replaygain mode
 
-cfg_int uBufferLen("QCDBASS", "BufferLen", 10);			// stream buffer lengthe in milliseconds
+cfg_int uBufferLen("QCDBASS", "BufferLen", 10);			// stream buffer lengthen in milliseconds
 cfg_int bStreamTitle("QCDBASS", "StreamTitle", TRUE);	// enable stream title
 
 cfg_int bStreamSaving("QCDBASS", "StreamSaving", FALSE);// enable stream saving
@@ -231,7 +232,14 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	yPrefPos.load(inifile);
 	strExtensions.load(inifile);
 	uDeviceNum.load(inifile);
-	bUse32FP.load(inifile);
+	uResolution.load(inifile);
+	if ( uResolution > 24) // disable dither for 32bit
+		bDither = FALSE;
+	else if ( uResolution < 24)
+		bDither.load(inifile);
+	else
+		bDither = TRUE; // enable dither for 24bit always
+	uNoiseShaping.load(inifile);
 	uPriority.load(inifile);
 	bEqEnabled.load(inifile);
 	bShowVBR.load(inifile);
@@ -241,8 +249,6 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	nPreAmp.load(inifile);
 	nRGPreAmp.load(inifile);
 	bHardLimiter.load(inifile);
-	bDither.load(inifile);
-	uNoiseShaping.load(inifile);
 	uReplayGainMode.load(inifile);
 	uBufferLen.load(inifile);
 	bStreamTitle.load(inifile);
@@ -256,7 +262,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	char path[MAX_PATH];
 	GetModuleFileName(NULL, path, MAX_PATH);
 	PathRemoveFileSpec(path);
-	if(strAddonsDir.is_empty()) // set to default (plug-ins dir)
+	if(strAddonsDir.is_empty()) // set to default (plug-ins directory)
 		lstrcpy((LPTSTR)(LPCTSTR)strAddonsDir, path);
 
 	listAddons.clear();
@@ -294,7 +300,9 @@ void ShutDown(int flags)
 	yPrefPos.save(inifile);
 	strExtensions.save(inifile);
 	uDeviceNum.save(inifile);
-	bUse32FP.save(inifile);
+	uResolution.save(inifile);
+	bDither.save(inifile);
+	uNoiseShaping.save(inifile);
 	uPriority.save(inifile);
 	bEqEnabled.save(inifile);
 	bShowVBR.save(inifile);
@@ -304,8 +312,6 @@ void ShutDown(int flags)
 	nRGPreAmp.save(inifile);
 	nPreAmp.save(inifile);
 	bHardLimiter.save(inifile);
-	bDither.save(inifile);
-	uNoiseShaping.save(inifile);
 	uReplayGainMode.save(inifile);
 	uBufferLen.save(inifile);
 	bStreamTitle.save(inifile);
@@ -436,7 +442,7 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 
 		if (decoderInfo.pDecoder)
 			delete decoderInfo.pDecoder;
-		decoderInfo.pDecoder = new bass(medianame, uCurDeviceNum == 0, !!bUse32FP);
+		decoderInfo.pDecoder = new bass(medianame, uCurDeviceNum == 0, !!bDither || uResolution == 32);
 		if (!decoderInfo.pDecoder)
 			return PLAYSTATUS_FAILED;
 
@@ -728,7 +734,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 		}
 
 		/********************* QUIT *************************/
-		if (done) { // only avaliable when playdone or output error
+		if (done) { // only available when playdone or output error
 			if (seek_to < 0) {
 				decoderInfo->pDecoder->stop(STOPFLAG_PLAYDONE);
 				QCDCallbacks.toPlayer.PlayDone(decoderInfo->playingFile);
@@ -826,7 +832,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 	// audio specs
 	unsigned int samplerate		= (unsigned int)(decoderInfo->pDecoder->get_srate());
-	unsigned int bitspersample	= (unsigned int)(decoderInfo->pDecoder->get_bps());
+	//unsigned int bitspersample	= (unsigned int)(decoderInfo->pDecoder->get_bps());
 	unsigned int numchannels	= (unsigned int)(decoderInfo->pDecoder->get_nch());
 	unsigned int lengthMS		= (unsigned int)(decoderInfo->pDecoder->get_length() * 1000);
 	unsigned int avgbitrate		= (unsigned int)(decoderInfo->pDecoder->get_bitrate());
@@ -843,7 +849,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		wf.wFormatTag = decoderInfo->pDecoder->get_format();
 		wf.cbSize = 0;
 		wf.nChannels = numchannels;
-		wf.wBitsPerSample = bDither ? 16 : bitspersample;
+		wf.wBitsPerSample = uResolution;
 		wf.nSamplesPerSec = samplerate;
 		wf.nBlockAlign = wf.nChannels * wf.wBitsPerSample / 8;
 		wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign;
@@ -852,9 +858,9 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
 			done = TRUE; // cannot open sound device
 		}
-	}	
+	}
 
-	const DWORD BUFFER_SIZE = 576*numchannels*(bitspersample/8); // get 576 samples as winamp does, maybe safest^_^
+	const DWORD BUFFER_SIZE = 576*numchannels*((uResolution > 16 ? 32 : 16)/8); // get 576 samples as winamp does, maybe safest^_^
 	// alloc decoding buffer
 	HANDLE hHeap = NULL;
 	HANDLE pRawData = NULL;
@@ -862,7 +868,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		hHeap = HeapCreate(0, BUFFER_SIZE, BUFFER_SIZE);
 		if (hHeap)
 			pRawData = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
-        
+
         if (hHeap == NULL || pRawData == NULL) {
 			show_error("Error: Out of memory!");
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
@@ -886,7 +892,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		}
 
 		/********************* QUIT *************************/
-		if (done) { // only avaliable when playdone or output error
+		if (done) { // only available when playdone or output error
 			if (QCDCallbacks.toPlayer.OutputDrain(0) && seek_to < 0) {
 				QCDCallbacks.toPlayer.OutputStop(STOPFLAG_PLAYDONE);
 				QCDCallbacks.toPlayer.PlayDone(decoderInfo->playingFile);
@@ -950,7 +956,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 					wd.data			= pRawData;
 					wd.markerend	= 0;
 					wd.markerstart	= (unsigned int)decode_pos_ms;
-					wd.bps			= bDither ? 16 : bitspersample;
+					wd.bps			= uResolution;
 					wd.nch			= numchannels;
 					wd.numsamples	= wd.bytelen / (wd.nch*wd.bps/8);
 					wd.srate		= samplerate;
