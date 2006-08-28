@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="gb2312"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8,00"
+	Version="8.00"
 	Name="QCDBASS"
 	ProjectGUID="{B07D8A00-88C7-4C95-AE3D-641D64F85EBE}"
 	RootNamespace="QCDBASS"
@@ -75,7 +75,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib winmm.lib wsock32.lib replaygain_synthesis_static.lib"
-				OutputFile=".\Debug/QMPBASS.dll"
+				OutputFile="D:\Media\Quintessential Media Player\Plugins/QMPBASS.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="..\replaygain_synthesis\Debug"
