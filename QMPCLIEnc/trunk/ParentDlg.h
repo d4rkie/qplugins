@@ -54,7 +54,7 @@ public:
 		m_pdlgSettings->SetWindowPos( NULL, 0, rect.bottom, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_SHOWWINDOW);
 
 		m_pdlgPresets = new CPresetsDlg;
-		m_pdlgPresets->Create( m_hWnd);
+		m_pdlgPresets->Create( m_hWnd, (LPARAM)m_pdlgSettings->m_hWnd); // pass the settings dialog to preset dialog for switching
 		m_ctrlTab.InsertItem( 1, TCIF_PARAM | TCIF_TEXT, _T("Presets"), -1, (DWORD)m_pdlgPresets->m_hWnd);
 		m_ctrlTab.GetItemRect( 1, &rect);
 		m_pdlgPresets->SetWindowPos( NULL, 0, rect.bottom, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_HIDEWINDOW);
