@@ -68,6 +68,9 @@ public:
 		// DDX controls, Hook it.
 		DoDataExchange( FALSE);
 
+		// save the settings dialog box
+		m_hwndSettings = (HWND)lParam;
+
 		// disable update/save button default
 		m_ctrlUpdate.EnableWindow( FALSE);
 		m_ctrlSave.EnableWindow( FALSE);
@@ -350,21 +353,14 @@ public:
 			extension = (LPCSTR)_bstr_t(pe->getAttribute( "extension"));
 
 			// filling setting page's fields
-			CTabCtrl tab;
-			TCITEM tie;
-
-			tab.Attach( GetParent().GetDlgItem( IDC_TAB));
-			tab.GetItem( 0, &tie);
-
-			HWND set = (HWND)tie.lParam;
-
-			::SetDlgItemText( set, IDC_PATH, path);
-			::SetDlgItemText( set, IDC_PARAMETER, parameter);
-			::SetDlgItemText( set, IDC_EXTENSION, extension);
+			::SetDlgItemText( m_hwndSettings, IDC_PATH, path);
+			::SetDlgItemText( m_hwndSettings, IDC_PARAMETER, parameter);
+			::SetDlgItemText( m_hwndSettings, IDC_EXTENSION, extension);
 
 			// switch to settings page
+			CTabCtrl tab;
+			tab.Attach( GetParent().GetDlgItem( IDC_TAB));
 			tab.SetCurFocus( 0);
-
 			tab.Detach();
 		}
 
@@ -486,5 +482,6 @@ private: // XML Vars
 	MSXML2::IXMLDOMDocument2Ptr m_pXMLDom;
 
 private: // Internal Vars
+	HWND m_hwndSettings;
 };
 
