@@ -59,7 +59,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDC_EP_TREE             "Press ""F2"" key to edit lable.\r\nDouble click preset item to load it."
+    IDC_EP_TREE             "Clicking the label of the item that has the focus \r\nor \r\nPressing ""F2"" key to edit lable.\r\n\r\nDouble click a preset item to load it."
     IDC_PAR                 """-"": Stdin for most pipeline encoders.\r\n""%d"": Output file determined by player.\r\n\r\n""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
 END
 
@@ -161,7 +161,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,84,92,50,14
-    CTEXT           "Version 1.5\nLast modified August 2006",IDC_STATIC,23,56,172,16
+    CTEXT           "Version 1.61\nLast modified August 2006",IDC_STATIC,23,56,172,16
     CTEXT           "Ability to write audio data to various media formats with command line encoders.",IDC_STATIC,24,22,172,26
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,77,65,8
