@@ -256,7 +256,7 @@ public:
 
 	void OnSave(UINT uCode, int nID, HWND hwndCtrl)
 	{
-		m_pXMLDom->save( g_szEPFile);
+		_doSave();
 		m_ctrlSave.EnableWindow( FALSE);
 	}
 
@@ -391,7 +391,7 @@ public:
 			if ( MessageBox( _T("Some Presets have been modified!\nSave them now?"), _T("QMPCLIEnc"), MB_YESNO|MB_ICONINFORMATION) == IDYES) {
 				if ( update) _doUpdate();
 
-				m_pXMLDom->save( g_szEPFile);
+				_doSave();
 			}
 		}
 
@@ -429,6 +429,46 @@ private: // Internal function
 			pe->setAttribute( "parameter", _bstr_t(m_strParameter));
 			pe->setAttribute( "extension", _bstr_t(m_strExtension));
 		}
+	}
+
+	void _doSave(void)
+	{
+		// Output xml file with indent through ISAXXMLReader & IMXWriter interface
+		HRESULT hr;
+		MSXML2::ISAXXMLReaderPtr pr;
+		MSXML2::IMXWriterPtr pw;
+
+		hr = pr.CreateInstance(__uuidof(MSXML2::SAXXMLReader30));
+		if ( FAILED(hr)) {
+			MessageBox( _T("Failed to instantiate ISAXXMLReader class"), _T("ERROR"), MB_OK | MB_ICONSTOP);
+			return ;
+		}
+
+		hr = pw.CreateInstance( __uuidof(MSXML2::MXXMLWriter30));
+		if ( FAILED(hr)) {
+			MessageBox( _T("Failed to instantiate MXXMLWriter30 class"), _T("ERROR"), MB_OK | MB_ICONSTOP);
+			return ;
+		}
+
+		pr->AddRef();
+		pw->AddRef();
+
+		// set properties for writer
+		pw->standalone = VARIANT_TRUE;
+		pw->indent = VARIANT_TRUE; // indent output for pretty printing
+
+		pr->putContentHandler( (MSXML2::ISAXContentHandlerPtr)pw);
+		pr->parse( _variant_t(m_pXMLDom->xml));
+
+		// reload the indented xml
+		m_pXMLDom->loadXML( _bstr_t(pw->output));
+
+		// save it to file
+		m_pXMLDom->save( g_szEPFile);
+
+		// release all
+		pr->Release();
+		pw->Release();
 	}
 
 	void _fillTree(void)
