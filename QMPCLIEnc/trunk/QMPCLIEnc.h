@@ -4,6 +4,10 @@
 
 #include "CLIEncoder.h"
 
+#define PLUGIN_NAME "CLI Encoder"
+#define PLUGIN_FULL_NAME "Commandline Encoder"
+#define PLUGIN_VERSION "1.62"
+
 extern CString		g_strPath;
 extern CString		g_strParameter;
 extern CString		g_strExtension;
