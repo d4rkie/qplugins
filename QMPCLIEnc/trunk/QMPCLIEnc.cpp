@@ -28,10 +28,6 @@
 
 #include "QMPTagService.h"
 
-#define PLUGIN_NAME "CLI Encoder"
-#define PLUGIN_FULL_NAME "Commandline Encoder"
-#define PLUGIN_VERSION "v1.61"
-
 HINSTANCE		hInstance, hBrandInstance;
 HWND			hwndParent;
 QCDModInitEnc	QCDCallbacks;
@@ -87,7 +83,7 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 {
 	char inifile[MAX_PATH];
 
-	modInfo->moduleString = PLUGIN_FULL_NAME " " PLUGIN_VERSION;
+	modInfo->moduleString = PLUGIN_FULL_NAME " v" PLUGIN_VERSION;
 	modInfo->moduleExtensions = PLUGIN_NAME;
 
 	hwndParent = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
