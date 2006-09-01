@@ -2,6 +2,8 @@
 
 #include "stdafx.h"
 
+#include "QMPCLIEnc.h"
+
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -20,6 +22,8 @@ public:
 	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		CenterWindow( GetParent());
+
+		SetDlgItemText( IDC_PLUGIN_VERSION, PLUGIN_VERSION);
 
 		m_ctlURLVendor.SubclassWindow( GetDlgItem( IDC_URL_VENDOR));
 		m_ctlURLVendor.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);

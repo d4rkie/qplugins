@@ -22,6 +22,7 @@
 #define IDC_SAVE                        1020
 #define IDC_URL_ENCODERS                1020
 #define IDC_DO_TAG                      1021
+#define IDC_PLUGIN_VERSION              1025
 #define IDC_PATH                        5001
 #define IDC_BROWSE_PATH                 5002
 #define IDC_PARAMETER                   5003
@@ -37,7 +38,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40019
-#define _APS_NEXT_CONTROL_VALUE         1025
+#define _APS_NEXT_CONTROL_VALUE         1026
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
