@@ -26,8 +26,6 @@
 #include "ParentDlg.h"
 #include "AboutDlg.h"
 
-#include "QMPTagService.h"
-
 HINSTANCE		hInstance = NULL;
 HWND			hwndParent;
 QCDModInitEnc	QCDCallbacks;
