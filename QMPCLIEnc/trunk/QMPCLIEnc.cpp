@@ -8,7 +8,7 @@
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
-//	Copyright (C) 1997-2002 Quinnware
+//	Copyright (C) 1997-2006 Quinnware
 //
 //	This code is free.  If you redistribute it in any form, leave this notice 
 //	here.
@@ -28,7 +28,7 @@
 
 #include "QMPTagService.h"
 
-HINSTANCE		hInstance, hBrandInstance;
+HINSTANCE		hInstance = NULL;
 HWND			hwndParent;
 QCDModInitEnc	QCDCallbacks;
 
@@ -52,8 +52,8 @@ INT_PTR CALLBACK PPPDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 BOOL WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 {
-	if (fdwReason == DLL_PROCESS_ATTACH)
-	{
+	if (fdwReason == DLL_PROCESS_ATTACH) {
+		DisableThreadLibraryCalls( hInst);
 		hInstance = hInst;
 	}
 	return TRUE;
@@ -71,8 +71,9 @@ PLUGIN_API QCDModInitEnc* ENCODEDLL_ENTRY_POINT()
 	QCDCallbacks.toModule.Write				= Write;
 	QCDCallbacks.toModule.Drain				= Drain;
 	QCDCallbacks.toModule.Complete			= Complete;
-	QCDCallbacks.toModule.Configure			= NULL; //Configure;
+	QCDCallbacks.toModule.Configure			= NULL;
 	QCDCallbacks.toModule.About				= About;
+	QCDCallbacks.toModule.TestFormat		= TestFormat;
 
 	return &QCDCallbacks;
 }
@@ -114,9 +115,12 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 	prefPage.struct_size = sizeof(prefPage);
 	prefPage.hModule = hInstance;
 	prefPage.lpTemplate = MAKEINTRESOURCEW(IDD_PPP);
-	prefPage.lpDisplayText = L"CLI Encoder";
 	prefPage.lpDialogFunc = PPPDlgProc;
+	prefPage.lpDisplayText = L"CLI Encoder";
 	prefPage.nCategory = PREFPAGE_CATEGORY_ENCODEFORMAT;
+	prefPage.hModuleParent = NULL;
+	prefPage.groupID = 0;
+	prefPage.createParam = 0;
 	prefPageID = QCDCallbacks.Service( opSetPluginPage, &prefPage, 0, 0);
 
 	// return TRUE for successful initialization
@@ -146,6 +150,23 @@ void ShutDown(int flags)
 	WritePrivateProfileString( PLUGIN_NAME, _T("ShowConsole"), value, inifile);
 
 	WritePrivateProfileString( PLUGIN_NAME, _T("EPFile"), g_szEPFile, inifile);
+}
+
+//-----------------------------------------------------------------------------
+
+int TestFormat(WAVEFORMATEX *wf, int flags)
+{
+	//
+	// TODO : 
+	// - verify format of audio data that will be received to make sure it's compatible
+	//
+	// Return one of the following
+	// TESTFORMAT_ACCEPTED		// format compatible
+	// TESTFORMAT_UNACCEPTED	// format not compatible
+	// TESTFORMAT_FAILURE		// failure testing format
+	// TESTFORMAT_NOTIMPL		// test not implemented
+
+	return TESTFORMAT_NOTIMPL;
 }
 
 //-----------------------------------------------------------------------------
@@ -229,8 +250,60 @@ BOOL Complete(int flags)
 {
     g_cliEnc.Stop();
 
-	if ( flags && g_bDoTag) // tagging for normal complete only!
-		TransferTag( g_strSrc, g_strDst, g_strExt);
+	if ( flags && g_bDoTag) { // trans-tag for normal complete only!
+		int i, count;
+		IQCDTagInfo * piTagSrc;
+		IQCDTagInfo * piTagDst;
+
+		// Get IQCDTagInfo for source file
+		piTagSrc = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCTSTR)g_strSrc, 0, 0);
+		if ( !piTagSrc)
+			return FALSE;
+
+		// Get IQCDTagInfo for destination file
+		piTagDst = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCTSTR)g_strDst, 0, 0);
+		if ( !piTagDst)
+			return FALSE;
+
+		// read tag from source file
+		if ( !piTagSrc->ReadFromFile( TAG_DEFAULT)) {
+			piTagSrc->Release();
+			return FALSE;
+		}
+
+		count = piTagSrc->GetFieldCount();
+		for ( i = 0; i < count; ++i) {
+			LPWSTR lpwszName;
+			LPBYTE lpbData;
+			DWORD lenName, lenData;
+			QCD_TAGDATA_TYPE type;
+			int startIndex;
+			int ret;
+
+			// get length of tag name and tag data
+			ret = piTagSrc->GetTagDataByIndex( i, NULL, &lenName, &type, NULL, &lenData);
+
+			lpwszName = new WCHAR[++lenName];
+			lpbData = new BYTE[++lenData];
+
+			// read tag information from source file
+			ret = piTagSrc->GetTagDataByIndex( i, lpwszName, &lenName, &type, lpbData, &lenData);
+
+			// write tag information into destination file
+			ret = piTagDst->SetTagDataByName( lpwszName, type, lpbData, lenData, &startIndex);
+
+			delete [] lpwszName;
+			delete [] lpbData;
+		}
+
+		if ( !piTagDst->WriteToFile( TAG_DEFAULT)) {
+			piTagDst->Release();
+			return FALSE;
+		}
+
+		piTagDst->Release();
+		piTagSrc->Release();
+	}
 
 	return TRUE;
 }
