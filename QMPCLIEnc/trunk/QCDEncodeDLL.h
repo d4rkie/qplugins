@@ -9,7 +9,7 @@
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
-//	Copyright (C) 1997-2002 Quinnware
+//	Copyright (C) 1997-2006 Quinnware
 //
 //	This code is free.  If you redistribute it in any form, leave this notice 
 //	here.
@@ -26,7 +26,6 @@
 #define QCDENCODEDLL_H
 
 extern HINSTANCE		hInstance;
-extern HWND				hwndParent;
 extern QCDModInitEnc	QCDCallbacks;
 
 // Calls from the Player
@@ -40,5 +39,7 @@ BOOL Complete(int flags);
 
 void Configure(int flags);
 void About(int flags);
+
+int  TestFormat(WAVEFORMATEX *wf, int flags);
 
 #endif //QCDOUTPUTDLL_H

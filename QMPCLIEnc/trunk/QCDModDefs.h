@@ -5,13 +5,13 @@
 // About:   Module definitions file.  Miscellanious definitions used by different
 //          module types.  This file is published with the plugin SDKs.
 //
-// Authors: Written by Paul Quinn and Richard Carlson.
+// Authors: Written by Paul Quinn
 //
 // Copyright:
 //
 //  Quintessential Player Plugin Development Kit
 //
-//  Copyright (C) 1997-2004 Quinnware
+//  Copyright (C) 1997-2006 Quinnware
 //
 //  This code is free.  If you redistribute it in any form, leave this notice 
 //  here.
@@ -33,26 +33,61 @@
 #define PLUGIN_API __declspec(dllexport)
 #endif
 
+#define PLUGIN_PREFIX								Q
+#define PLUGIN_ENTRY_POINT_PREFIX(prefix, name)		prefix ## name
+#define PLUGIN_ENTRY_POINT_EXPAND(prefix, name)		PLUGIN_ENTRY_POINT_PREFIX(prefix, name)
+#define PLUGIN_ENTRY_POINT(name)					PLUGIN_ENTRY_POINT_EXPAND(PLUGIN_PREFIX, name)
+
 // Current plugin version
 
 // use this version for old style API calls (all returned text in native encoding)
-#define PLUGIN_API_VERSION              250
+#define PLUGIN_API_VERSION              300
 
 // use this version for new style API calls (all returned text in UTF8 encoding on WinNT/2K/XP (native encoding on Win9x))
-#define PLUGIN_API_VERSION_WANTUTF8     ((PLUGIN_API_WANTUTF8<<16)|PLUGIN_API_VERSION)
-#define PLUGIN_API_WANTUTF8             100
+#define PLUGIN_API_VERSION_NTUTF8		((PLUGIN_API_NTUTF8<<16)|PLUGIN_API_VERSION)
+#define PLUGIN_API_NTUTF8				100
 
 //-----------------------------------------------------------------------------
+// QCDModInfo
+// Populated by plugins on initialization to give player description of 
+// plugin and indicate supported functionality. Populating this struct
+// differs based on plugin type
+//
+// For Input Plugins
+//		moduleString - string to display for plugin in player
+//		moduleExtensions - colon delmited list of supported extensions
+//		moduleCategory - category for extensions (audio or video). If null, defaults to audio
+//
+// For Encoder Plugins
+//		moduleString - string to display for plugin in player
+//		moduleExtensions - string to display for encoder format
+//		moduleCategory -  ignored
+//
+// For All other plugins
+//		moduleString - string to display for plugin in player
+//		moduleExtensions - ignored
+//		moduleCategory -  ignored
+//
 
-typedef struct 
+typedef struct _QCDModInfo
 {
-    char        *moduleString;                  // display string for plugin
-    char        *moduleExtensions;              // file extensions (color delimited)
-    char        *moduleCategory;                // audio/video
+    char*        moduleString;                  // display string for plugin
+    char*        moduleExtensions;              // file extensions (colon delimited)
+    char*        moduleCategory;                // "audio" or "video"
+    int          moduleParam;                   // rank or other parameter for the plugin (TBD)
+    int          moduleFlags;                   // MODINFO_FLAGS_*
+
 } QCDModInfo;
 
-#define MODINFO_VALID_DEFAULT           0x0     // always true, moduleString and moduleExtensions are valid fields
-#define MODINFO_VALID_CATEGORY          0x100   // moduleCategory is a valid field
+#define MODINFO_VALID_CATEGORY          0x100   // moduleCategory field exists
+#define MODINFO_VALID_PARAM			    0x200   // moduleParam field exists
+#define MODINFO_VALID_FLAGS			    0x400   // moduleFlags field exists
+#define MODINFO_VALID_CURRENT          (MODINFO_VALID_CATEGORY|MODINFO_VALID_PARAM|MODINFO_VALID_FLAGS)
+
+
+#define MODINFO_FLAGS_LOADONSTARTUP		0x1000	// Many plugins are not loaded until needed. This flag
+                                                // will tell the player to load it on startup. Only
+                                                // use if truly need to initialize on startup.
 
 
 //-----------------------------------------------------------------------------
@@ -63,18 +98,24 @@ typedef struct
 // parameters for an op are unused (leave 0).
 // 
 // For parameters defined as type (char*), the string should be a UTF8 string
-// if you specified PLUGIN_API_VERSION_WANTUTF8 for the plugin version AND
+// if you specified PLUGIN_API_VERSION_NTUTF8 for the plugin version AND
 // the current system is Windows NT (NT/2000/XP)
 //-----------------------------------------------------------------------------
-typedef enum 
+typedef enum _PluginServiceOp
 {
 //----Player and Window States-------------------------------------------------
 
     opGetPlayerVersion = 0,         // Returns version (high word = major version (eg 3.01 is 3), low word = minor (eg 3.01 = 1))
                                     //      param1 = 1, returns build number
 
+    opGetPlayerString = 3,          // Get name of player
+                                    //      buffer = (char*)buffer for string
+                                    //      param1 = size of buffer in bytes
+                                    //      param2 = 0 - friendly name, 1 - short name
+
     opGetPlayerInstance = 2,        // Returns HINSTANCE to player executable
     opGetPlayerState = 9,           // Returns current state of the player (1 = stopped, 2 = playing, 3 = paused, 0 = failed))
+    opGetEncoderState = 5,          // Returns current state of the encoder (1 = stopped, 2 = encoding, 0 = failed))
 
     opGetAlwaysOnTop = 22,          // Returns 1 if player is set to 'Always on Top'
 
@@ -86,13 +127,12 @@ typedef enum
     opGetSkinPreviewWnd = 33,       // Returns HWND to the skin preview window (returns 0 if window is closed)
     opGetPropertiesWnd = 34,        // Returns HWND to preferences window (returns 0 if window is closed)
     opGetAboutWnd = 36,             // Returns HWND to the about window (returns 0 if window is closed)
-    opGetSegmentsWnd = 37,          // Returns HWND to the segments window (returns 0 if window is closed)
     opGetEQPresetsWnd = 38,         // Returns HWND to the EQ presets window (returns 0 if window is closed)
 
     opGetExtVisWnd = 31,            // Returns HWND to the external visual window (returns 0 if window is closed)
-    opGetVisTarget = 21,            // Returns where visual effect is being drawn (0 - internal to skin, 1 - external window, 2 - fullscreen)
+    opGetVisTarget = 21,            // Returns where visual effect is being drawn (1 - internal to skin, 2 - external window, 3 - fullscreen)
     opGetVisDimensions = 50,        // Returns width and height of visual window (HEIGHT in high word, WIDTH in low word )
-                                    //      param1 = -1 current vis window, 0 internal vis, 1 external vis, 2 fullscreen
+                                    //      param1 = -1 current vis window, 1 internal vis, 2 external vis, 3 fullscreen
 
     opGetVideoWnd = 39,             // Returns HWND to the video window (where the actual video appears, internal to skin or in extenal window)
     opGetVideoTarget = 40,          // Returns where video is being drawn (0 - internal to skin, 1 - external window, 2 - fullscreen)
@@ -100,6 +140,10 @@ typedef enum
                                     //      param1 = 0 - close, 1 - create, 2 - show (create if needed), 3 - fullscreen
 									//      (when param1 == 2) param2 = 0 - default, 1 - force embedded video, 2 - force external video (returns 0 if cannot show)
 									//      (when param1 == 3) param2 = 0 - disable fullscreen, 1 - enable fullscreen
+
+    opGetLibraryWnd = 70,           // Returns HWND to the library parent window
+    opShowLibraryWindow = 71,       // Show or Close library window
+                                    //      param1 = 0 - close, 1 - create, 2 - show (create if needed)
 
 //-----Internet Connection State-----------------------------------------------
 
@@ -110,7 +154,11 @@ typedef enum
 //-----Playlist Info/Manipulation----------------------------------------------
 
     opGetNumTracks = 10,            // Returns number of tracks in playlist
+                                    //      param2 = 8 - apply to encoder list
+
     opGetCurrentIndex = 11,         // Returns index of current track in playlist (0 based)
+                                    //      param2 = 8 - apply to encoder list
+
     opGetNextIndex = 12,            // Returns index of next track to play (0 based)
                                     //      param1 = start index. -1 for after current
                                     //      param2 = (int*)didCycleFlag, set to 1 if returned index is start of repeated playlist
@@ -119,10 +167,11 @@ typedef enum
                                     //      param1 = index of track in playlist, -1 for current
                                     //          The 'track number' is the number of the track in it's respective album, as opposed to playlist number
                                     //          The track number for digital files will be 1 if the tag is not set or the file is not identified
+                                    //      param2 = 8 - apply to encoder list
 
     opGetTrackLength = 14,          // Returns track length
                                     //      param1 = index of track in playlist, -1 for current
-                                    //      param2 = 0 for seconds, 1 for milliseconds
+                                    //      param2 = 0 for seconds, 1 for milliseconds, 8 - apply to encoder list (options can be OR'd together)
 
     opGetTime = 15,                 // Returns time on player (in seconds)
                                     //      param1 = 0 for time displayed, 1 for track time, 2 for playlist time
@@ -132,30 +181,39 @@ typedef enum
 
     opGetTrackState = 16,           // Returns whether track is selected
                                     //      param1 = index of track, -1 for current
+                                    //      param2 = 8 - apply to encoder list
 
     opGetPlaylistNum = 17,          // Returns playlist number of index
                                     //      param1 = index of track in playlist, -1 for current
+                                    //      param2 = 8 - apply to encoder list
 
     opGetIndexFromPLNum = 28,       // Returns index from playlist number
                                     //      param1 = playlist number
+                                    //      param2 = 8 - apply to encoder list
 
     opGetIndexFromFilename = 210,   // Returns the index of a filename that exists in current playlist (-1 if not in playlist)
                                     //      buffer = (char*)full path of file
                                     //      param1 = startindex (index to start searching on)
+                                    //      param2 = 8 - apply to encoder list
 
-    opUpdateIndex = 89,             // Forces player to update a track's TrackExtents (ie: to recalc file length)
+    opUpdateIndexMetadata = 88,     // Forces player to update a track's metadata (ie: requery's lib plugins)
                                     //      param1 = index
+
+    opUpdateIndexExts = 89,         // Forces player to update a track's TrackExtents (ie: to recalc file length)
+                                    //      param1 = index
+                                    //      param2 = 0 - update if not currently updated, 1 - updated required
 
     opDeleteIndex = 90,             // Delete index from playlist
                                     //      param1 = index
+                                    //      param2 = 8 - apply to encoder list
 
     opSelectIndex = 91,             // Set index as selected
                                     //      param1 = index
-                                    //      param2 = 1 - set, 0 - unset
+                                    //      param2 = 0 - unset, 1 - set, 8 - apply to encoder list (options can be OR'd together)
 
     opBlockIndex = 92,              // Set index as blocked
                                     //      param1 = index
-                                    //      param2 = 1 - set, 0 - unset
+                                    //      param2 = 0 - unset, 1 - set, 8 - apply to encoder list (options can be OR'd together)
 
     opSetPlayNext = 1009,           // Set the next index to be played
                                     //      param1 = index, -1 unsets playnext
@@ -163,7 +221,7 @@ typedef enum
     opSetPlaylist = 1006,           // Clear current playlist, add files to playlist or load playlist with new files 
                                     //      buffer = (char*)file list (each file in quotes, string null terminated) Eg; buffer="\"file1.mp3\" \"file2.mp3\"\0" - NULL to clear playlist
                                     //      param1 = (char*)originating path (can be NULL if paths included with files) 
-                                    //      param2 = 0 - add files, 1 - clear playlist flag, 2 - add to top of playlist, 4 - add unique files only (options can be OR'd together)
+                                    //      param2 = 0 - add files, 1 - clear playlist flag, 2 - add to top of playlist, 4 - add unique files only, 8 - apply to encoder list (options can be OR'd together)
 
     opInsertPlaylist = 1011,        // Insert tracks into playlist 
                                     //      buffer = (char*)file list (each file in quotes, string null terminated) Eg; buffer="\"file1.mp3\" \"file2.mp3\"\0"
@@ -179,6 +237,26 @@ typedef enum
                                     //      param2 = index of second track (swap only switches indecies param1 and param2)
 
     opGetQueriesComplete = 60,      // Returns status on whether all tracks in playlist have been queryied for their info (1 yes, 0 no)
+
+    opLoadMediaList = 1030,         // Load media files into playlist using IQCDMediaList* interface (alternative to opSetPlaylist)
+                                    //      buffer = IQCDMediaList* interface pointer
+                                    //      param1 = unused, set to 0
+                                    //      param2 = 0 - add files, 1 - clear playlist flag, 2 - add to top of playlist, 4 - add unique files only, 8 - apply to encoder list, 16 - wait for add complete (options can be OR'd together)
+
+    opEditMediaList = 1031,         // Edit media files contained in IQCDMediaList* interface
+                                    //      Use to bring up editor (e.g.: tag editor) for set of files contained in IQCDMediaList)
+                                    //      Which editor is launched depends on file types and installed plugins
+                                    //      buffer = IQCDMediaList* interface pointer
+
+    opSetIndexFilename = 1010,      // Set the filename (or URL) that an index in the current playlist refers to
+                                    //      buffer = (char*)filename
+                                    //      param1 = index
+                                    //      param2 = 8 - apply to encoder list
+
+    opMediaNameChange = 1020,       // Notifies player (which notifies library plugins) that a filename has changed
+                                    //      buffer = (char*)oldMediaName
+                                    //      param1 = (char*)newMediaName
+                                    //      param2 = (MediaTypes)mediaType (can set if media type changed)
 
 //----Playback control---------------------------------------------------------
 
@@ -211,22 +289,22 @@ typedef enum
     opGetMediaType = 18,            // Returns media type of track
                                     //      param1 = index if track in playlist, -1 for current
                                     //          See MediaTypes below for return values
+                                    //      param2 = 8 - apply to encoder list
 
     opGetAudioInfo = 19,            // Returns format info about currently playing track
                                     //      param1 = 0 for samplerate, 1 for bitrate, 2 for num channels
 
-    opGetMediaInfo = 99,            // Returns the ICddbDisc* object for the index specified
-                                    //      param1 = index of track, -1 for current
-                                    //      param2 = (int*)that receives track value
-                                    //          Do not release or deallocate returned pointer
-
-    opGetMediaID = 115,             // Returns media identifier
+    opGetMediaID = 115, // legacy
+    opGetPlaylistMediaID = 115,     // Returns media identifier of index in playlist
+    opGetEncoderMediaID = 130,      // Returns media identifier of index in encoder
                                     //      buffer = (char*)buffer for media id
                                     //      param1 = size of buffer in bytes
                                     //      param2 = index of track in playlist, -1 for current
                                     //          for CD's it's the TOC - for anything else, right now it's 0
 
-    opGetTrackFile = 103,           // Returns filename of track in playlist
+    opGetTrackFile = 103, // legacy
+    opGetPlaylistFile = 103,        // Returns filename of track in playlist
+    opGetEncoderFile = 131,         // Returns filename of track in encoder
                                     //      buffer = (char*)buffer for filename
                                     //      param1 = size of buffer in bytes
                                     //      param2 = index of track in playlist, -1 for current
@@ -245,10 +323,14 @@ typedef enum
 
 //-----Folder Settings---------------------------------------------------------
 
+    opGetPlayerFolder = 113,        // Returns folder where player is launched from
+                                    //      buffer = (char*)buffer for folder
+                                    //      param1 = size of buffer in bytes
+
     opGetPluginFolder = 105,        // Returns current plugin folder
                                     //      buffer = (char*)buffer for folder
                                     //      param1 = size of buffer in bytes
-									//      param2 = 0 - default plugin folder, 1 - DSP plugin folder
+									//      param2 = 0 - default plugin folder, 1 - DSP plugin folder, 100 - Gracenote folder
 
     opGetPluginSettingsFile = 106,  // Returns settings file (plugins.ini) that plugin should save settings to
                                     //      buffer = (char*)buffer for filename
@@ -265,6 +347,7 @@ typedef enum
     opGetSettingsFolder = 110,      // Returns folder suitable for settings
                                     //      buffer = (char*)buffer for folder
                                     //      param1 = size of buffer in bytes
+									//      param2 = 0 - default folder, 1 - force non multi-user folder, 100 - Gracenote folder
 
     opGetPlaylistFolder = 111,      // Returns current playlist folder
                                     //      buffer = (char*)buffer for folder
@@ -278,11 +361,20 @@ typedef enum
                                     //      buffer = (char*)buffer for filename
                                     //      param1 = size of buffer in bytes
 
+//-----Supported File Types----------------------------------------------------
+
     opGetSupportedExtensions = 116, // Returns file extensions supported by the player
                                     //      buffer = (char*)buffer for extensions
                                     //      param1 = size of buffer in bytes
-                                    //      param2 = 0 - get all extensions, 1 - get registered extensions
-                                    //          extensions will be colon delimited
+                                    //      params = flags (see opGetSupportedExtensions flags below)
+                                    //          returned extensions will be colon ':' delimited
+
+    opGetMediaSupported = 119,      // Returns MediaTypes of filename (UNKNOWN_MEDIA means file is unsupported)
+                                    //      buffer = (char*)medianame
+
+    opGetDefaultPlaylistExt = 122,  // Returns default extension for playlists
+                                    //      buffer = (char*)buffer for extensions
+                                    //      param1 = size of buffer in bytes
 
 //-----Menu Handles------------------------------------------------------------
 
@@ -333,7 +425,8 @@ typedef enum
                                     //      param1 = size of buffer in bytes
                                     //      param2 = index of track in playlist, -1 for current
 
-    opGetDiscName = 102,            // Returns disc name
+    opGetDiscName = 102, // legacy
+    opGetAlbumName = 102,            // Returns disc name
                                     //      buffer = (char*)buffer for name
                                     //      param1 = size of buffer in bytes
                                     //      param2 = index of track in playlist, -1 for current
@@ -341,7 +434,7 @@ typedef enum
     opGetPlaylistString = 117,      // Returns string for index as it appears in playlist
                                     //      buffer = (char*)buffer for string
                                     //      param1 = size of buffer in bytes
-                                    //      param2 = index
+                                    //      param2 = index of track in playlist, -1 for current
 
     opSetTrackAlbum = 1003,         // Set track ablum name
                                     //      buffer = (char*)album
@@ -368,41 +461,58 @@ typedef enum
                                     //      buffer = (char*)filename
                                     //      param1 = 1 - can seek, 0 not seekable
 
-    opSetIndexFilename = 1010,      // Set the filename (or URL) that an index in the current playlist refers to
-                                    //      buffer = (char*)filename
-                                    //      param1 = index
-
-//----ICddbDisc----------------------------------------------------------------
-
-    opCreateDiscInfo = 1020,        // Returns pointer to new ICddbDisc object. Do not release or deallocate this pointer
-    opSetDiscInfo = 1021,           // Set CddbDisc info record for track
-                                    //      buffer = ICddbDisc*
-                                    //      param1 = MediaInfo* (see MediaInfo below)
-                                    //      param2 = track number (reference number of track in ICddbDisc)
-
 //----Plugin Menu, Preferences, and Acclerators--------------------------------
 
     opSetPluginMenuItem = 2000,     // Set entry for plugin in Plugin Menu
-                                    //      buffer = HINSTANCE of plugin
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
                                     //      param1 = item id
                                     //      param2 = (char*)string to display
                                     //          param2 = 0 to remove 'item id' from menu
                                     //          param1 = 0 and param2 = 0 to remove whole menu
 
     opSetPluginMenuState = 2001,    // Set state of entry in Plugin Menu
-                                    //      buffer = HINSTANCE of plugin
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
                                     //      param1 = item id
                                     //      param2 = menu flags (same as windows menu flags - eg: MF_CHECKED)
 
+    opSetContextMenuItem = 2005,    // Set entry for plugin in Playlist Context Menu
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
+                                    //      param1 = item id
+                                    //      param2 = (char*)string to display
+                                    //          param2 = 0 to remove 'item id' from menu
+                                    //          param1 = 0 and param2 = 0 to remove whole menu
+
+    opSetContextMenuState = 2006,   // Set state of entry in Playlist Context Menu
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
+                                    //      param1 = item id
+                                    //      param2 = menu flags (same as windows menu flags - eg: MF_CHECKED)
+
+    opSetContextMenuContext = 2007, // Set media types menu item should be enabled for
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
+                                    //      param1 = item id
+                                    //      param2 = flags (see opSetContextMenuContext flags below)
+
     opSetMainMenuItem = 2010,       // Set entry for plugin in Main Menu
-                                    //      buffer = HINSTANCE of plugin
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
                                     //      param1 = item id
                                     //      param2 = (char*)string to display
                                     //          param2 = 0 to remove 'item id' from menu
                                     //          param1 = 0 and param2 = 0 to remove whole menu
 
     opSetMainMenuState = 2011,      // Set state of entry in Main Menu
-                                    //      buffer = HINSTANCE of plugin
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
+                                    //      param1 = item id
+                                    //      param2 = menu flags (same as windows menu flags - eg: MF_CHECKED)
+
+    opSetEncSrcMenuItem = 2015,     // Set entry for plugin in Encoder Source Menu
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
+                                    //      param1 = item id
+                                    //      param2 = (char*)string to display
+                                    //          param2 = 0 to remove 'item id' from menu
+                                    //          param1 = 0 and param2 = 0 to remove whole menu
+
+    opSetEncSrcMenuState = 2016,    // Set state of entry in Encoder Source Menu
+                                    //      buffer = HINSTANCE of plugin (for Configure callback) or HWND for msg
                                     //      param1 = item id
                                     //      param2 = menu flags (same as windows menu flags - eg: MF_CHECKED)
 
@@ -416,6 +526,7 @@ typedef enum
     opShowPluginPage = 2022,        // Display page in preferences
                                     //      buffer = HINSTANCE of plugin
                                     //      param1 = prefPage id (return value from opSetPluginPage)
+                                    //      param2 = (HWND)handle to owner window - 0 for default
 
     opSetAccelerator = 2030,        // Sets a local keyboard accelerator
                                     //      buffer = HINSTANCE of plugin
@@ -440,7 +551,7 @@ typedef enum
                                     //      param1 = FormatMetaInfo*
                                     //      param2 = (char*)string buffer (min 260 bytes)
 
-//----Language and Resource Loading--------------------------------------------------
+//----Language and Resource Loading--------------------------------------------
 
     opGetCurLangID = 3000,          // Returns current LANGID of set language in player
 
@@ -456,6 +567,77 @@ typedef enum
     opLoadResMenu = 3003,           // Load menu resource from plugin with same language id as player
                                     // Returns HMENU of loaded menu (call DestroyMenu when finished with handle)
                                     //      buffer - ResInfo* (see ResInfo below)
+
+//----Plugin-Interfaces--------------------------------------------------------
+
+    opGetIQCDTagInfo = 4000,        // Get pointer to tag editing interface for given file
+                                    // Returns IQCDTagInfo* if filename has tag editing support, NULL if not
+                                    //      buffer = (char*)filename
+                                    //      param2 = 1 - return IQCDTagInfo* regardless of support
+                                    //      call Release on interface when done
+
+    opGetIQCDFileInfo = 4010,       // Get pointer to file info interface for given file
+                                    // Returns IQCDFileInfo* if filename has file info support, NULL if not
+                                    //      buffer = (char*)filename
+                                    //      call Release on interface when done
+
+    opGetIQCDMediaInfo = 4020,      // Get pointer to metadata interface (for info being used for given file)
+                                    // Returns IQCDMediaInfo* if filename supported
+                                    //      buffer = (char*)filename
+                                    //      param1 = (MediaTypes)mediaType (set if creating new IQCDMediaInfo)
+                                    //      call Release on interface when done
+
+    opGetIQCDMediaList = 4030,      // Get pointer to media list interface
+                                    // Returns IQCDMediaList*
+                                    //      call Release on interface when done
+
+    opGetIQCDPlaylistInfo = 4040,   // Get pointer to playlist info interface
+                                    // Returns IQCDPlaylistInfo* if playlistname supported
+                                    //      buffer = (char*)playlistname
+                                    //      call Release on interface when done
+
+    opGetIQCDSkinHelper = 4050,     // Get pointer to skinhelper info interface
+                                    // Returns IQCDSkinHelper*
+                                    //      call Release on interface when done
+
+    opGetIQCDMediaDecoder = 4060,   // Get pointer to mediadecoder info interface
+                                    // Returns IQCDMediaDecoder* if filename supported
+                                    //      buffer = (char*)filename
+                                    //      call Release on interface when done
+
+    opGetIQCDMediaSource = 4070,    // Get pointer to skinhelper info interface
+                                    // Returns IQCDMediaSource* if filename supported
+                                    //      buffer = (char*)filename
+                                    //      call Release on interface when done
+
+    opGetIQCDMediaLibrary = 4080,   // Get pointer to media library interface
+                                    // Returns IQCDMediaLibrary*
+                                    //      call Release on interface when done
+
+//----Common Dialogs----------------------------------------------------------
+
+    opOpenFilesDlg = 5000,          // Launches player's file selection dialog with filetype/URL chooser
+                                    // Returns IQCDMediaList* if folder selected, 0 otherwise
+                                    //      buffer = (char*)initial folder
+                                    //      param1 = see Common Dialog flags below
+
+    opOpenFolderDlg = 5001,         // Launches player's folder selection dialog with filetype chooser
+                                    // Returns IQCDMediaList* if folder selected, 0 otherwise
+                                    //      buffer = (char*)initial folder
+                                    //      param1 = see Common Dialog flags below
+
+    opSavePlaylistDlg = 5010,       // Launches player's playlist name selection dialog
+                                    // Returns IQCDMediaList* if playlist name selected
+                                    //      buffer = (char*)initial folder
+                                    //      param1 = (char*)initial playlist name
+
+//----Custom Skin Controls----------------------------------------------------------
+
+    opAttachCustomCtrl = 6000,      // Set message window to respond to custom controls defined by the skin
+                                    //      buffer = (WCHAR*)name of control (defined by skin)
+                                    //      param1 = (HWND)handle to window to receive control msgs
+                                    //      param2 = application defined value (sent as lParam in msg)
+                                    // Returns 0 if no control found, > 0 if found
 
 //----Unicode-UTF8 conversion--------------------------------------------------
 
@@ -494,13 +676,12 @@ typedef enum
 									//     3 = Power User
 									//     4 = Administrator (this value always returned on Win9x systems)
 
-    opGetNetworkLogin = 11100       // Shows Network Login dialog
+    opGetNetworkLogin = 11100,      // Shows Network Login dialog
                                     // Returns 1 on OK, 0 on Cancel
                                     //     buffer = (char*)result str buffer (result will be formatted username:password)
                                     //     param1 = sizeof result buffer (in bytes)
                                     //     param2 = (char*)null separated string of initialization values (double null terminated)
                                     //         hostname\0realm\0username\0password\0\0
-
 } PluginServiceOp;
 
 
@@ -522,91 +703,129 @@ typedef long (*PluginServiceFunc)(PluginServiceOp op, void *buffer, long param1,
 
 //----WriteDataStruct----------------------------------------------------------
 
-typedef struct              // for Output Plugin Write callback
+typedef struct _WriteDataStruct  // for Output Plugin Write callback
 {
-    void    *data;          // pointer to valid data
-    int     bytelen;        // length of data pointed to by 'data' in bytes
-    UINT    numsamples;     // number of samples represented by 'data'
-    UINT    bps;            // bits per sample
-    UINT    nch;            // number of channels
-    UINT    srate;          // sample rate
+    void    *data;               // pointer to valid data
+    int     bytelen;             // length of data pointed to by 'data' in bytes
+    UINT    numsamples;          // number of samples represented by 'data'
+    UINT    bps;                 // bits per sample
+    UINT    nch;                 // number of channels
+    UINT    srate;               // sample rate
 
-    UINT    markerstart;    // Marker position at start of data (marker is time value of data) 
-                            // (set to WAVE_VIS_DATA_ONLY to not have data sent to output plugins)
-    UINT	markerend;      // Marker position at end of data (not currently used, set to 0)
+    UINT    markerstart;         // Marker position at start of data (marker is time value of data) 
+                                 // (set to WAVE_VIS_DATA_ONLY to not have data sent to output plugins)
+    UINT	markerend;           // Marker position at end of data (not currently used, set to 0)
 
 } WriteDataStruct;
 
+
 //----TrackExtents-------------------------------------------------------------
 
-typedef struct              // for GetTrackExtents Input Plugin callback
+typedef struct _TrackExtents     // for GetTrackExtents Input Plugin callback
 {
-    UINT track;             // for CD's, set the track number. Otherwise set to 1.
-    UINT start;             // for CD's or media that doesn't start at the beginning 
-                            // of the file, set to start position. Otherwise set to 0.
-    UINT end;               // set to end position of media.
-    UINT unitpersec;        // whatever units are being used for this media, how many
-                            // of them per second. 
-                            // (Note: ((end - start) / unitpersecond) = file length
-    UINT bytesize;          // size of file in bytes (if applicable, otherwise 0).
+    UINT track;                  // for CD's, set the track number. Otherwise set to 1.
+    UINT start;                  // for CD's or media that doesn't start at the beginning 
+                                 // of the file, set to start position. Otherwise set to 0.
+    UINT end;                    // set to end position of media.
+    UINT unitpersec;             // whatever units are being used for this media, how many
+                                 // of them per second. 
+                                 // (Note: ((end - start) / unitpersecond) = file length
+    UINT bytesize;               // size of file in bytes (if applicable, otherwise 0).
 
 } TrackExtents;
 
+
 //----AudioInfo----------------------------------------------------------------
-typedef struct              // for opSetAudioInfo service
+
+typedef struct _AudioInfo        // for opSetAudioInfo service
 {
-    long struct_size;       // sizeof(AudioInfo)
-    long level;             // MPEG level (1 for MPEG1, 2 for MPEG2, 3 for MPEG2.5, 7 for MPEGpro)
-    long layer;             // and layer (1, 2 or 3)
-    long bitrate;           // audio bitrate in bits per second
-    long frequency;         // audio freq in Hz
-    long mode;              // 0 for stereo, 1 for joint-stereo, 2 for dual-channel, 3 for mono, 4 for multi-channel
-    char text[8];           // up to eight characters to identify format (will override level and layer settings)
+    long struct_size;            // sizeof(AudioInfo)
+    long level;                  // MPEG level (1 for MPEG1, 2 for MPEG2, 3 for MPEG2.5, 7 for MPEGpro)
+    long layer;                  // and layer (1, 2 or 3)
+    long bitrate;                // audio bitrate in bits per second
+    long frequency;              // audio freq in Hz
+    long mode;                   // 0 for stereo, 1 for joint-stereo, 2 for dual-channel, 3 for mono, 4 for multi-channel
+    char text[8];                // up to eight characters to identify format (will override level and layer settings)
 
 } AudioInfo;
 
 
 //-----EQInfo------------------------------------------------------------------
 
-typedef struct              // for EQ settings
+typedef struct _EQInfo           // for EQ settings
 {
-    long struct_size;       // sizeof(EQInfo)
-    char enabled;
-    char preamp;            // -128 to 127, 0 is even
-    char bands[10];         // -128 to 127, 0 is even
+    long struct_size;            // sizeof(EQInfo)
+    char enabled;                // eq is enabled, 0 is disabled
+    char preamp;                 // -128 to 127, 0 is even
+    char bands[10];              // -128 to 127, 0 is even
 
 } EQInfo;
 
+
 //----ProxyInfo----------------------------------------------------------------
 
-typedef struct              // for opGetProxyInfo
+typedef struct _ProxyInfo        // for opGetProxyInfo
 {
-    long struct_size;       // sizeof(ProxyInfo)
+    long struct_size;            // sizeof(ProxyInfo)
     char hostname[200];
     long port;
     char username[100];
     char password[100];
     long usePort80Only;
+	char proxyauth[200];
 
 } ProxyInfo;
 
+
 //----MediaTypes---------------------------------------------------------------
 
-typedef enum                // for MediaInfo.mediaType
+typedef enum _MediaTypes        // for MediaInfo.mediaType
 {
-    UNKNOWN_MEDIA = 0,
-    CD_AUDIO_MEDIA = 1,
-    DIGITAL_FILE_MEDIA = 2,
-    DIGITAL_AUDIOFILE_MEDIA = 2,
-    DIGITAL_STREAM_MEDIA = 3,
-    DIGITAL_VIDEOFILE_MEDIA = 4
+    UNKNOWN_MEDIA				= 0x00000000,
+
+	// Supported media is assigned one of these MediaTypes
+	CD_AUDIO_MEDIA				= 0x00000100,
+
+    DIGITAL_AUDIOFILE_MEDIA		= 0x00001000,
+	DIGITAL_AUDIOSTREAM_MEDIA	= 0x00002000,
+
+    DIGITAL_VIDEOFILE_MEDIA		= 0x00010000,
+    DIGITAL_VIDEOSTREAM_MEDIA	= 0x00020000,
+
+	PLAYLIST_FILE_MEDIA			= 0x00100000,
+	PLAYLIST_STREAM_MEDIA		= 0x00200000,
+
+	DIGITAL_PHOTOFILE_MEDIA		= 0x01000000,
+	DIGITAL_PHOTOSTREAM_MEDIA	= 0x02000000,
+
+	// MediaType groups, for comparisons
+    DIGITAL_AUDIO_MEDIA			= (DIGITAL_AUDIOFILE_MEDIA|DIGITAL_AUDIOSTREAM_MEDIA),
+    DIGITAL_VIDEO_MEDIA			= (DIGITAL_VIDEOFILE_MEDIA|DIGITAL_VIDEOSTREAM_MEDIA),
+    DIGITAL_PHOTO_MEDIA			= (DIGITAL_PHOTOFILE_MEDIA|DIGITAL_PHOTOSTREAM_MEDIA),
+	PLAYLIST_MEDIA				= (PLAYLIST_FILE_MEDIA|PLAYLIST_STREAM_MEDIA),
+
+	DIGITAL_FILE_MEDIA			= (DIGITAL_AUDIOFILE_MEDIA|DIGITAL_VIDEOFILE_MEDIA),
+	DIGITAL_STREAM_MEDIA		= (DIGITAL_AUDIOSTREAM_MEDIA|DIGITAL_VIDEOSTREAM_MEDIA),
+
+	MEDIATYPE_ANY				= (CD_AUDIO_MEDIA|DIGITAL_AUDIO_MEDIA|DIGITAL_VIDEO_MEDIA|PLAYLIST_MEDIA),
+
+	// legacy values, do not use
+	LEGACY_MEDIATYPE_MASK				= 0x000000FF,
+
+    LEGACY_CD_AUDIO_MEDIA				= 1,
+    LEGACY_DIGITAL_AUDIOFILE_MEDIA		= 2,
+    LEGACY_DIGITAL_AUDIOSTREAM_MEDIA	= 3,
+    LEGACY_DIGITAL_VIDEOFILE_MEDIA		= 4,
+    LEGACY_DIGITAL_VIDEOSTREAM_MEDIA	= 5,
+	LEGACY_PLAYLIST_FILE_MEDIA			= 10
 
 } MediaTypes;
+
 
 //----MediaInfo----------------------------------------------------------------
 
 #define MAX_TOC_LEN         2048
-typedef struct
+typedef struct _MediaInfo
 {
     // media descriptors
     char        mediaFile[MAX_PATH];
@@ -625,9 +844,10 @@ typedef struct
 
 } MediaInfo;
 
+
 //----FormatMetaInfo-----------------------------------------------------------
 
-typedef struct
+typedef struct _FormatMetaInfo
 {
     long        struct_size;        // sizeof(FormatMetaInfo)
     LPCWSTR     title;
@@ -640,13 +860,14 @@ typedef struct
     LPCWSTR     arttrk;
     LPCWSTR     plnum;
     LPCWSTR     time;
-    long        reserved;
+    LPCWSTR     discnum;
 
 } FormatMetaInfo;
 
+
 //----PluginPrefPage-----------------------------------------------------------
 
-typedef struct                      // for opSetPluginPage
+typedef struct _PluginPrefPage      // for opSetPluginPage
 {
     long        struct_size;        // sizeof(PluginPrefPage)
     HINSTANCE   hModule;            // plugin HINSTANCE
@@ -654,6 +875,9 @@ typedef struct                      // for opSetPluginPage
     DLGPROC     lpDialogFunc;       // dialog window proc
     LPCWSTR     lpDisplayText;      // preference item display text
     long        nCategory;          // type of dialog (see PREFPAGE_CATEGORY_* below)
+    HINSTANCE   hModuleParent;      // handle to parent item HINSTANCE (set to NULL for default behavior)
+    long		groupID;			// value to determine display order of pref item
+    long		createParam;		// value passed to CreateDialog
 
 } PluginPrefPage;
 
@@ -661,7 +885,8 @@ typedef struct                      // for opSetPluginPage
 #define PREFPAGE_CATEGORY_GENERAL				0x000	// use this value if unsure
 #define PREFPAGE_CATEGORY_SYSTEM				0x100
 #define PREFPAGE_CATEGORY_PLAYER				0x200
-#define PREFPAGE_CATEGORY_ENCODER				0x300	
+#define PREFPAGE_CATEGORY_ENCODER				0x300
+#define PREFPAGE_CATEGORY_LIBRARY				0x400
 
 #define PREFPAGE_CATEGORY_SKINS					0x500
 #define PREFPAGE_CATEGORY_SKINBROWSER			0x600
@@ -671,21 +896,23 @@ typedef struct                      // for opSetPluginPage
 
 #define PREFPAGE_CATEGORY_ENCODEFORMAT			0x1000	// use this value for encoder configuration pages
 
+
 //----ResInfo------------------------------------------------------------------
 
-typedef struct
+typedef struct _ResInfo
 {
     long        struct_size;        // sizeof(ResInfo)
     HINSTANCE   hModule;            // plugin HINSTANCE
     LPCWSTR     resID;              // resource id of resource
     long        langid;             // requested lang id of resource (0 for current player lang)
-    long        reserved;  
+    long        encoding;           // 0-default (based on version flag), 1-UTF8, 2-active code page
 
 } ResInfo;
 
+
 //----AccelInfo----------------------------------------------------------------
 
-typedef struct
+typedef struct _AccelInfo
 {
     long        struct_size;        // sizeof(AccelInfo)
     short       modifiers;          // zero or more of the AI_* values below
@@ -699,6 +926,89 @@ typedef struct
 #define AI_SHIFT    0x04
 #define AI_CONTROL  0x08
 #define AI_ALT      0x10
+
+
+//----opGetSupportedExtensions flags-------------------------------------------
+#define EXTS_ALL						0x0
+#define EXTS_REGISTERED					0x1
+#define EXTS_AUDIO						0x2
+#define EXTS_VIDEO						0x4
+#define EXTS_PLAYLIST					0x8
+#define EXTS_PLAYLIST_READABLE			0x10
+#define EXTS_PLAYLIST_WRITEABLE			0x20
+
+//----Common Dialog flags------------------------------------------------------
+
+// flags for opOpenFolderDlg
+#define ODF_SHOWTYPEFILTER				0x1000
+#define	ODF_SHOWSUBFOLDERCHECK			0x2000
+#define	ODF_LOADSUBFOLDERS				0x4000
+
+#define ODF_DEFAULT_OPENFOLDER			0x0
+#define ODF_DEFAULT_LOADFOLDER			(ODF_SHOWTYPEFILTER|ODF_SHOWSUBFOLDERCHECK|ODF_LOADSUBFOLDERS)
+
+// flags for opOpenFilesDlg
+#define ODF_SINGLESELCTION				0x10000
+#define ODF_SHOWOPENURL					0x20000
+#define ODF_SHOWADDUNIQUE				0x40000
+
+#define ODF_DEFAULT_OPENFILES			(ODF_SHOWOPENURL|ODF_SHOWADDUNIQUE|ODF_FILTER_ALL|ODF_SETUSERFOLDER)
+
+// common flags
+#define ODF_SETUSERFOLDER				0x10
+
+#define ODF_FILTER_AUDIO				0x100000
+#define ODF_FILTER_VIDEO				0x200000
+#define ODF_FILTER_PLAYLISTS			0x400000
+#define ODF_FILTER_SUPPORTED			0x800000
+#define ODF_FILTER_EXTENSIONS			0x1000000
+#define ODF_FILTER_ALLFILES				0x2000000
+
+#define ODF_FILTER_ALL					(ODF_FILTER_AUDIO|ODF_FILTER_VIDEO|ODF_FILTER_PLAYLISTS|ODF_FILTER_SUPPORTED|ODF_FILTER_EXTENSIONS|ODF_FILTER_ALLFILES)
+
+// data fields set in returned IQCDMediaList
+#define	ODF_RET_EXTFILTER				L"ExtFilter"	// list of extensions to filter to (':' delimited) (opGetFolderDlg)
+#define ODF_RET_LOADSUBFOLDERS			L"Recurse"		// "0" for No, "1" for Yes (opGetFolderDlg)
+#define ODF_RET_UNIQUEONLY				L"Unique"		// "0" for No, "1" for Yes (opGetFilesDlg)
+
+
+//----opSetContextMenuContext flags--------------------------------------------
+// use combinations of below (eg: CONTEXTMENU_SHOW|CONTEXTMENU_ON_ANY|CONTEXTMENU_AUDIO)
+
+#define CONTEXTMENU_DEFAULT              0x0
+
+#define CONTEXTMENU_ENABLE               0x10    // enable item when conditions (set by below) are true
+#define CONTEXTMENU_SHOW                 0x20    // show item when conditions (set by below) are true
+
+#define CONTEXTMENU_ON_SINGLE            0x100   // when selection contains one of selected type
+#define CONTEXTMENU_ON_MULTIPLE          0x200   // when selection contains more than one of selected type
+#define CONTEXTMENU_ON_ANY               0x400   // when selection contains at least one of selected type
+#define CONTEXTMENU_ON_ALL               0x800   // when selection consists of all of selected type
+
+#define CONTEXTMENU_PLAYLIST             0x1000  // if neither defined, CONTEXTMENU_PLAYLIST assumed
+#define CONTEXTMENU_ENCODELIST           0x2000
+
+#define CONTEXTMENU_CDAUDIO              0x10000
+#define CONTEXTMENU_AUDIOFILE            0x20000
+#define CONTEXTMENU_VIDEOFILE            0x40000
+#define CONTEXTMENU_AUDIOSTREAM          0x80000
+#define CONTEXTMENU_VIDEOSTREAM          0x100000
+
+#define CONTEXTMENU_ANYFILE              (CONTEXTMENU_AUDIOFILE|CONTEXTMENU_VIDEOFILE)
+#define CONTEXTMENU_ANYSTREAM            (CONTEXTMENU_AUDIOSTREAM|CONTEXTMENU_VIDEOSTREAM)
+#define CONTEXTMENU_ANYTYPE              (CONTEXTMENU_CDAUDIO|CONTEXTMENU_ANYFILE|CONTEXTMENU_ANYSTREAM)
+
+
+//----opAttachCustomCtrl msgs--------------------------------------------------
+// Messages sent to custom control hMsgWnd
+//
+#define WM_CUSTOMCTRL_GETTOOLTIP		(WM_APP+100)		// wParam = (WCHAR*)buffer, lParam = sizeof buffer in WCHARs
+#define WM_CUSTOMCTRL_LBUTTONDOWN		(WM_APP+200)		// wParam = 0, lParam = 0
+#define WM_CUSTOMCTRL_RBUTTONDOWN		(WM_APP+201)		// wParam = 0, lParam = 0
+#define WM_CUSTOMCTRL_LBUTTONUP			(WM_APP+202)		// wParam = 0, lParam = 0
+#define WM_CUSTOMCTRL_RBUTTONUP			(WM_APP+203)		// wParam = 0, lParam = 0
+#define WM_CUSTOMCTRL_LBUTTONDBLCLK		(WM_APP+204)		// wParam = 0, lParam = 0
+
 
 //-----------------------------------------------------------------------------
 // When subclassing the parent window, a plugin can watch for these messages
@@ -727,6 +1037,9 @@ typedef struct
 #define WM_PN_PLAYLISTCHANGED       (WM_USER+200) // playlist has changed in some way (add, delete, sort, shuffle, drag-n-drop, etc...)
 #define WM_PN_DIALOGSAVE            (WM_USER+300) // sent to all dialogs set in Preferences. Indicates preferences should be saved (closing)
 
+#define WM_PN_NOTIFY_SKINCHANGE		(WM_USER+400)
+#define WM_PN_NOTIFY_SKINCOLOR		(WM_USER+401)
+
 // For intercepting main menu display
 // (so you can get handle, modify, and display your own)
 #define WM_SHOWMAINMENU             (WM_USER+20)
@@ -739,8 +1052,8 @@ typedef struct
 #define BORDERWINDOW_FULLSCREEN     0x400000
 
 // send to border window to cause resize
-// wParam = LPPOINT lpp; // point x-y is CLIENT area size of window
-#define WM_SIZEBORDERWINDOW         (WM_USER+1)
+#define WM_SIZEBORDERWINDOW         (WM_USER+1) // wParam = POINT* for pos of window, lParam = POINT* for client area size
+#define WM_MAXIMIZEBORDERWINDOW		(WM_USER+2) // wParam = TRUE for maximize, FALSE for restore
 
 //-----------------------------------------------------------------------------
 // To shutdown player, send this command
@@ -753,6 +1066,7 @@ typedef struct
 #define TEXT_URGENT                 0x2         // forces message to appear even if no status window (using msg box)
 #define TEXT_HOLD                   0x4         // tooltip message stays up (no fade out)
 #define TEXT_UNICODE                0x10        // buffer contains a unicode string (multibyte string otherwise)
+#define TEXT_NONSYSTEM              0x1000000   // string should be displayed in non-system status area if available
 
 
 #endif //QCDMODDEFS_H
