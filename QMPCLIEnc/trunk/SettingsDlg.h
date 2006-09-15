@@ -51,6 +51,7 @@ public:
 
 		// set icon and title of tool tip control
 		TTSetTitle( IDC_PARAMETER, 1, "REQUIRED");
+		TTSetTitle( IDC_DO_TAG, 1, "RECOMMENDED");
 		TTSetTitle( IDC_NO_WAV_HEADER, 1, "NOT RECOMMENDED");
 		TTSetTitle( IDC_SHOW_CONSOLE, 1, "OPTIONAL");
 
