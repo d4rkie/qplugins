@@ -69,6 +69,11 @@ BEGIN
     IDC_SHOW_CONSOLE        "Display the console window when encode from a internal \r\ntemporary file to final output file.\r\nOnly available when the ""%s"" parameter is enabled."
 END
 
+STRINGTABLE 
+BEGIN
+    IDC_DO_TAG              "Create tags on destination files through orignal files.\r\nCorresponding tag plug-ins should be installed."
+END
+
 #endif    // 中文(中华人民共和国) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -132,7 +137,7 @@ BEGIN
     GROUPBOX        "Encoder Settings",IDC_STATIC,7,7,252,70
     GROUPBOX        "Generic Settings",IDC_STATIC,7,109,252,38
     GROUPBOX        "Tagging",IDC_STATIC,7,80,252,25
-    CONTROL         "Create tags on new files",IDC_DO_TAG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,91,94,10
+    CONTROL         "Create tags on new files if possible",IDC_DO_TAG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,91,127,10
 END
 
 IDD_PRESETS DIALOGEX 0, 0, 266, 156
