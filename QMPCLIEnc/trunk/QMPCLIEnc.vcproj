@@ -190,10 +190,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\QMPTagService.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -236,31 +232,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\QCDEncodeDLL.h"
-				>
-			</File>
-			<File
-				RelativePath=".\QCDModDefs.h"
-				>
-			</File>
-			<File
-				RelativePath=".\QCDModEncode.h"
-				>
-			</File>
-			<File
-				RelativePath=".\QCDModTagEditor.h"
-				>
-			</File>
-			<File
 				RelativePath=".\QFile.h"
 				>
 			</File>
 			<File
 				RelativePath=".\QMPCLIEnc.h"
-				>
-			</File>
-			<File
-				RelativePath=".\QMPTagService.h"
 				>
 			</File>
 			<File
