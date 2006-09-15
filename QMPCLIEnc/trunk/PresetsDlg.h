@@ -92,7 +92,7 @@ public:
 			str += g_szEPFile;
 			MessageBox( str, _T("ERROR"), MB_OK | MB_ICONSTOP);
 
-			m_pXMLDom->loadXML( "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Encoders></Encoders>");
+			m_pXMLDom->loadXML( "<?xml version=\"1.0\" encoding=\"UTF-16\" standalone=\"yes\"?><Encoders></Encoders>");
 		}
 
 		// fill tree view
