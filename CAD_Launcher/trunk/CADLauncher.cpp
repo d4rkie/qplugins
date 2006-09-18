@@ -38,8 +38,8 @@
 #include "CADLauncher.h"
 
 //-----------------------------------------------------------------------------
-static const CHAR*  PLUGIN_NAME_A  =  "CAD Launcher v1.0";
-static const WCHAR* PLUGIN_NAME_W  = L"CAD Launcher v1.0";
+static const CHAR*  PLUGIN_NAME_A  =  "CAD Launcher v1.1";
+static const WCHAR* PLUGIN_NAME_W  = L"CAD Launcher v1.1";
 static const WCHAR* INI_SECTION    = L"CADLauncher";
 
 static const WCHAR* MSG_STANDARD  = _T("CD Art Display Launcher");

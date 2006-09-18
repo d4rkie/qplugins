@@ -2,8 +2,10 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+#define _WIN32_WINNT 0x501
+
 #include <windows.h>
-#include <Commdlg.h>
+#include <commctrl.h>
 #include <TCHAR.h>
 #include "..\..\Includes\Win32Error.h"
 #include "CADLauncher.h"
@@ -15,6 +17,15 @@
 
 CConfig::CConfig(HINSTANCE hInstance, HWND hAppHwnd)
 {
+	static bool bFirstRun = true;
+	if (bFirstRun) {
+		bFirstRun = false;
+		INITCOMMONCONTROLSEX icc;
+		icc.dwSize = sizeof(INITCOMMONCONTROLSEX);
+		icc.dwICC = ICC_STANDARD_CLASSES;
+		InitCommonControlsEx(&icc);
+	}
+
 	DialogBox(hInstance, MAKEINTRESOURCE(IDD_CONFIG), hAppHwnd, DlgProc);
 }
 
