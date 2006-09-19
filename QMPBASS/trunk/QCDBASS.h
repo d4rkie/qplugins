@@ -73,3 +73,4 @@ extern void reset_menu(void);
 
 // common function
 extern int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner);
+extern void show_error(const char *message,...);
