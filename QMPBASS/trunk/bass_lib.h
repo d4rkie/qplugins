@@ -36,6 +36,7 @@ public:
 	virtual ~bass( void );
 
 	bool is_decode; // is create for a decode module
+
 	int init ( bool fullinit = true );
 	int get_data( void *out_buffer, int *out_size);
 	int decode( void *out_buffer, int *out_size );
@@ -145,7 +146,9 @@ private:
 	DWORD starttime, pausetime; // time marker for MOD file
 	signed __int64 size;
 
-	HSTREAM m_hBass;				// BASS handle	
+	HSTREAM m_hBass;				// BASS handle
+	LPBYTE m_lpDecodeReservoir;
+	int m_nOut_size;
 	
 	BASS_CHANNELINFO ChannelInfo;
 
@@ -155,6 +158,8 @@ private:
 	reader_file* r;
 	
 	CHAR* m_strPath;
+
+	bool resize_reservoir(int nNewSize);
 
 	// replaygain
 	DitherContext dither_context;

@@ -361,13 +361,13 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			// Preamp
 			SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_SETRANGE, TRUE, MAKELONG(0, PREAMP_RANGE*2));
 			SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_SETPOS, TRUE, nPreAmp+PREAMP_RANGE);
-			_stprintf(buffer, "%+2d dB", (int)nPreAmp);
+			_stprintf_s(buffer, 10, "%+2d dB", (int)nPreAmp);
 			SetWindowText(GetDlgItem(hwndDlg, IDC_PA), buffer);
 
 			// RG Preamp
 			SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_SETRANGE, TRUE, MAKELONG(0, PREAMP_RANGE*2));
 			SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_SETPOS, TRUE, nRGPreAmp+PREAMP_RANGE);
-			_stprintf(buffer, "%+2d dB", (int)nRGPreAmp);
+			_stprintf_s(buffer, 10, "%+2d dB", (int)nRGPreAmp);
 			SetWindowText(GetDlgItem(hwndDlg, IDC_RG_PA), buffer);
 
 			CheckDlgButton(hwndDlg, IDC_HARD_LIMITER, !!bHardLimiter);
@@ -383,11 +383,11 @@ INT_PTR CALLBACK AdvancedDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 			TCHAR buffer[10];
 			
 			nPos = SendDlgItemMessage(hwndDlg, IDC_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;			
-			_stprintf(buffer, "%+2d dB", nPos);
+			_stprintf_s(buffer, 10, "%+2d dB", nPos);
 			SetDlgItemText(hwndDlg, IDC_PA, buffer);
 
 			nPos = SendDlgItemMessage(hwndDlg, IDC_RG_PREAMP, TBM_GETPOS, 0, 0) - PREAMP_RANGE;			
-			_stprintf(buffer, "%+2d dB", nPos);
+			_stprintf_s(buffer, 10, "%+2d dB", nPos);
 			SetDlgItemText(hwndDlg, IDC_RG_PA, buffer);
 
 			PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
@@ -674,6 +674,8 @@ INT_PTR CALLBACK AddonsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 			SetWindowLong(GetDlgItem(hwndDlg, IDC_ADDONS_LINK), GWL_USERDATA, (long)_T("http://www.un4seen.com/bass.html#addons"));
 			ConvertStaticToHyperlink(hwndDlg, IDC_ADDONS_LINK);
+
+			SetDlgItemText(hwndDlg, IDC_ADDON_EXTENSIONS, strAddonExtensions.c_str());
 		}
 
 		return TRUE;
@@ -751,8 +753,8 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 	case WM_INITDIALOG:
 		{
 			DWORD ver = BASS_GetVersion();
-            TCHAR buf[10];
-			_stprintf( buf, _T("v%d.%d.%d.%d"), HIBYTE(HIWORD(ver)), LOBYTE(HIWORD(ver)), HIBYTE(LOWORD(ver)), HIBYTE(LOWORD(ver)));
+            TCHAR buf[32];
+			_stprintf_s( buf, 32, _T("v%d.%d.%d.%d"), HIBYTE(HIWORD(ver)), LOBYTE(HIWORD(ver)), HIBYTE(LOWORD(ver)), HIBYTE(LOWORD(ver)));
 			SetDlgItemText(hwndDlg, IDC_BASS_VERSION, buf);
 
 			SetDlgItemText(hwndDlg, IDC_PLUGIN_VERSION, PLUGIN_VERSION);

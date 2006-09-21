@@ -179,7 +179,7 @@ static double pfc_string_to_float(const char * src)
 
 reader::reader()
 {
-    errormsg = strdup ( "" );
+    errormsg = _strdup ( "" );
 }
 
 reader::~reader()
@@ -191,9 +191,9 @@ void reader::set_error ( const char *str )
 {
     if ( errormsg ) free ( errormsg );
     if ( str ) {
-        errormsg = strdup ( str );
+        errormsg = _strdup ( str );
     } else {
-        errormsg = strdup ( "" );
+        errormsg = _strdup ( "" );
     }
 }
 
@@ -395,7 +395,7 @@ void file_info::meta_remove_all()
 const int file_info::meta_get_idx ( const char *name, int num )
 {
     for ( int i = 0; i < meta_count; i++ ) {
-        if ( meta[i].name && !stricmp(name, meta[i].name) ) {
+        if ( meta[i].name && !_stricmp(name, meta[i].name) ) {
             if ( num-- <= 0 ) return i;
         }
     }
@@ -427,7 +427,7 @@ void file_info::meta_add_n ( const char *name, int name_len, const char *value, 
 void file_info::meta_remove_field ( const char *name )
 {
     for ( int i = 0; i < meta_get_count(); i++ ) {
-        if ( meta[i].name && !stricmp(meta[i].name, name) ) meta_remove ( i );
+        if ( meta[i].name && !_stricmp(meta[i].name, name) ) meta_remove ( i );
     }
 }
 
@@ -448,7 +448,7 @@ const int file_info::meta_get_count_by_name ( const char *name )
 {
     int ret = 0;
     for ( int i = 0; i < meta_count; i++ ) {
-        if ( meta[i].name && !stricmp(name, meta[i].name) ) ret++;
+        if ( meta[i].name && !_stricmp(name, meta[i].name) ) ret++;
     }
     return ret;
 }

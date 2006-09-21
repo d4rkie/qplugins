@@ -9,7 +9,7 @@
 #include <list>
 using namespace std;
 
-#define PLUGIN_VERSION "v1.0 beta9.4"
+#define PLUGIN_VERSION "v1.01"
 
 
 typedef struct
@@ -57,14 +57,15 @@ extern cfg_int xStreamSavingBar; // left side of stream saving bar
 extern cfg_int yStreamSavingBar; // top side of stream saving bar
 
 extern cfg_string strAddonsDir; // path of addons' directory
+extern std::string strAddonExtensions; // Extensions provided by addons
 
 // handle for UI
 extern HWND hwndConfig; // config property
 extern HWND hwndAbout; // about dialog box
 extern HWND hwndStreamSavingBar; // stream saving bar
 
-extern list<string> listAddons; // Pointer to a buffer containing pairs of null-terminated filename strings.
-								// The last string in the buffer must be terminated by two NULL characters.
+extern list<std::string> listAddons; // Pointer to a buffer containing pairs of null-terminated filename strings.
+                                     // The last string in the buffer must be terminated by two NULL characters.
 extern list<std::string> listExtensions; // List of supported extensions
 
 // for plug-in menu
@@ -74,3 +75,7 @@ extern void reset_menu(void);
 // common function
 extern int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner);
 extern void show_error(const char *message,...);
+
+void insert_menu(void);
+void remove_menu(void);
+void reset_menu(void);

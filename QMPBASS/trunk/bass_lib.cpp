@@ -1,3 +1,5 @@
+#include <algorithm> // std::transform
+#include <cctype> // for toupper
 #include ".\bass_lib.h"
 
 #include "QCDBASS.h"
@@ -15,7 +17,8 @@ void load_addons(const char * fldr)
 	if (PathFileExists(fldr)) {
 		// look for plugins (in the executable's directory)
 		WIN32_FIND_DATA fd;
-		HANDLE fh;
+		HANDLE fh = NULL;
+		HPLUGIN hPlugin = NULL;
 		char path[MAX_PATH];
 
 		lstrcpy(path, fldr);
@@ -25,11 +28,25 @@ void load_addons(const char * fldr)
 			do {
 				lstrcpy(path, fldr);
 				PathAppend(path, fd.cFileName);
-				if (BASS_PluginLoad(path, 0)) { // plugin loaded...
+				if ((hPlugin = BASS_PluginLoad(path, 0))) { // plugin loaded...
 					listAddons.push_back(fd.cFileName); // add file name to list
+
+					// Query the extension for format types
+					const BASS_PLUGININFO *info = BASS_PluginGetInfo(hPlugin);
+					for (DWORD i = 0; i < info->formatc; i++)
+					{
+						std::string ext = info->formats[i].exts;
+						ext = ext.substr(2, ext.length()-2);
+						std::transform(ext.begin(), ext.end(), ext.begin(), std::toupper);
+						strAddonExtensions.append( ext );
+						strAddonExtensions.append(":");
+					}
 				}
 			} while (FindNextFile(fh,&fd));
 			FindClose(fh);
+			
+			if (strAddonExtensions.length() > 0) // Remove last :
+				strAddonExtensions = strAddonExtensions.substr(0, strAddonExtensions.length()-1);
 		}
 	}
 }
@@ -88,11 +105,12 @@ bass::bass( const char * _path, bool _is_decode, bool _use_32fp )
 , pausetime(0)
 , dither(false)
 , rg_gain(0), rg_peak(0), rg_scale_factor(0), hard_limiter(0), replaygain(0)
+, m_lpDecodeReservoir(NULL), m_nOut_size(0)
 {
 	for (int i = 0; i < 10; i++)
 		eqfx[i] = 0;
 
-	m_strPath = strdup(_path);
+	m_strPath = _strdup(_path);
 
 	if ( PathIsURL(m_strPath) ) {
         is_url = true;
@@ -110,8 +128,10 @@ bass::bass( const char * _path, bool _is_decode, bool _use_32fp )
 bass::~bass(void)
 {
 	if (m_hBass) {
-		if (ChannelInfo.ctype & BASS_CTYPE_STREAM)
-			BASS_StreamFree(m_hBass);
+		if (ChannelInfo.ctype & BASS_CTYPE_STREAM) {
+			if (!BASS_StreamFree(m_hBass))
+				show_error("Failed on BASS_StreamFree().\nErrorcode: %d", BASS_ErrorGetCode());
+		}
 		else if (ChannelInfo.ctype & BASS_CTYPE_MUSIC_MOD)
 			BASS_MusicFree(m_hBass);
 
@@ -137,6 +157,8 @@ bass::~bass(void)
 		free(m_strCurTitle);	// strdup'ed
 		m_strCurTitle = NULL;
 	}
+
+	delete [] m_lpDecodeReservoir;
 }
 
 //-----------------------------------------------------------------------------
@@ -185,14 +207,14 @@ void bass::update_stream_title(char* meta, bass* pBass)
 
 	if (meta) {
 		if ( (t = strstr(meta, "StreamTitle='")) && (u = strstr(meta, "StreamUrl='")) ) { // found shoutcast metadata
-			t = strdup(t+13);
-			u = strdup(u+11);
+			t = _strdup(t+13);
+			u = _strdup(u+11);
 			strchr(t, ';')[-1] = '\0';
 			strchr(u, '\'')[0] = '\0';
 		} else {
 			for (t = meta; *t; t += strlen(meta)+1) {
-				if (!strnicmp(t, "TITLE=", 6)) { // found OGG title
-					t = strdup(t+6);
+				if (!_strnicmp(t, "TITLE=", 6)) { // found OGG title
+					t = _strdup(t+6);
 
 					break;
 				}
@@ -216,7 +238,7 @@ void bass::update_stream_title(char* meta, bass* pBass)
 				}
 
 				if (pBass->m_strCurTitle) free(pBass->m_strCurTitle);
-				pBass->m_strCurTitle = strdup(t);
+				pBass->m_strCurTitle = _strdup(t);
 
 				if (bStreamTitle){
 					QCDCallbacks.Service(opSetTrackTitle, pBass->m_strCurTitle, (long)pBass->m_strPath, DIGITAL_STREAM_MEDIA);
@@ -334,6 +356,7 @@ DWORD bass::get_bitrate(void)
 	return bitrate;
 }
 
+
 //-----------------------------------------------------------------------------
 // Replaygain functions
 //-----------------------------------------------------------------------------
@@ -368,7 +391,6 @@ void bass::init_rg()
 
 	dither = !!bDither;
 	FLAC__replaygain_synthesis__init_dither_context(&dither_context, use_32fp ? 32 : 16, uNoiseShaping);
-	// dLog << "\ttrack_gain: " << track_gain << "\n\ttrack_peak: " << track_peak << "\n\talbum_gain: " << album_gain << "\n\talbum_peak: " << album_peak << "\n";
 }
 
 // Static function
@@ -483,6 +505,7 @@ int bass::init ( bool fullinit )
 	}
 }
 
+//-----------------------------------------------------------------------------
 int bass::get_data(void *out_buffer, int *out_size)
 {
 	LPBYTE p = (LPBYTE)out_buffer;
@@ -493,6 +516,7 @@ int bass::get_data(void *out_buffer, int *out_size)
 		if (rt == -1) { // Decode error
 			if (BASS_ErrorGetCode() == BASS_ERROR_NOPLAY) // The channel is not playing, or is stalled. When handle is a "decoding channel", this indicates that it has reached the end.
 				break;	// break while loop
+			show_error("Decode error in %s line %d", __FILE__, __LINE__);
 		}
 		p += rt;
 		todo -= rt;
@@ -511,9 +535,11 @@ int bass::decode ( void *out_buffer, int *out_size )
 {
 	if (!is_decode) return 0;
 
-	LPBYTE reservoir__ = new BYTE[*out_size];
+	if (*out_size > m_nOut_size)
+		if (!resize_reservoir(*out_size))
+			return 0;
 
-	if ( get_data(reservoir__, out_size) == -1) return -1;
+	if ( get_data(m_lpDecodeReservoir, out_size) == -1) return -1;
 
 	// calculate rg scale factor dynamically
 	hard_limiter = !!bHardLimiter;
@@ -527,7 +553,7 @@ int bass::decode ( void *out_buffer, int *out_size )
 		(FLAC__byte *)out_buffer, 
 		true, // little_endian_data_out
 		get_bps() == 8, // unsigned_data_out
-		reservoir__, 
+		m_lpDecodeReservoir, 
 		get_format() == 0x0003, // 32-bit floating-point data
 		(*out_size)/(get_nch()*get_bps()/8), // # of wide samples
 		get_nch(), // Channels
@@ -541,7 +567,7 @@ int bass::decode ( void *out_buffer, int *out_size )
 	else
 		*out_size = FLAC__replaygain_synthesis__apply_gain_normal(
 		(FLAC__byte *)out_buffer, 
-		reservoir__, 
+		m_lpDecodeReservoir, 
 		get_format() == 0x0003, // WAVE_FORMAT_IEEE_FLOAT
 		(*out_size)/(get_nch()*get_bps()/8), 
 		get_nch(), 
@@ -550,12 +576,27 @@ int bass::decode ( void *out_buffer, int *out_size )
 		hard_limiter
 		);
 
-	delete [] reservoir__;
-
 	if (starttime == 0) starttime = timeGetTime(); // start timer which will be useful for MOD file
 
 	return 1;
 }
+
+bool bass::resize_reservoir(int nNewSize)
+{
+	if (m_lpDecodeReservoir)
+		delete [] m_lpDecodeReservoir;
+
+	m_lpDecodeReservoir = new BYTE[nNewSize];
+	if (!m_lpDecodeReservoir) {
+		m_nOut_size = 0;
+		show_error("Could not get reservoir memory!");
+		return false;
+	}
+	m_nOut_size = nNewSize;
+	return true;
+}
+
+//-----------------------------------------------------------------------------
 
 bool bass::play(void)
 {
@@ -565,6 +606,8 @@ bool bass::play(void)
 
 	return BASS_ChannelPreBuf(m_hBass, 0) && BASS_ChannelPlay(m_hBass, FALSE) ? true : false;
 }
+
+//-----------------------------------------------------------------------------
 
 bool bass::pause(int flags)
 {
@@ -595,6 +638,8 @@ bool bass::pause(int flags)
 	}
 }
 
+//-----------------------------------------------------------------------------
+
 bool bass::stop(int flags) // flags for force stop or playdone
 {
 	if (is_decode) { // just reset timer for decoding mothod
@@ -616,6 +661,8 @@ bool bass::stop(int flags) // flags for force stop or playdone
 	return BASS_ChannelStop(m_hBass) ? true : false;
 }
 
+//-----------------------------------------------------------------------------
+
 bool bass::is_playing(void)
 {
 	if (is_decode) return false;
@@ -626,12 +673,16 @@ bool bass::is_playing(void)
 		return true;
 }
 
+//-----------------------------------------------------------------------------
+
 bool bass::set_volume(int level)
 {
 	if (is_decode) return false;
 
 	return BASS_ChannelSetAttributes(m_hBass, -1, level, -101) ? true : false;
 }
+
+//-----------------------------------------------------------------------------
 
 bool bass::fade_volume(int dst_volume, unsigned int elapse)
 {
@@ -642,6 +693,8 @@ bool bass::fade_volume(int dst_volume, unsigned int elapse)
 
 	return true;
 }
+
+//-----------------------------------------------------------------------------
 
 bool bass::set_eq(bool enabled, char const * bands) // default 10 bands for QCD
 {

@@ -19,14 +19,18 @@
 //
 //-----------------------------------------------------------------------------
 // Bugs
-// : The bass plugin retaining the file open when you press the stop button
+// : The bass plugin sometimes retaining the file open when you press the stop button (Hard to reproduce consistently)
 // : Volume in system mode with 32bit is very low/not mirrored to backspeakers (Not looked into yet)
-// : Encoding doesn't work
+// : Encoding to wav doesn't work
 //     (Tokelil: Talked to Paul about this, and he will add float support to the wav encoding plug-in)
 //
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 09-21-06 : Getting ready for last release for QCD
+//              - Code cleaning, configuration dialog cleaning
+//              - Automatic import of addons extension support
+//              - resize_reservoir() to avoid constant alloc/dealloc in decode
 // 08-29-06 : Add 24bit resolution support.
 // 04-06-06 : Updated to support BASS v2.3.0.0
 // 02-25-06 : 1. Fixed stream title display bug (for QCD only).
@@ -42,25 +46,27 @@
 //-----------------------------------------------------------------------------
 
 #pragma warning(disable:4786)		// Disable STL list warnings
+#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES  1
 
 #include "QCDBASS.h"
-
 #include "mmreg.h"
 #include <memory>
-
 #include "BASSCfgUI.h"
+
 
 
 HINSTANCE		hInstance;
 HWND			hwndPlayer;
 QCDModInitIn	QCDCallbacks;
 
-DecoderInfo_t decoderInfo;
+DecoderInfo_t	decoderInfo;
 
 DOUBLE	seek_to			= -1;
 BOOL	encoding		= FALSE;
 BOOL	paused			= FALSE;
 INT64	decode_pos_ms	= 0;
+
+// HANDLE hThreadMutex = INVALID_HANDLE_VALUE;
 
 DWORD WINAPI __stdcall DecodeThread(void *b);		// decoding thread only for decode mode
 DWORD WINAPI __stdcall PlayThread(void *b);			// playing thread only for system mode
@@ -69,7 +75,6 @@ cfg_int uPrefPage("QCDBASS", "PrefPage", 0);		// pref page number
 cfg_int xPrefPos("QCDBASS", "xPrefPos", 200);		// left side of property sheet
 cfg_int yPrefPos("QCDBASS", "yPrefPos", 300);		// left side of property sheet
 
-cfg_string strExtensions("QCDBASS", "Extensions", "MP3:OGG:WAV:MP2:MP1:AIFF:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
 cfg_int uDeviceNum("QCDBASS", "DeviceNum", 0);		// 0=decode, 1...=use internal output module
 cfg_int uResolution("QCDBASS", "Resolution", 32);    // 16=16bit, 24=24bit, 32=32bit(floating point)
 cfg_int bDither("QCDBASS", "Dither", 0);			// dither
@@ -100,91 +105,20 @@ cfg_int yStreamSavingBar("QCDBASS", "yStreamSavingBar", 0);		// top side of stre
 
 cfg_string strAddonsDir("QCDBASS", "AddonsDir", "", MAX_PATH);	// path of addons' directory
 
+cfg_string  strExtensions("QCDBASS", "Extensions", "MP3:OGG:WAV:MP2:MP1:AIFF:MO3:XM:MOD:S3M:IT:MTM", MAX_PATH); // for supported extensions
+std::string strAddonExtensions = "";
+std::string strAllExtensions = "";
+
 HWND hwndConfig = NULL;				// config property sheet
 HWND hwndAbout = NULL;				// about dialog box
 HWND hwndStreamSavingBar = NULL;	// stream saving bar
 
-list<string> listAddons;
+list<std::string> listAddons;
 list<std::string> listExtensions;
 
 UINT uCurDeviceNum = uDeviceNum;
 
-void show_error(const char *message,...)
-{
-	char foo[512];
-	va_list args;
-	va_start(args, message);
-	vsprintf(foo, message, args);
-	va_end(args);
-	MessageBox(hwndPlayer, foo, "BASS Sound System Error", MB_ICONSTOP);
-}
 
-void insert_menu(void)
-{
-	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, 0, (long)("BASS Plug-in"));
-	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SETTINGS, (long)("Settings"));
-	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, (long)("Enable stream saving"));
-	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, bStreamSaving ? MF_CHECKED : MF_UNCHECKED);
-	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, (long)("Show stream saving bar"));
-	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, hwndStreamSavingBar ? MF_CHECKED : MF_UNCHECKED);
-}
-
-void remove_menu(void)
-{
-	QCDCallbacks.Service(opSetPluginMenuItem, (void *)hInstance, 0, 0);
-}
-
-void reset_menu(void)
-{
-	remove_menu();
-
-	insert_menu();
-}
-
-int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) 
-{
-	if (uMsg == BFFM_INITIALIZED) 
-	{
-		lpData = (LPARAM)(LPCTSTR)strStreamSavingPath;
-		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);	
-	}
-	return 0;
-}
-
-int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner)
-{
-	BROWSEINFO		bi;
-	LPMALLOC		SHMalloc;
-	LPITEMIDLIST	pidlBrowse;
-	CHAR			findname[MAX_PATH];
-	BOOL			ret = FALSE;
-
-	if (FAILED(SHGetMalloc(&SHMalloc)))         
-		return 0;
-
-	bi.hwndOwner = hwndOwner; 
-	bi.pidlRoot = NULL;     
-	bi.pszDisplayName = NULL; 
-	bi.lpszTitle = lpszTitle;
-	bi.ulFlags = BIF_NEWDIALOGSTYLE; 
-	bi.lpfn = BrowseCallbackProc; 
-	bi.lParam = (LPARAM)(LPCWSTR)pszFolder;
-
-	pidlBrowse = SHBrowseForFolder(&bi);     
-	if (pidlBrowse != NULL) 
-	{
-		if (SHGetPathFromIDList(pidlBrowse, findname)) 
-		{
-			lstrcpy(pszFolder, findname);
-			ret = TRUE;
-		}
-
-		SHMalloc->Free(pidlBrowse);
-	}
-
-	SHMalloc->Release();
-	return ret;
-}
 
 //-----------------------------------------------------------------------------
 
@@ -209,10 +143,16 @@ PLUGIN_API QCDModInitIn* INPUTDLL_ENTRY_POINT(QCDModInitIn *ModInit, QCDModInfo 
 	QCDCallbacks.toModule.Play				= Play;
 	QCDCallbacks.toModule.Pause				= Pause;
 	QCDCallbacks.toModule.Stop				= Stop;
+	QCDCallbacks.toModule.Eject				= NULL;
 	QCDCallbacks.toModule.About				= About;
 	QCDCallbacks.toModule.Configure			= Configure;
 	QCDCallbacks.toModule.SetEQ				= bEqEnabled ? SetEQ : NULL;;
 	QCDCallbacks.toModule.SetVolume			= SetVolume;
+
+	// Testing
+	//hThreadMutex = CreateMutex(NULL, FALSE, 0);
+	//if (hThreadMutex == NULL)
+	//	show_error("CreateMutex error: %d\n", GetLastError());
 
 	return &QCDCallbacks;
 }
@@ -258,6 +198,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	bSaveStreamsBasedOnTitle.load(inifile);
 	xStreamSavingBar.load(inifile);
 	yStreamSavingBar.load(inifile);
+	
 	strAddonsDir.load(inifile);
 	char path[MAX_PATH];
 	GetModuleFileName(NULL, path, MAX_PATH);
@@ -268,20 +209,26 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	listAddons.clear();
 	listExtensions.clear();
 
-	ModInfo->moduleString = "BASS Sound System "PLUGIN_VERSION;
-	ModInfo->moduleExtensions = (LPTSTR)(LPCTSTR)strExtensions;
-	ModInfo->moduleCategory = "AUDIO";
+
+	// Init BASS
+	if (create_bass(uDeviceNum))
+		uCurDeviceNum = uDeviceNum;
+	else
+		return FALSE;
 
 	// insert plug-in menu
 	insert_menu();
 
-	// Init BASS
-	if (create_bass(uDeviceNum)) {
-		uCurDeviceNum = uDeviceNum;
-		return TRUE;
-	}
-	else
-		return FALSE;
+
+	strAllExtensions = strAddonExtensions;
+	strAllExtensions.append(":");
+	strAllExtensions.append(strExtensions);
+
+	ModInfo->moduleString      = "BASS Sound System "PLUGIN_VERSION;
+	ModInfo->moduleExtensions  = (LPSTR)strAllExtensions.c_str();
+	ModInfo->moduleCategory    = "AUDIO";
+
+	return TRUE;
 }
 
 //----------------------------------------------------------------------------
@@ -290,6 +237,7 @@ void ShutDown(int flags)
 {
 	Stop(decoderInfo.playingFile, STOPFLAG_FORCESTOP);
 	destroy_bass();
+	// CloseHandle(hThreadMutex);
 
 	// save config
 	char inifile[MAX_PATH];
@@ -342,14 +290,28 @@ void ShutDown(int flags)
 
 //-----------------------------------------------------------------------------
 
-bool IsExtenstionSupported(const char* strExt)
+bool IsExtensionSupported(const char* strExt)
 {
-	//OutputDebugString(":IsExtenstionSupported()");
+	OutputDebugString(":IsExtenstionSupported()");
 
 	if (listExtensions.empty()) { // Build the list
 		OutputDebugString(" -- Building extension list:");
 		TCHAR* token;
-		TCHAR* str = _tcsdup((LPCTSTR)strExtensions);
+		TCHAR* str;
+		
+		// Addons
+		str = _tcsdup((LPCTSTR)strAddonExtensions.c_str());
+		token = _tcstok(str, _T(":")); // Get first token
+		while(token != NULL)
+		{
+			listExtensions.push_back(string(token));
+			OutputDebugString(token);
+			token = _tcstok(NULL, _T(":")); // Get next token
+		}
+		OutputDebugString(" -- Done addons!");
+		free(str);
+
+		str = _tcsdup((LPCTSTR)strExtensions);
 		token = _tcstok(str, _T(":")); // Get first token
 		while(token != NULL)
 		{
@@ -370,21 +332,23 @@ bool IsExtenstionSupported(const char* strExt)
 			return TRUE;		
 	}
 	
-	//OutputDebugString(":IsExtenstionSupported() - return FALSE");
+	OutputDebugString(":IsExtenstionSupported() - return FALSE");
 	return FALSE;
 }
 
+//-----------------------------------------------------------------------------
+
 int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 {
-	//OutputDebugString(":GetMediaSupported()");
-	//OutputDebugString(medianame);
+	OutputDebugString(":GetMediaSupported()");
+	OutputDebugString(medianame);
 
 	if (!medianame || !*medianame)
 		return FALSE;
 
 	if (PathIsURL(medianame)) {
 		if (!StrNCmpI(medianame, "uvox://", 7))
-			return FALSE; // no support for AAC stream
+			return FALSE; // no support for AAC stream - Plug-ins can support them though?
 		mediaInfo->mediaType = DIGITAL_STREAM_MEDIA;
 		mediaInfo->op_canSeek = strrchr(medianame, '.') > strrchr(medianame, '/'); // internet files are also seekable
 		return TRUE;
@@ -393,14 +357,14 @@ int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 		if (lstrlen(medianame) < 3) // No support for CD drives etc.
 			return FALSE;
 
-		if (IsExtenstionSupported(PathFindExtension(medianame)+1)) {
+		if (IsExtensionSupported(PathFindExtension(medianame)+1)) {
 			mediaInfo->mediaType = DIGITAL_FILE_MEDIA;
 			mediaInfo->op_canSeek = true;
 			return TRUE;
 		}
 	}
 
-	//OutputDebugString("Not supported!");
+	OutputDebugString("Not supported!");
 	return FALSE;
 }
 
@@ -409,7 +373,8 @@ int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 int GetTrackExtents(const char* medianame, TrackExtents *ext, int flags)
 {
 	bass p_info(medianame);
-	if ( p_info.init(false) ) {
+	if ( p_info.init(false) )
+	{
 		ext->track = 1;
 		ext->start = 0;
 		ext->end = (UINT)p_info.get_length() * 1000;
@@ -440,13 +405,15 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 				return PLAYSTATUS_FAILED;
 		}
 
+		// Create new decoder
 		if (decoderInfo.pDecoder)
 			delete decoderInfo.pDecoder;
 		decoderInfo.pDecoder = new bass(medianame, uCurDeviceNum == 0, !!bDither || uResolution == 32);
 		if (!decoderInfo.pDecoder)
 			return PLAYSTATUS_FAILED;
 
-		if (!decoderInfo.pDecoder->is_stream()) { // local file should be initialized now, but stream should do this in thread later avoiding blocking
+		// local file should be initialized now, but stream should do this in thread later avoiding blocking
+		if (!decoderInfo.pDecoder->is_stream()) {
 			int ret = decoderInfo.pDecoder->init();
 
 			if ( ret != 1 ) {
@@ -459,7 +426,7 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 			}
 		}
 
-		decoderInfo.playingFile = strdup(medianame);
+		decoderInfo.playingFile = _strdup(medianame);
 	}
 
 	decoderInfo.killThread = 0;
@@ -560,19 +527,6 @@ int Pause(const char* medianame, int flags)
 
 //-----------------------------------------------------------------------------
 
-int Eject(const char* medianame, int flags)
-{
-	//
-	// TODO : Eject media.
-	// flags: 0 = toggle eject state, 1 = ensure open, 2 = ensure closed
-	// This will only be called if plugin supports CD Audio
-	//
-
-	return TRUE;
-}
-
-//-----------------------------------------------------------------------------
-
 void SetEQ(EQInfo *eqinfo)
 {
 	EQInfo eq;
@@ -652,7 +606,46 @@ void About(int flags)
 		hwndAbout = DoAboutDlg( hInstance, (HWND)QCDCallbacks.Service(opGetPropertiesWnd, NULL, 0, 0) );
 }
 
+
 //-----------------------------------------------------------------------------
+// Menu functions
+//-----------------------------------------------------------------------------
+
+void insert_menu(void)
+{
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, 0, (long)("BASS Plug-in"));
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SETTINGS, (long)("Settings"));
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, (long)("Enable stream saving"));
+	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, bStreamSaving ? MF_CHECKED : MF_UNCHECKED);
+	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, (long)("Show stream saving bar"));
+	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, hwndStreamSavingBar ? MF_CHECKED : MF_UNCHECKED);
+}
+
+void remove_menu(void)
+{
+	QCDCallbacks.Service(opSetPluginMenuItem, (void *)hInstance, 0, 0);
+}
+
+void reset_menu(void)
+{
+	remove_menu();
+	insert_menu();
+}
+
+
+//-----------------------------------------------------------------------------
+// Misc functions
+//-----------------------------------------------------------------------------
+
+void show_error(const char *message,...)
+{
+	char foo[512];
+	va_list args;
+	va_start(args, message);
+	vsprintf(foo, message, args);
+	va_end(args);
+	MessageBox(hwndPlayer, foo, "BASS Sound System Error", MB_ICONSTOP);
+}
 
 // used for convert 32-bit floating-data to 16-bit data. For Vis only now
 int cnv32to16(void *buffer, const int size)
@@ -671,6 +664,56 @@ int cnv32to16(void *buffer, const int size)
 
 	return size/2;
 }
+
+int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) 
+{
+	if (uMsg == BFFM_INITIALIZED) 
+	{
+		lpData = (LPARAM)(LPCTSTR)strStreamSavingPath;
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);	
+	}
+	return 0;
+}
+
+int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner)
+{
+	BROWSEINFO		bi;
+	LPMALLOC		SHMalloc;
+	LPITEMIDLIST	pidlBrowse;
+	CHAR			findname[MAX_PATH];
+	BOOL			ret = FALSE;
+
+	if (FAILED(SHGetMalloc(&SHMalloc)))         
+		return 0;
+
+	bi.hwndOwner = hwndOwner; 
+	bi.pidlRoot = NULL;     
+	bi.pszDisplayName = NULL; 
+	bi.lpszTitle = lpszTitle;
+	bi.ulFlags = BIF_NEWDIALOGSTYLE; 
+	bi.lpfn = BrowseCallbackProc; 
+	bi.lParam = (LPARAM)(LPCWSTR)pszFolder;
+
+	pidlBrowse = SHBrowseForFolder(&bi);     
+	if (pidlBrowse != NULL) 
+	{
+		if (SHGetPathFromIDList(pidlBrowse, findname)) 
+		{
+			lstrcpy(pszFolder, findname);
+			ret = TRUE;
+		}
+
+		SHMalloc->Free(pidlBrowse);
+	}
+
+	SHMalloc->Release();
+	return ret;
+}
+
+
+//-----------------------------------------------------------------------------
+// Decoding callbacks
+//-----------------------------------------------------------------------------
 
 //-- playing thread only for system mode
 DWORD WINAPI __stdcall PlayThread(void *b)
@@ -822,6 +865,10 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	DecoderInfo_t *decoderInfo = (DecoderInfo_t*)b;
 	BOOL done = FALSE, updatePos = FALSE;
 
+    // Check mutex
+	//if (WaitForSingleObject(hThreadMutex, 0) != WAIT_OBJECT_0) // WAIT_TIMEOUT
+	//	show_error("Mutex did not return WAIT_OBJECT_0");
+
 	if (decoderInfo->pDecoder->is_stream() && 
 		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
 		!decoderInfo->pDecoder->init()) ) { // stream should be initialized here
@@ -858,17 +905,19 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
 			done = TRUE; // cannot open sound device
 		}
-	}
+	}	
 
 	const DWORD BUFFER_SIZE = 576*numchannels*((uResolution > 16 ? 32 : 16)/8); // get 576 samples as winamp does, maybe safest^_^
+
 	// alloc decoding buffer
 	HANDLE hHeap = NULL;
 	HANDLE pRawData = NULL;
 	if (!done) {
-		hHeap = HeapCreate(0, BUFFER_SIZE, BUFFER_SIZE);
+		// Only this thread allocates/frees from this heap, so safe to HEAP_NO_SERIALIZE
+		hHeap = HeapCreate(HEAP_NO_SERIALIZE, BUFFER_SIZE, BUFFER_SIZE);
 		if (hHeap)
 			pRawData = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
-
+        
         if (hHeap == NULL || pRawData == NULL) {
 			show_error("Error: Out of memory!");
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
@@ -892,7 +941,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		}
 
 		/********************* QUIT *************************/
-		if (done) { // only available when playdone or output error
+		if (done) { // only avaliable when playdone or output error
 			if (QCDCallbacks.toPlayer.OutputDrain(0) && seek_to < 0) {
 				QCDCallbacks.toPlayer.OutputStop(STOPFLAG_PLAYDONE);
 				QCDCallbacks.toPlayer.PlayDone(decoderInfo->playingFile);
@@ -945,8 +994,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 			if (ret == 0 || ret == -1) // error or reach the eof
 				done = TRUE;
 
-			if (!decoderInfo->killThread && ret > 0) {
-				// send to output
+			if (!decoderInfo->killThread && ret > 0) { // Send to output
 				WriteDataStruct wd;
 
 				decode_pos_ms = (unsigned long)(decoderInfo->pDecoder->get_current_time());
@@ -984,6 +1032,8 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 	CloseHandle(decoderInfo->thread_handle);
 	decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
+
+	// ReleaseMutex(hThreadMutex);
 
 	return 0;
 }

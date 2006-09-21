@@ -26,7 +26,7 @@ public:
 	BOOL save(LPCTSTR lpFileName)
 	{
 		TCHAR str[20];
-		_stprintf(str, "%d", m_nValue);
+		_stprintf_s(str, 20, "%d", m_nValue);
 		return WritePrivateProfileString(m_lpAppName, m_lpKeyName, str, lpFileName);
 	}
 public:
