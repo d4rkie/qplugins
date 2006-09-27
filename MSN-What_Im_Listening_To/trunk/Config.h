@@ -18,6 +18,7 @@ public:
 private:
 	static BOOL CALLBACK DlgProc7(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static BOOL CALLBACK DlgProc8(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static void EnableWMPFaking(HWND hwndDlg);
 };
 
 #endif // !defined(AFX_CONFIG_H__70C98A0B_AFC7_4680_9D01_EC9EB2C8EC12__INCLUDED_)

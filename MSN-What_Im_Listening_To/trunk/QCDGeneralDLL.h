@@ -23,9 +23,39 @@
 #ifndef QCDGeneralDLL_H
 #define QCDGeneralDLL_H
 
-#include "..\qcdpdk\QCDGeneral\QCDModGeneral.h"
-#include "..\qcdpdk\QCDGeneral\QCDCtrlMsgs.h"
+#include <QCDModGeneral2.h>
+#include <QCDCtrlMsgs.h>
 #include "resource.h"
+
+//-----------------------------------------------------------------------------
+// Old QCD entry point structure
+//-----------------------------------------------------------------------------
+	#define GENERALDLL_ENTRY_POINT	QGeneralModule // name of the DLL export for output plugins
+	typedef struct 
+	{
+		UINT				size;			// size of init structure
+		UINT				version;		// plugin structure version (set to PLUGIN_API_VERSION)
+		PluginServiceFunc	Service;		// player supplied services callback
+
+		struct
+		{
+			void *Reserved[2];
+		} toPlayer;
+
+		struct 
+		{
+			void (*ShutDown)(int flags);
+			void (*Configure)(int flags);
+			void (*About)(int flags);
+			void *Reserved[2];
+		} toModule;
+	} QCDModInitGen;
+//-----------------------------------------------------------------------------
+typedef struct
+{
+	PluginServiceFunc	Service;		// player supplied services callback
+} QCDService;
+
 
 struct MSNMessages
 {
@@ -41,16 +71,24 @@ struct Settings
 	BOOL bArtist;
 	BOOL bAlbum;
 	BOOL bVideo;
+	BOOL bWMPIsFaked;
 	UINT nDelay;
 };
 
+
+static const UINT PS_STOPPED = 1;
+static const UINT PS_PLAYING = 2;
+static const UINT PS_PAUSED  = 3;
+
+
 extern HINSTANCE		hInstance;
 extern HWND				hwndPlayer;
-extern QCDModInitGen	*QCDCallbacks;
+extern QCDService*      QCDCallbacks;
 extern Settings			settings;
 extern INT				nMSNBuild;
 
 // Calls from the Player
+int  Initialize(QCDModInfo *modInfo, int flags);
 void Configure(int flags);
 void About(int flags);
 void ShutDown(int flags);
@@ -61,7 +99,7 @@ void SaveSettings();
 void CurrentSong(MSNMessages* msn);
 void UpdateSong();
 void ClearSong();
-BOOL IsPlaying();
+BOOL PlayerStatus(UINT status);
 
 // Microsoft Messenger functins
 void SendToMSN(MSNMessages* msn);

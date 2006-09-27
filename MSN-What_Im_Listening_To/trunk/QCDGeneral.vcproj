@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8,00"
-	Name="QCDGeneral"
+	Name="MSN"
 	ProjectGUID="{15C31806-A734-4AE3-8474-033A76F4BE94}"
 	RootNamespace="QCDGeneral"
 	>
@@ -319,7 +319,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\qcdpdk\QCDGeneral\QCDCtrlMsgs.h"
+				RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
 				>
 			</File>
 			<File
@@ -327,11 +327,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\qcdpdk\QCDGeneral\QCDModDefs.h"
+				RelativePath="..\qmppdk\Include\QCDModDefs.h"
 				>
 			</File>
 			<File
-				RelativePath="..\qcdpdk\QCDGeneral\QCDModGeneral.h"
+				RelativePath="..\qmppdk\Include\QCDModGeneral2.h"
 				>
 			</File>
 			<File

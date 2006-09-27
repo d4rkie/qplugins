@@ -40,7 +40,9 @@
 #pragma warning(disable:4002)		// Disable "too many actual parameters for macro INFO"
 
 // Constants
-static       CHAR*   PLUGIN_NAME   = "MSN \"What I'm Listening To\" v2.5.1";
+static       CHAR*   PLUGIN_NAME   =  "MSN \"What I'm Listening To\" v2.6";
+static       WCHAR*  PLUGIN_NAME_W = L"MSN \"What I'm Listening To\" v2.6";
+
 static const WCHAR   INI_SECTION[] = L"MSN-WILT";
 static const WCHAR*  REGKEY_MSN    = L"Software\\Microsoft\\MSNMessenger";
 static const WCHAR*  REGKEY_WMP    = L"Software\\Microsoft\\Active Setup\\Installed Components\\{6BF52A52-394A-11d3-B153-00C04F79FAA6}";
@@ -49,20 +51,23 @@ static const WORD    ALBUM_LEN     = 100;
 static const WORD    ARTIST_LEN    = 100;
 static const WORD    CONTENTID_LEN = 100;
 
-static const LONG DIGITAL_AUDIOFILE_MEDIA_QMP = 0x1000;
-static const LONG DIGITAL_VIDEOFILE_MEDIA_QMP = 0x10000;
 
 // Global variables
-HINSTANCE		hInstance;
-HWND			hwndPlayer;
-QCDModInitGen	*QCDCallbacks;
-WNDPROC			QCDProc;
+HINSTANCE          hInstance        = NULL;
+HWND               hwndPlayer       = NULL;
 
-BOOL			bIsEncoding;
-INT				nMSNBuild;
-UINT_PTR		nDelayTimerID;
-WCHAR*			strTrackPlaying;
-Settings		settings;
+QCDService*        QCDCallbacks     = NULL;
+QCDModInitGen*     ModInitGen1      = NULL;
+QCDModInitGen2*    ModInitGen2      = NULL;
+
+BOOL               g_IsNewApi       = false;
+
+WNDPROC            g_lpOldQMPProc   = NULL;
+BOOL               bIsEncoding      = FALSE;
+INT                nMSNBuild        = 0;
+UINT_PTR           nDelayTimerID    = 0;
+WCHAR*             strTrackPlaying  = NULL;
+Settings           settings;
 
 //-----------------------------------------------------------------------------
 
@@ -70,28 +75,67 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
+		DisableThreadLibraryCalls(hInst);
 		hInstance = hInst;
 	}
 	return TRUE;
 }
 
 //-----------------------------------------------------------------------------
+// New QMP entry point
+//-----------------------------------------------------------------------------
+PLUGIN_API QCDModInitGen2* GENERAL2_DLL_ENTRY_POINT()
+{
+	ModInitGen2 = new QCDModInitGen2;
 
+	ModInitGen2->size                 = sizeof(QCDModInitGen2);
+	ModInitGen2->version              = PLUGIN_API_VERSION_NTUTF8;
+
+	ModInitGen2->toModule.Initialize  = Initialize;
+	ModInitGen2->toModule.ShutDown    = ShutDown;
+	ModInitGen2->toModule.About       = About;
+	ModInitGen2->toModule.Configure   = Configure;
+
+	g_IsNewApi = true;
+	return ModInitGen2;
+}
+
+//-----------------------------------------------------------------------------
+// Old QCD entry point
+//-----------------------------------------------------------------------------
 PLUGIN_API BOOL GENERALDLL_ENTRY_POINT(QCDModInitGen *ModInit, QCDModInfo *ModInfo)
 {
-	// use this version for new style API calls (all returned text in UTF8 encoding on WinNT/2K/XP (native encoding on Win9x))
-	ModInit->version				= PLUGIN_API_VERSION_WANTUTF8;
-	ModInfo->moduleString			= PLUGIN_NAME;
+	ModInitGen1 = ModInit;
 
-	ModInit->toModule.ShutDown		= ShutDown;
-	ModInit->toModule.About			= About;
-	ModInit->toModule.Configure		= Configure;
+	ModInitGen1->size                 = sizeof(QCDModInitGen);		// Old API sizeof
+	ModInitGen1->version              = PLUGIN_API_VERSION_NTUTF8;
 
-	QCDCallbacks = ModInit;
+	ModInitGen1->toModule.ShutDown    = ShutDown;
+	ModInitGen1->toModule.About       = About;
+	ModInitGen1->toModule.Configure   = Configure;
 
-	hwndPlayer = (HWND)QCDCallbacks->Service(opGetParentWnd, 0, 0, 0);
+	g_IsNewApi = false;
+
+	Initialize(ModInfo, 0);
+	return TRUE;
+}
+
+//----------------------------------------------------------------------------
+
+int Initialize(QCDModInfo *modInfo, int flags)
+{
+	QCDCallbacks = new QCDService;
+	if (g_IsNewApi)
+		QCDCallbacks->Service = ModInitGen2->Service;
+	else
+		QCDCallbacks->Service = ModInitGen1->Service;
+
+	modInfo->moduleString = PLUGIN_NAME;
+
 
 	// TODO: all your plugin initialization here
+	hwndPlayer = (HWND)QCDCallbacks->Service(opGetParentWnd, 0, 0, 0);
+
 	nDelayTimerID = 0;
 	bIsEncoding = FALSE;
 
@@ -100,8 +144,7 @@ PLUGIN_API BOOL GENERALDLL_ENTRY_POINT(QCDModInitGen *ModInit, QCDModInfo *ModIn
 		return FALSE;
 
 	// Subclass the player and listen for WM_PN_?
-	//if ((QCDProc = (WNDPROC)SetWindowLong(hwndPlayer, GWL_WNDPROC, (LONG)QCDSubProc)) == 0) {
-	if ((QCDProc = (WNDPROC)SetWindowLongPtr(hwndPlayer, GWLP_WNDPROC, (LONG_PTR)QCDSubProc)) == 0){
+	if ((g_lpOldQMPProc = (WNDPROC)SetWindowLongPtr(hwndPlayer, GWLP_WNDPROC, (LONG_PTR)QCDSubProc)) == 0){
 		MessageBox(hwndPlayer, _T("Failed to subclass player!"), _T("Fatal init error!"), MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
@@ -109,13 +152,13 @@ PLUGIN_API BOOL GENERALDLL_ENTRY_POINT(QCDModInitGen *ModInit, QCDModInfo *ModIn
 	nMSNBuild = RegDB_GetMSNBuild();
 	LoadSettings();
 
-	// QCD playing
-	if (IsPlaying()) {
+	if (PlayerStatus(PS_PLAYING))
+	{
 		MSNMessages msn;
 		ZeroMemory(&msn, sizeof(msn));
 		CurrentSong(&msn);
 		msn.msncommand = 1;
-		
+
 		SendToMSN(&msn);
 	}
 
@@ -127,7 +170,8 @@ PLUGIN_API BOOL GENERALDLL_ENTRY_POINT(QCDModInitGen *ModInit, QCDModInfo *ModIn
 void ShutDown(int flags) 
 {
 	// Remove subclassing
-	QCDProc = (WNDPROC)SetWindowLongPtr(hwndPlayer, GWLP_WNDPROC, (LONG_PTR)QCDProc);
+	if (!SetWindowLongPtr(hwndPlayer, GWLP_WNDPROC, (LONG_PTR)g_lpOldQMPProc))
+		MessageBox(hwndPlayer, L"Failed to remove window hook. Restart the player!", PLUGIN_NAME_W, 0);
 
 	if (nDelayTimerID)
 		KillTimer(NULL, nDelayTimerID);
@@ -136,6 +180,9 @@ void ShutDown(int flags)
 	SaveSettings();
 
 	delete [] strTrackPlaying;
+
+	if (g_IsNewApi)
+		delete ModInitGen2;
 }
 
 //-----------------------------------------------------------------------------
@@ -170,13 +217,14 @@ void LoadSettings()
 	QCDCallbacks->Service(opGetPluginSettingsFile, strTmp, MAX_PATH*sizeof(WCHAR), 0); // Returns UTF8
 	QCDCallbacks->Service(opUTF8toUCS2, strTmp, (long)strIni, MAX_PATH);
 
-	settings.bTitle  = TRUE; // GetPrivateProfileInt(INI_SECTION, L"bTitle", 1, strIni);
-	settings.bArtist = GetPrivateProfileInt(INI_SECTION, L"bArtist", 1, strIni);
-	settings.bAlbum  = GetPrivateProfileInt(INI_SECTION, L"bAlbum",  0, strIni);
-	settings.bVideo  = GetPrivateProfileInt(INI_SECTION, L"bVideo",  0, strIni);
-	settings.nDelay  = GetPrivateProfileInt(INI_SECTION, L"nDelay",  0, strIni);
+	settings.bTitle      = TRUE; // GetPrivateProfileInt(INI_SECTION, L"bTitle", 1, strIni);
+	settings.bArtist     = GetPrivateProfileInt(INI_SECTION, L"bArtist", 1, strIni);
+	settings.bAlbum      = GetPrivateProfileInt(INI_SECTION, L"bAlbum",  0, strIni);
+	settings.bVideo      = GetPrivateProfileInt(INI_SECTION, L"bVideo",  0, strIni);
+	settings.bWMPIsFaked = GetPrivateProfileInt(INI_SECTION, L"bWMPIsFaked", 0, strIni);
+	settings.nDelay      = GetPrivateProfileInt(INI_SECTION, L"nDelay",  0, strIni);
 
-	bFirstRun        = GetPrivateProfileInt(INI_SECTION, L"bFirstRun", 1, strIni);
+	bFirstRun = GetPrivateProfileInt(INI_SECTION, L"bFirstRun", 1, strIni);
 	if (bFirstRun) {
 		if (RegDB_GetWMPVersion() < 9) {
 			if (IDYES == MessageBox(hwndPlayer, 
@@ -211,6 +259,7 @@ void SaveSettings()
 	wsprintf(buf, L"%d", settings.bArtist);	WritePrivateProfileString(INI_SECTION, L"bArtist", buf, strIni);
 	wsprintf(buf, L"%d", settings.bAlbum);	WritePrivateProfileString(INI_SECTION, L"bAlbum",  buf, strIni);
 	wsprintf(buf, L"%d", settings.bVideo);	WritePrivateProfileString(INI_SECTION, L"bVideo",  buf, strIni);
+	wsprintf(buf, L"%d", settings.bWMPIsFaked);	WritePrivateProfileString(INI_SECTION, L"bWMPIsFaked",  buf, strIni);
 	wsprintf(buf, L"%u", settings.nDelay);	WritePrivateProfileString(INI_SECTION, L"nDelay",  buf, strIni);
 }
 
@@ -222,12 +271,15 @@ void RegDB_Fix(BOOL bFix)
 	static BOOL bIsFixed = FALSE;
 
 	if (bFix) {
-		// Check if entries already present
-		if (RegDB_GetWMPVersion() < 9)
+		if (RegDB_GetWMPVersion() < 9) {
 			RegDB_Insert();
+			settings.bWMPIsFaked = true;
+		}
 	}
-	else
+	else {
 			RegDB_Clean();
+			settings.bWMPIsFaked = false;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -340,8 +392,13 @@ void SendToMSN(MSNMessages *msn)
 	// Send empty if not showing video info
 	if (settings.bVideo == FALSE) {
 		long nReturn = QCDCallbacks->Service(opGetMediaType, 0, -1, 0);
-		if(nReturn == DIGITAL_VIDEOFILE_MEDIA || nReturn == DIGITAL_VIDEOFILE_MEDIA_QMP) {
-			ZeroMemory(msn, sizeof(MSNMessages));
+		if (g_IsNewApi) {
+			if(nReturn == DIGITAL_VIDEO_MEDIA)
+				ZeroMemory(msn, sizeof(MSNMessages));
+		}
+		else {
+			if(nReturn == LEGACY_DIGITAL_VIDEOFILE_MEDIA || nReturn == LEGACY_DIGITAL_VIDEOSTREAM_MEDIA)
+				ZeroMemory(msn, sizeof(MSNMessages));
 		}
 	}
 
@@ -460,12 +517,28 @@ void StartTimer(UINT nForced)
 
 //-----------------------------------------------------------------------------
 
-BOOL IsPlaying()
+BOOL PlayerStatus(UINT status)
 {
-	long iState = QCDCallbacks->Service(opGetPlayerState, 0, 0, 0);
-	if (iState == 2)
-		return TRUE;
-	return FALSE;
+	BOOL bReturn = FALSE;
+
+	const long nState = QCDCallbacks->Service(opGetPlayerState, 0, 0, 0);
+	switch (status)
+	{
+		case PS_PLAYING :
+			if (nState == 2)
+				bReturn = TRUE;
+			break;
+		case PS_STOPPED :
+			if (nState == 1)
+				bReturn = TRUE;
+			break;
+		case PS_PAUSED :
+			if (nState == 3)
+				bReturn = TRUE;
+			break;
+	}
+
+	return bReturn;
 }
 //-----------------------------------------------------------------------------
 // QBlog functions
@@ -488,7 +561,8 @@ void QBlog_InsertInRegDB()
 	lpSecurityAtt.lpSecurityDescriptor = NULL;
 	lpSecurityAtt.bInheritHandle = TRUE;
 
-	if (IsPlaying()) {
+	if (PlayerStatus(PS_PLAYING))
+	{
 		if (ERROR_SUCCESS == RegCreateKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\MediaPlayer\\CurrentMetadata"), 
 			0, lpClass, REG_OPTION_NON_VOLATILE, KEY_WRITE,	&lpSecurityAtt, &hKey, &dwDis)) {
 			
@@ -566,7 +640,8 @@ void CALLBACK DelayTimerProc(HWND hwnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 
 LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) 
 { 
-	switch (msg) {
+	switch (msg)
+	{
 		// Dont show on encoding
 		/*case WM_PN_ENCODEPROGRESS :
 		case WM_PN_ENCODESTARTED :
@@ -587,9 +662,9 @@ LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			// Check that it's not a cd/dvd that was inserted
 			if (lparam <= 'Z')
 				break;
-			if (QCDCallbacks->Service(opGetPlayerState, 0, 0, 0) == 1) // Stopped
+			if (PlayerStatus(PS_STOPPED))
 				break;
-			// Check if the info has changed for the playing track
+			// Only fall through if info has changed for the current playing track
 			if (lstrcmpW((LPCWSTR)lparam, strTrackPlaying) != 0)
 				break;
 		}
@@ -597,7 +672,7 @@ LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		case WM_PN_TRACKCHANGED :
 			INFO("-WM_PN_TRACKCHANGED: wparam: %X, lparam: %X", wparam, lparam);
 			if (!bIsEncoding)
-				StartTimer(1);
+				StartTimer(100);	// Workaround for CD track change
 			break;
 
 		case WM_PN_PLAYSTARTED :
@@ -625,9 +700,11 @@ LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			CurrentSong(&msn);
 
 			// Paused
-			if (QCDCallbacks->Service(opGetPlayerState, 0, 0, 0) == 3) {
+			if (PlayerStatus(PS_PAUSED))
+			{
 				// Append (paused)
-				if (wcslen(msn.title) > TITLE_LEN - 13) {
+				if (wcslen(msn.title) > TITLE_LEN - 13)
+				{
 					msn.title[TITLE_LEN - 13] = 0;
 					wcscat_s(msn.title, sizeof(msn.title)/sizeof(WCHAR), L"...");
 				}
@@ -641,7 +718,7 @@ LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		}
 	}
 	
-	return CallWindowProc(QCDProc, hwnd, msg, wparam, lparam);
+	return CallWindowProc(g_lpOldQMPProc, hwnd, msg, wparam, lparam);
 }
 
 //-----------------------------------------------------------------------------
