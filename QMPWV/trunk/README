@@ -1,7 +1,7 @@
 How to compile this code?
 1. Download the source code of WavPack from http://www.wavpack.com
 2. Unzip all files to a subfolder named "wavpack" under the project.
-3. Open the Project with VC++ 7.0 or above to compile.
+3. Open the Project with VC++ 8.0 or above to compile.
 
 Good Luck:)
 
