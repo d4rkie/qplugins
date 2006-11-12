@@ -13,19 +13,12 @@
 
 //////////////////////////////////////////////////////////////////////////
 
-QDecoder::QDecoder(void)
-: QDecoderBase(_T("QPlugins WavPack decoder"), _T("3.0"), _T("WV"))
-, m_wpc(NULL)
-, sample_buffer(NULL)
-{
-}
-
 QDecoder::QDecoder(LPCTSTR lpszFileName)
 : QDecoderBase(_T("QPlugins WavPack decoder"), _T("3.0"), _T("WV"))
 , m_wpc(NULL)
 , sample_buffer(NULL)
 {
-	lstrcpy( m_fn, lpszFileName);
+	_fn = lpszFileName; // !!save the filename used by IQCDMediaDecoder interface!!
 }
 
 QDecoder::~QDecoder(void)
@@ -194,47 +187,6 @@ int QDecoder::GetAudioInfo(AudioInfo * pai)
 
 		return 1;
 	}
-}
-
-//------------------------------------------------------------------------------------------
-
-void QDecoder::Release(void)
-{
-	delete this;
-	return ;
-}
-
-BOOL QDecoder::StartDecoding(IQCDMediaDecoderCallback* pMDCallback, long userData)
-{
-	WAVEFORMATEX wfex;
-	WriteDataStruct wd;
-	BOOL ret;
-
-	if ( !OpenFile( m_fn))
-		return FALSE;
-
-	// first, decode one block/frame to get wave format
-	if ( Decode( &wd))
-		GetWaveFormFormat( &wfex);
-	else {
-		pMDCallback->OnError( 1, userData);
-
-		Close();
-
-		return FALSE;
-	}
-
-	// running the decoding loop
-	do {
-		pMDCallback->OnReceive( (BYTE *)wd.data, wd.bytelen, &wfex, userData);
-	} while ( Decode( &wd));
-
-	// finish decoding
-	pMDCallback->OnEOF( userData);
-
-	Close();
-
-	return TRUE;
 }
 
 //------------------------------------------------------------------------------------------

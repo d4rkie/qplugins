@@ -5,13 +5,12 @@
 #include "wputils.h"
 
 
-class QDecoder :
-	public QDecoderBase, 
-	public IQCDMediaDecoder
+//////////////////////////////////////////////////////////////////////////
+
+class QDecoder : public QDecoderBase
 {
 public:
-	QDecoder(void);
-	QDecoder(LPCTSTR lpszFileName);
+	QDecoder(LPCTSTR lpszFileName = NULL);
 	~QDecoder(void);
 
 public:
@@ -25,10 +24,6 @@ public:
 	int GetWaveFormFormat(WAVEFORMATEX * pwf);
 	int GetAudioInfo(AudioInfo * pai);
 
-public:
-	virtual void __stdcall Release(void);
-	virtual BOOL __stdcall StartDecoding(IQCDMediaDecoderCallback* pMDCallback, long userData);
-
 private:
 	void _format_samples (uchar *dst, int bps, long *src, unsigned long samcnt);
 
@@ -36,7 +31,5 @@ private:
 	WavpackContext *m_wpc;
 
 	LPBYTE sample_buffer;	// sample buffer
-
-	TCHAR m_fn[MAX_PATH];
 };
 
