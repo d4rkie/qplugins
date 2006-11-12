@@ -10,17 +10,19 @@
 
 #include <atlstr.h>
 #include "QCDModInput.h"
+#include "IQCDMediaDecoder.h"
 
 //////////////////////////////////////////////////////////////////////////
 
-class QDecoderBase
+class QDecoderBase : public IQCDMediaDecoder
 {
 public:
 	QDecoderBase(LPCTSTR lpszName, LPCTSTR lpszVersion, LPCTSTR lpszExtensions)
-	: m_strExtensions(lpszExtensions)
-	, m_bSeek(FALSE)
-	, _nch(0), _srate(0), _bps(0), _br(0)
-	, _pos(0)
+		: m_strExtensions(lpszExtensions)
+		, m_bSeek(FALSE)
+		, _nch(0), _srate(0), _bps(0), _br(0)
+		, _pos(0)
+		, _fn(_T(""))
 	{
 		m_strFullName = (lpszName && lstrlen( lpszName) > 0) ? lpszName : _T("QPlugins Decoder Module");
 		m_strFullName += _T(" v");
@@ -40,6 +42,53 @@ public:
 	virtual int Seek(int ms) = 0;
 	virtual int GetWaveFormFormat(WAVEFORMATEX * pwf) = 0;
 	virtual int GetAudioInfo(AudioInfo * pai) = 0;
+
+// for IQCDMediaDecoder interface
+public:
+	virtual void __stdcall Release(void)
+	{
+		delete this;
+		return ;
+	}
+
+	virtual BOOL __stdcall StartDecoding(IQCDMediaDecoderCallback* pMDCallback, long userData)
+	{
+		WAVEFORMATEX wfex;
+		WriteDataStruct wd;
+		int ret;
+
+		if ( _fn.IsEmpty()) // decoding filename is not available!
+			return FALSE;
+
+		if ( !OpenFile( _fn))
+			return FALSE;
+
+		// first, decode one block/frame to get wave format
+		if ( Decode( &wd) > 0)
+			GetWaveFormFormat( &wfex);
+		else {
+			pMDCallback->OnError( 1, userData);
+
+			Close();
+
+			return FALSE;
+		}
+
+		// running the decoding loop
+		do {
+			pMDCallback->OnReceive( (BYTE *)wd.data, wd.bytelen, &wfex, userData);
+		} while ( (ret = Decode( &wd)) > 0);
+
+
+		if ( ret < 0) // decoding error
+			pMDCallback->OnError( 1, userData);
+		else // finished decoding
+			pMDCallback->OnEOF( userData);
+
+		Close();
+
+		return ret >= 0;
+	}
 
 public:
 	LPCTSTR GetFullName(void) {	return m_strFullName; }
@@ -82,8 +131,8 @@ protected:
 	}
 
 protected:
-	CString m_strFullName, m_strExtensions;
-	BOOL m_bSeek;
+	CString m_strFullName, m_strExtensions; // Module description informations
+	BOOL m_bSeek; // Is file/stream seekable?
 
 protected:
 	int _nch; // number of channels
@@ -93,5 +142,6 @@ protected:
 
 protected:
 	unsigned int _pos; // current decoding position, in milliseconds
+	CString _fn; // current decoding filename for IQCDMediaDecoder. set by sub-class
 };
 
