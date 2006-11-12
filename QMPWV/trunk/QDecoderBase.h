@@ -8,11 +8,10 @@
 ////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <atlstr.h>
+#include "QCDModInput.h"
 
-#include "stdafx.h"
-
-#include "QCDInputDLL.h"
-
+//////////////////////////////////////////////////////////////////////////
 
 class QDecoderBase
 {
@@ -74,12 +73,12 @@ public:
 protected:
 	void _show_error(LPCTSTR lpszMsg, ...)
 	{
-		char foo[512];
+		TCHAR foo[512];
 		va_list args;
 		va_start(args, lpszMsg);
-		vsprintf(foo, lpszMsg, args);
+		_vstprintf(foo, lpszMsg, args);
 		va_end(args);
-		MessageBox( hwndPlayer, foo, "QDecoder Plug-in Error", MB_ICONSTOP);
+//		MessageBox( hwndPlayer, foo, "QDecoder Plug-in Error", MB_ICONSTOP);
 	}
 
 protected:

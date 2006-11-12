@@ -6,10 +6,12 @@
 
 
 class QDecoder :
-	public QDecoderBase
+	public QDecoderBase, 
+	public IQCDMediaDecoder
 {
 public:
 	QDecoder(void);
+	QDecoder(LPCTSTR lpszFileName);
 	~QDecoder(void);
 
 public:
@@ -23,16 +25,18 @@ public:
 	int GetWaveFormFormat(WAVEFORMATEX * pwf);
 	int GetAudioInfo(AudioInfo * pai);
 
+public:
+	virtual void __stdcall Release(void);
+	virtual BOOL __stdcall StartDecoding(IQCDMediaDecoderCallback* pMDCallback, long userData);
+
 private:
 	void _format_samples (uchar *dst, int bps, long *src, unsigned long samcnt);
-	float _calculate_gain(WavpackContext *wpc, int *pSoftClip);
 
 private:
 	WavpackContext *m_wpc;
 
 	LPBYTE sample_buffer;	// sample buffer
 
-	float play_gain;	// playback gain (for replaygain support)
-	int soft_clipping;	// soft clipping active for playback
+	TCHAR m_fn[MAX_PATH];
 };
 

@@ -1,9 +1,8 @@
-#include ".\qdecoder.h"
-
-#include "QInput.h"
+#include "stdafx.h"
+#include "QMPWV.h"
+#include "QDecoder.h"
 
 #include "math.h"
-
 
 #define MAX_NCH 2
 #define MAX_BPS 32
@@ -12,12 +11,21 @@
 #define NCH (WavpackGetReducedChannels( m_wpc))
 #define SAMPRATE (WavpackGetSampleRate( m_wpc))
 
+//////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder(void)
-: QDecoderBase(_T("QPlugins WavPack decoder"), _T("2.1"), _T("WV"))
+: QDecoderBase(_T("QPlugins WavPack decoder"), _T("3.0"), _T("WV"))
 , m_wpc(NULL)
 , sample_buffer(NULL)
 {
+}
+
+QDecoder::QDecoder(LPCTSTR lpszFileName)
+: QDecoderBase(_T("QPlugins WavPack decoder"), _T("3.0"), _T("WV"))
+, m_wpc(NULL)
+, sample_buffer(NULL)
+{
+	lstrcpy( m_fn, lpszFileName);
 }
 
 QDecoder::~QDecoder(void)
@@ -41,7 +49,7 @@ unsigned int QDecoder::GetDuration(LPCTSTR lpszFileName)
 	char error [128] = {'\0'};
 	double len;
 
-	if ( !(wpc = WavpackOpenFileInput( lpszFileName, error, (cfgUI.ConfigBit & OPEN_WVC) | OPEN_TAGS | OPEN_2CH_MAX, 0)))
+	if ( !(wpc = WavpackOpenFileInput( lpszFileName, error, (g_bUseWVC & OPEN_WVC) | OPEN_TAGS | OPEN_2CH_MAX, 0)))
 		return -1;
 
 	len = (int)(WavpackGetNumSamples( wpc) * 1000.0 / WavpackGetSampleRate( wpc));
@@ -73,14 +81,14 @@ int QDecoder::OpenFile(LPCTSTR lpszFileName)
 	// create a decoder object for decoding which should be a member of this class
 	// return PLAYSTATUS_FAILED for open failed, PLAYSTATUS_SUCCESS for OK.
 	//
-	// rememberto set m_bSeek after checking format.
+	// remember to set m_bSeek after checking format.
 	char error [128] = {'\0'};
 
-	if ( !(m_wpc = WavpackOpenFileInput( lpszFileName, error, (cfgUI.ConfigBit & OPEN_WVC) | OPEN_TAGS | OPEN_2CH_MAX | OPEN_NORMALIZE, 23)))
+	if ( !(m_wpc = WavpackOpenFileInput( lpszFileName, error, (g_bUseWVC & OPEN_WVC) | OPEN_TAGS | OPEN_2CH_MAX | OPEN_NORMALIZE, 23)))
 		// check by parsing the returned error string.
 		return (strstr( error, "not compatible") || strstr( error, "problem")) ? PLAYSTATUS_UNSUPPORTED : PLAYSTATUS_FAILED;
 
-	play_gain = _calculate_gain ( m_wpc, &soft_clipping);
+	//play_gain = _calculate_gain ( m_wpc, &soft_clipping);
 
 	sample_buffer = new BYTE[576*MAX_NCH*(MAX_BPS/8)*2];
 
@@ -117,59 +125,6 @@ int QDecoder::Decode(WriteDataStruct * wd)
 					*ptr++ <<= 8;
 			}
 		}
-
-		// check for and handle required gain for 24-bit data
-		if ( play_gain != 1.0) {
-			int *gain_ptr = (int *) sample_buffer;
-			int gain_cnt = tsamples;
-
-			if ( play_gain > 1.0)
-				while ( gain_cnt--) {
-					float value = *gain_ptr * play_gain * (1/256.0);
-
-					if ( soft_clipping && value > 6291456.0)
-						*gain_ptr = 8388608.0 - (4398046511104.0 / (value - 4194304.0));
-					else if (soft_clipping && value < -6291456.0)
-						*gain_ptr = -8388608.0 - (4398046511104.0 / (value + 4194304.0));
-					else if ( value > 8388607.0)
-						*gain_ptr = 8388607;
-					else if ( value < -8388608.0)
-						*gain_ptr = -8388608;
-					else
-						*gain_ptr = floor (value + 0.5);
-
-					*gain_ptr++ <<= 8;
-				}
-			else
-				while (gain_cnt--) {
-                       float value = *gain_ptr * play_gain * (1/256.0);
-					*gain_ptr++ = (int) floor (value + 0.5) << 8;
-				}
-		}
-	} else if (play_gain != 1.0) {
-		short *gain_ptr = (short *) sample_buffer;
-		int gain_cnt = tsamples;
-
-		if ( play_gain > 1.0)
-			while ( gain_cnt--) {
-				float value = *gain_ptr * play_gain;
-
-				if (soft_clipping && value > 24576.0)
-					*gain_ptr++ = 32768.0 - (67108864.0 / (value - 16384.0));
-				else if (soft_clipping && value < -24576.0)
-					*gain_ptr++ = -32768.0 - (67108864.0 / (value + 16384.0));
-				else if (value > 32767.0)
-					*gain_ptr++ = 32767;
-				else if (value < -32768.0)
-					*gain_ptr++ = -32768;
-				else
-					*gain_ptr++ = floor (value + 0.5);
-			}
-		else
-			while (gain_cnt--) {
-				float value = *gain_ptr * play_gain;
-				*gain_ptr++ = floor (value + 0.5);
-			}
 	}
 
 	_pos = (int)(WavpackGetSampleIndex( m_wpc) * 1000.0 / WavpackGetSampleRate( m_wpc));
@@ -243,100 +198,93 @@ int QDecoder::GetAudioInfo(AudioInfo * pai)
 
 //------------------------------------------------------------------------------------------
 
-void QDecoder::_format_samples (uchar *dst, int bps, long *src, unsigned long samcnt)
+void QDecoder::Release(void)
 {
-    long temp;
-
-    switch (bps) {
-	case 1:
-	    while (samcnt--) {
-		temp = *src++;
-		dst [0] = 0;
-		dst [1] = temp;
-		dst += 2;
-	    }
-
-	    break;
-
-	case 2:
-	    while (samcnt--) {
-		dst [0] = temp = *src++;
-		dst [1] = temp >> 8;
-		dst += 2;
-	    }
-
-	    break;
-
-	case 3:
-	    while (samcnt--) {
-		temp = *src++;
-		dst [0] = 0;
-		dst [1] = temp;
-		dst [2] = temp >> 8;
-		dst [3] = temp >> 16;
-		dst += 4;
-	    }
-
-	    break;
-
-	case 4:
-	    while (samcnt--) {
-		dst [0] = temp = *src++;
-		dst [1] = temp >> 8;
-		dst [2] = temp >> 16;
-		dst [3] = temp >> 24;
-		dst += 4;
-	    }
-
-	    break;
-    }
+	delete this;
+	return ;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-// This function uses the ReplayGain mode selected by the user and the info //
-// stored in the specified tag to determine the gain value used to play the //
-// file and whether "soft clipping" is required. Note that the gain is in   //
-// voltage scaling (not dB), so a value of 1.0 (not 0.0) is unity gain.     //
-//////////////////////////////////////////////////////////////////////////////
-float QDecoder::_calculate_gain(WavpackContext *wpc, int *pSoftClip)
+BOOL QDecoder::StartDecoding(IQCDMediaDecoderCallback* pMDCallback, long userData)
 {
-	*pSoftClip = FALSE;
+	WAVEFORMATEX wfex;
+	WriteDataStruct wd;
+	BOOL ret;
 
-	if ( cfgUI.ConfigBit & (REPLAYGAIN_TRACK | REPLAYGAIN_ALBUM)) {
-		float gain_value = 0.0, peak_value = 1.0;
-		char value [32];
+	if ( !OpenFile( m_fn))
+		return FALSE;
 
-		if ((cfgUI.ConfigBit & REPLAYGAIN_ALBUM) && WavpackGetTagItem (wpc, "replaygain_album_gain", value, sizeof (value))) {
-			gain_value = atof (value);
+	// first, decode one block/frame to get wave format
+	if ( Decode( &wd))
+		GetWaveFormFormat( &wfex);
+	else {
+		pMDCallback->OnError( 1, userData);
 
-			if ( WavpackGetTagItem (wpc, "replaygain_album_peak", value, sizeof (value)))
-				peak_value = atof (value);
-		} else if ( WavpackGetTagItem (wpc, "replaygain_track_gain", value, sizeof (value))) {
-			gain_value = atof (value);
+		Close();
 
-			if ( WavpackGetTagItem (wpc, "replaygain_track_peak", value, sizeof (value)))
-				peak_value = atof (value);
-		} else
-			return 1.0;
+		return FALSE;
+	}
 
-		// convert gain from dB to voltage (with +/- 20 dB limit)
+	// running the decoding loop
+	do {
+		pMDCallback->OnReceive( (BYTE *)wd.data, wd.bytelen, &wfex, userData);
+	} while ( Decode( &wd));
 
-		if (gain_value > 20.0)
-			gain_value = 10.0;
-		else if (gain_value < -20.0)
-			gain_value = 0.1;
-		else
-			gain_value = pow (10.0, gain_value / 20.0);
+	// finish decoding
+	pMDCallback->OnEOF( userData);
 
-		if (peak_value * gain_value > 1.0) {
-			if ( cfgUI.ConfigBit & PREVENT_CLIPPING)
-				gain_value = 1.0 / peak_value;
-			else if ( cfgUI.ConfigBit & SOFTEN_CLIPPING)
-				*pSoftClip = TRUE;
+	Close();
+
+	return TRUE;
+}
+
+//------------------------------------------------------------------------------------------
+
+void QDecoder::_format_samples (uchar *dst, int bps, long *src, unsigned long samcnt)
+{
+	long temp;
+
+	switch (bps) {
+	case 1:
+		while ( samcnt--) {
+			temp = *src++;
+			dst [0] = 0;
+			dst [1] = temp;
+			dst += 2;
 		}
 
-		return gain_value;
-	} else
-		return 1.0;
+		break;
+
+	case 2:
+		while ( samcnt--) {
+			dst [0] = temp = *src++;
+			dst [1] = temp >> 8;
+			dst += 2;
+		}
+
+		break;
+
+	case 3:
+		while ( samcnt--) {
+			temp = *src++;
+			dst [0] = 0;
+			dst [1] = temp;
+			dst [2] = temp >> 8;
+			dst [3] = temp >> 16;
+			dst += 4;
+		}
+
+		break;
+
+	case 4:
+		while ( samcnt--) {
+			dst [0] = temp = *src++;
+			dst [1] = temp >> 8;
+			dst [2] = temp >> 16;
+			dst [3] = temp >> 24;
+			dst += 4;
+		}
+
+		break;
+	}
 }
 
