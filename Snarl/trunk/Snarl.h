@@ -12,7 +12,7 @@
 #include <Windows.h>
 
 // Registered window message and event identifiers (passed in wParam when either SNARL_GLOBAL_MSG or ReplyMsg is received)
-#define SNARL_GLOBAL_MSG				"SnarlGlobalEvent"
+#define SNARL_GLOBAL_MSG				_T("SnarlGlobalEvent")
 #define SNARL_NOTIFICATION_CANCELLED	0
 #define SNARL_LAUNCHED					1
 #define SNARL_QUIT 						2
@@ -20,6 +20,8 @@
 #define SNARL_NOTIFICATION_CLICKED 		32            // notification was right-clicked by user
 #define SNARL_NOTIFICATION_TIMED_OUT 	33
 #define SNARL_NOTIFICATION_ACK 			34            // notification was left-clicked by user
+
+#define SNARL_BUFF_SIZE 1024
 
 //Snarl Data Types
 enum SNARL_COMMANDS {
@@ -32,15 +34,14 @@ enum SNARL_COMMANDS {
     SNARL_REVOKE_CONFIG_WINDOW   = 7
 };
 
-#define SNARL_BUFF_SIZE 1024;
 struct SNARLSTRUCT {
     SNARL_COMMANDS	Cmd;				// What to do...
     int				Id;					// Message ID (returned by snShowMessage())
     int				Timeout;			// Timeout in seconds (0=sticky)
     int				LngData2;			// Reserved
-    char			Title[1024];
-    char			Text[1024];
-    char			Icon[1024];
+    char			Title[SNARL_BUFF_SIZE];
+    char			Text[SNARL_BUFF_SIZE];
+    char			Icon[SNARL_BUFF_SIZE];
 };
 
 /*
@@ -54,7 +55,7 @@ int _Send(SNARLSTRUCT pss)
 	COPYDATASTRUCT pcd;
 	
 	// Will get a window class when snarl is released
-	hwnd = FindWindow(NULL, "Snarl");
+	hwnd = FindWindow(NULL, _T("Snarl"));
 	if (!hwnd)
 		return NULL;
 
@@ -74,9 +75,9 @@ int snShowMessage(char* strTitle, char* strText, int nTimeout = 0, char* strIcon
 	ZeroMemory((void*)&pss, sizeof(pss));
 
 	pss.Cmd = SNARL_SHOW;
-	CopyMemory(&pss.Title, strTitle,    1024);
-	CopyMemory(&pss.Text,  strText,     1024);
-	CopyMemory(&pss.Icon,  strIconPath, 1024);
+	CopyMemory(&pss.Title, strTitle,    SNARL_BUFF_SIZE);
+	CopyMemory(&pss.Text,  strText,     SNARL_BUFF_SIZE);
+	CopyMemory(&pss.Icon,  strIconPath, SNARL_BUFF_SIZE);
 	pss.Timeout = nTimeout;
 
 	// R0.3
@@ -92,8 +93,8 @@ bool snUpdateMessage(int AId, char* strTitle, char* strText)
 
 	pss.Id  = AId;
 	pss.Cmd = SNARL_UPDATE;
-	CopyMemory(&pss.Title, strTitle, 1023);
-	CopyMemory(&pss.Text,  strText,   1023);
+	CopyMemory(&pss.Title, strTitle, SNARL_BUFF_SIZE);
+	CopyMemory(&pss.Text,  strText,  SNARL_BUFF_SIZE);
 	return _Send(pss);
 }
 
@@ -125,7 +126,8 @@ bool snGetVersion(WORD* nMajor, WORD* nMinor)
 
 	pss.Cmd = SNARL_GET_VERSION;
 	hr = _Send(pss);
-	if (hr) {
+	if (hr)
+	{
 		*nMajor = HIWORD(hr);
 		*nMinor = LOWORD(hr);
 	}
@@ -145,7 +147,7 @@ int snRegisterConfig(HWND hwnd, char* strAppName, int nReplyMsg)
 	pss.Cmd      = SNARL_REGISTER_CONFIG_WINDOW;
 	pss.LngData2 = (int)hwnd;
 	pss.Id       = nReplyMsg;
-	CopyMemory(&pss.Title, strAppName, 1023);
+	CopyMemory(&pss.Title, strAppName, SNARL_BUFF_SIZE);
 	return _Send(pss);
 }
 
