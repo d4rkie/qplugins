@@ -18,7 +18,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "replaygain_synthesis_static"="..\replaygain_synthesis\replaygain_synthesis_static.dsp" - Package Owner=<4>
+Project: "replaygain_synthesis_static"=".\replaygain_synthesis\replaygain_synthesis_static.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
