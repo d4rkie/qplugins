@@ -5,8 +5,11 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <TCHAR.h>
+#include <QString.h>
 #include "QCDGeneralDLL.h"
 #include "Config.h"
+
+#include "SnarlInterface.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -24,7 +27,7 @@ CConfig::~CConfig()
 
 //////////////////////////////////////////////////////////////////////
 
-const static char* strComboBox[4] = {_T("Title"), _T("Artist"), _T("Album"), _T("Nothing")};
+const static TCHAR* strComboBox[4] = {_T("Title"), _T("Artist"), _T("Album"), _T("Nothing")};
 const static PluginServiceOp ServiceOps[4] = {opGetTrackName, opGetArtistName, opGetDiscName, (PluginServiceOp)0};
 
 BOOL CALLBACK CConfig::DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -66,6 +69,13 @@ BOOL CALLBACK CConfig::DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 		CheckDlgButton(hwndDlg, IDC_HEADLINE_WRAP,  settings.bHeadline_wrap);
 		//CheckDlgButton(hwndDlg, IDC_TEXT1_WRAP,     settings.bText1_wrap);
 		//CheckDlgButton(hwndDlg, IDC_TEXT2_WRAP,     settings.bText2_wrap);
+
+		// Snarl version
+		WORD nHi, nLo;
+		TCHAR str[64];
+		snarl->snGetVersion(&nHi, &nLo);
+		_stprintf_s(str, 64, _T("%u.%u"), nHi, nLo);
+		SetDlgItemText(hwndDlg, IDC_SNARL_VERSION, str);
 
 		bReturn = TRUE;
 		break;

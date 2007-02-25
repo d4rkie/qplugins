@@ -23,8 +23,9 @@
 #ifndef QCDGeneralDLL_H
 #define QCDGeneralDLL_H
 
-#include "..\qcdpdk\QCDGeneral\QCDModGeneral.h"
-#include "..\qcdpdk\QCDGeneral\QCDCtrlMsgs.h"
+#include <QCDModGeneral2.h>
+#include <QCDCtrlMsgs.h>
+#include "SnarlInterface.h"
 
 struct Settings
 {
@@ -40,13 +41,16 @@ struct Settings
 
 extern HINSTANCE		hInstance;
 extern HWND				hwndPlayer;
-extern QCDModInitGen	*QCDCallbacks;
+extern QCDModInitGen2	QCDCallbacks;
 extern Settings			settings;
 
 extern void             DisplaySongInfo();
 extern bool             IsPlaying();
 
+extern SnarlInterface* snarl;
+
 // Calls from the Player
+int Initialize(QCDModInfo *modInfo, int flags);
 void Configure(int flags);
 void About(int flags);
 void ShutDown(int flags);
@@ -56,6 +60,8 @@ void LoadSettings();
 void SaveSettings();
 void DisplaySongInfo();
 bool IsPlaying();
+void GetIcon(long nIndex, LPSTR strIcon);
+void GetIcon2(long nIndex, LPSTR strIcon);
 
 // Subclassing
 LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);

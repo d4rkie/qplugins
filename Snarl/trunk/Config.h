@@ -11,6 +11,7 @@
 
 #include "resource.h"
 
+
 class CConfig  
 {
 public:

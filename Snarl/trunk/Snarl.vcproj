@@ -16,7 +16,7 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="D:\Programmer\Media\Quintessential Media Player\Plugins\"
+			OutputDirectory=".\Debug"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			>
@@ -37,6 +37,10 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\QMP_Includes"
+				WarningLevel="3"
+				DebugInformationFormat="4"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -49,6 +53,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).dll"
+				IgnoreDefaultLibraryNames=""
+				GenerateDebugInformation="true"
+				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).pdb"
+				GenerateMapFile="false"
+				MapExports="true"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -77,9 +87,11 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="D:\Programmer\Media\Quintessential Media Player\Plugins\"
-			IntermediateDirectory="$(ConfigurationName)"
+			OutputDirectory=".\Release"
+			IntermediateDirectory=".\Release\$(ConfigurationName)"
 			ConfigurationType="2"
+			CharacterSet="1"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -98,6 +110,12 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				Optimization="3"
+				InlineFunctionExpansion="2"
+				AdditionalIncludeDirectories="..\QMP_Includes"
+				StringPooling="true"
+				Detect64BitPortabilityProblems="false"
+				DebugInformationFormat="0"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -110,6 +128,14 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).dll"
+				LinkIncremental="1"
+				IgnoreAllDefaultLibraries="false"
+				IgnoreDefaultLibraryNames=""
+				GenerateDebugInformation="true"
+				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).pdb"
+				OptimizeForWindows98="1"
+				BaseAddress="0x30010000"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -153,6 +179,14 @@
 				RelativePath=".\QCDGeneralDLL.cpp"
 				>
 			</File>
+			<File
+				RelativePath="..\QMP_Includes\QString.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\SnarlInterface.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -164,7 +198,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\qcdpdk\QCDGeneral\QCDCtrlMsgs.h"
+				RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
 				>
 			</File>
 			<File
@@ -172,11 +206,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\qcdpdk\QCDGeneral\QCDModDefs.h"
+				RelativePath="..\qmppdk\Include\QCDModDefs.h"
 				>
 			</File>
 			<File
-				RelativePath="..\qcdpdk\QCDGeneral\QCDModGeneral.h"
+				RelativePath="..\QMP_Includes\QString.h"
 				>
 			</File>
 			<File
@@ -184,7 +218,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Snarl.h"
+				RelativePath=".\SnarlInterface.h"
 				>
 			</File>
 		</Filter>
