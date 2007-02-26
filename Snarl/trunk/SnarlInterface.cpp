@@ -179,8 +179,8 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT snarlStruct)
 			return nReturn;
 		else {
 			OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
-			return NULL;
+			return 0;
 		}
 	}
-	return 0;
+	return -1;
 }
