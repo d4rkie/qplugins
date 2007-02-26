@@ -12,7 +12,6 @@
 //-----------------------------------------------------------------------------
 
 
-
 #include "SnarlInterface.h"
 
 //-----------------------------------------------------------------------------
@@ -152,7 +151,7 @@ BOOL SnarlInterface::snGetVersion(WORD* major, WORD* minor)
 
 //-----------------------------------------------------------------------------
 
-LONG32 SnarlInterface::snGetGlobalMsg()
+UINT SnarlInterface::snGetGlobalMsg()
 {
 	return RegisterWindowMessage(SNARL_GLOBAL_MSG);
 }
@@ -176,10 +175,12 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT snarlStruct)
 		cds.dwData = 2;
 		cds.cbData = sizeof(snarlStruct);
 		cds.lpData = &snarlStruct;
-		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_ABORTIFHUNG, 100, &nReturn))
+		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 2000, &nReturn))
 			return nReturn;
-		else
+		else {
+			OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
 			return NULL;
+		}
 	}
 	return 0;
 }

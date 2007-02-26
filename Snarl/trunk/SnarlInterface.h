@@ -74,7 +74,7 @@ class SnarlInterface {
 		BOOL snRevokeConfig(HWND hWnd);
 		BOOL snGetVersion(WORD* major, WORD* minor);
 		HWND snGetSnarlWindow();
-		LONG32 snGetGlobalMsg();
+		UINT snGetGlobalMsg();
 
 	private:
 		LONG32 uSend(SNARLSTRUCT snarlStruct);
