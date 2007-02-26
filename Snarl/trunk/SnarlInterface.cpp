@@ -77,7 +77,7 @@ BOOL SnarlInterface::snIsMessageVisible(LONG32 id)
 
 //-----------------------------------------------------------------------------
 
-BOOL SnarlInterface::snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText)
+BOOL SnarlInterface::snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath)
 {
 	SNARLSTRUCT ss;
     ss.Cmd = SNARL_UPDATE;
@@ -85,6 +85,8 @@ BOOL SnarlInterface::snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText)
 
 	StringCbCopyA((LPSTR)&ss.Title, SNARL_STRING_LENGTH, szTitle);
 	StringCbCopyA((LPSTR)&ss.Text,  SNARL_STRING_LENGTH, szText);
+	/* 1.6 Beta 4 */
+    StringCbCopyA((LPSTR)&ss.Icon,  SNARL_STRING_LENGTH, szIconPath);
     return static_cast<BOOL>(uSend(ss));
 }
 

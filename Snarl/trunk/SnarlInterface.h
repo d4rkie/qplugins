@@ -68,7 +68,7 @@ class SnarlInterface {
 		LONG32 snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeout, LPCSTR szIconPath, HWND hWndReply, LONG32 uReplyMsg);
 		BOOL snHideMessage(LONG32 id);
 		BOOL snIsMessageVisible(LONG32 id);
-		BOOL snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText);
+		BOOL snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
 		BOOL snRegisterConfig(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg);
 		BOOL snRegisterConfig2(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg, LPCSTR szIcon);
 		BOOL snRevokeConfig(HWND hWnd);
