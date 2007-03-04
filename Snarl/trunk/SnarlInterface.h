@@ -14,16 +14,22 @@ class SnarlInterface {
 
 		static const LONG32 SNARL_LAUNCHED = 1;                // Snarl has just started running
 		static const LONG32 SNARL_QUIT = 2;                    // Snarl is about to stop running
+		static const LONG32 SNARL_ASK_APPLET_VER = 3;          // (R1.5) Reserved for future use
+		static const LONG32 SNARL_SHOW_APP_UI = 4;             // (R1.6) Application should show its UI
 
 		static const LONG32 SNARL_NOTIFICATION_CLICKED = 32;   // notification was right-clicked by user
 		static const LONG32 SNARL_NOTIFICATION_TIMED_OUT = 33;
 		static const LONG32 SNARL_NOTIFICATION_ACK = 34;       // notification was left-clicked by user
 
-		static const LONG32 SNARL_ASK_APPLET_VER = 42;         // Added in R1.5
-
 		static const LONG32 SNARL_NOTIFICATION_CANCELLED = SNARL_NOTIFICATION_CLICKED;  // Added in R1.6
 
-		static const DWORD WM_SNARLTEST = WM_USER + 237;       // note hardcoded WM_USER value!
+		static const DWORD WM_SNARLTEST    = WM_USER + 237;    // note hardcoded WM_USER value!
+		static const DWORD WM_MANAGE_SNARL = WM_USER + 238; 
+		
+		// Error codes
+		static const LONG32 M_TIMED_OUT = 0x8000000A;
+		static const LONG32 M_FAILED    = 0x80000008;
+
 
 		enum SNARL_COMMANDS {
 			SNARL_SHOW = 1,
@@ -38,6 +44,8 @@ class SnarlInterface {
 			SNARL_REGISTER_ALERT,
 			SNARL_REVOKE_ALERT,   // for future use
 			SNARL_REGISTER_CONFIG_WINDOW_2,
+			SNARL_GET_VERSION_EX,
+			SNARL_SET_TIMEOUT,
 
 			// extended commands (all use SNARLSTRUCTEX)
 			SNARL_EX_SHOW = 0x20
@@ -54,7 +62,15 @@ class SnarlInterface {
 		};
 
 		struct SNARLSTRUCTEX {
-			SNARLSTRUCT pss;
+			SNARL_COMMANDS Cmd;
+			LONG32 Id;
+			LONG32 Timeout;
+			LONG32 LngData2;
+			char Title[SNARL_STRING_LENGTH];
+			char Text[SNARL_STRING_LENGTH];
+			char Icon[SNARL_STRING_LENGTH];
+
+			char Class[SNARL_STRING_LENGTH];
 			char Extra[SNARL_STRING_LENGTH];
 			char Extra2[SNARL_STRING_LENGTH];
 			LONG32 Reserved1;
@@ -65,20 +81,31 @@ class SnarlInterface {
 		SnarlInterface();
 		~SnarlInterface();
 
-		LONG32 snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeout, LPCSTR szIconPath, HWND hWndReply, LONG32 uReplyMsg);
-		BOOL snHideMessage(LONG32 id);
-		BOOL snIsMessageVisible(LONG32 id);
-		BOOL snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
-		BOOL snRegisterConfig(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg);
-		BOOL snRegisterConfig2(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg, LPCSTR szIcon);
-		BOOL snRevokeConfig(HWND hWnd);
-		BOOL snGetVersion(WORD* major, WORD* minor);
-		HWND snGetSnarlWindow();
-		UINT snGetGlobalMsg();
+		LONG32  snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0);
+		LONG32  snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0, LPCSTR szSoundFile = "");
+
+		LPCTSTR snGetAppPath();
+		LPCTSTR snGetIconsPath();
+		
+		UINT    snGetGlobalMsg();
+		HWND    snGetSnarlWindow();		
+		BOOL    snGetVersion(WORD* major, WORD* minor);
+		LONG32  snGetVersionEx();
+		BOOL    snHideMessage(LONG32 id);
+		BOOL    snIsMessageVisible(LONG32 id);
+		LONG32  snRegisterAlert(LPCSTR szAppName, LPCSTR szClass);
+		BOOL    snRegisterConfig(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg);
+		BOOL    snRegisterConfig2(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg, LPCSTR szIcon);
+		BOOL    snRevokeConfig(HWND hWnd);
+		BOOL    snSetTimeout(LONG32 Id, LONG32 Timeout);
+		BOOL    snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
+		
+		
 
 	private:
-		LONG32 uSend(SNARLSTRUCT snarlStruct);
-		HWND m_hwndFrom;
+		LONG32 uSend(SNARLSTRUCT ss);
+		LONG32 uSendEx(SNARLSTRUCTEX ssex);
+		HWND m_hwndFrom; // set during snRegisterConfig() or snRegisterConfig2()
 };
 
 #endif // SNARL_INTERFACE
