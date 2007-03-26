@@ -30,22 +30,28 @@
 struct Settings
 {
 	UINT nTimeout;
-	bool bCascade;
-	bool bHeadline_wrap;
+	BOOL bCascade;
+	BOOL bHeadline_wrap;
 	//bool bText1_wrap;
 	//bool bText2_wrap;
+
+	BOOL bDisplayCoverArt;
+	QString strCoverArtRoot;
+	QString strCoverArtTemplate;
+
 	PluginServiceOp Headline_ServiceOp;
 	PluginServiceOp Text1_ServiceOp;
 	PluginServiceOp Text2_ServiceOp;
+	
 };
 
-extern HINSTANCE		hInstance;
-extern HWND				hwndPlayer;
-extern QCDModInitGen2	QCDCallbacks;
-extern Settings			settings;
+extern HINSTANCE       hInstance;
+extern HWND            hwndPlayer;
+extern QCDModInitGen2  QCDCallbacks;
+extern Settings        settings;
 
-extern void             DisplaySongInfo();
-extern bool             IsPlaying();
+extern void            DisplaySongInfo();
+extern bool            IsPlaying();
 
 extern SnarlInterface* snarl;
 
@@ -60,8 +66,9 @@ void LoadSettings();
 void SaveSettings();
 void DisplaySongInfo();
 bool IsPlaying();
-void GetIcon(long nIndex, LPSTR strIcon);
-void GetIcon2(long nIndex, LPSTR strIcon);
+void GetCoverArt(long nIndex, LPSTR strIcon);
+//void GetIcon2(long nIndex, LPSTR strIcon);
+void Test();
 
 // Subclassing
 LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);

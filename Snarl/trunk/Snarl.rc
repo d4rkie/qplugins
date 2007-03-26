@@ -27,8 +27,8 @@ LANGUAGE LANG_DANISH, SUBLANG_DEFAULT
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,1,2,0
- PRODUCTVERSION 0,1,2,0
+ FILEVERSION 0,1,3,0
+ PRODUCTVERSION 0,1,3,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -45,12 +45,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Noer.it"
             VALUE "FileDescription", "Snarl"
-            VALUE "FileVersion", "0, 1, 2, 0"
+            VALUE "FileVersion", "0, 1, 3, 0"
             VALUE "InternalName", "Snarl"
             VALUE "LegalCopyright", "Copyright (C) 2006"
             VALUE "OriginalFilename", "Snarl.dll"
             VALUE "ProductName", " Snarl Dynamic Link Library"
-            VALUE "ProductVersion", "0, 1, 2, 0"
+            VALUE "ProductVersion", "0, 1, 3, 0"
         END
     END
     BLOCK "VarFileInfo"
@@ -58,6 +58,49 @@ BEGIN
         VALUE "Translation", 0x800, 1200
     END
 END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_HELP DIALOGEX 0, 0, 186, 201
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_CAPTION
+CAPTION "Snarl help"
+FONT 8, "Tahoma", 400, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,68,180,50,14
+    LTEXT           "%A = Artist",IDC_STATIC,13,116,131,8
+    LTEXT           "%D = Album",IDC_STATIC,13,127,131,8
+    LTEXT           "%T = Track title",IDC_STATIC,13,137,131,8
+    LTEXT           "%F = Filename without extension",IDC_STATIC,13,148,131,8
+    LTEXT           "%E = Supported extensions (png, jpg, gif, bmp)",IDC_STATIC,13,159,166,8
+    LTEXT           "Example:\nRoot folder is set to C:\\Music\\ and filename template is %A\\%D.png\nThe final path will be: C:\\Music\\%A\\%D.png",IDC_STATIC,7,32,172,42
+    LTEXT           "The filename template determins the image placement together with root folder.",IDC_STATIC,7,7,172,21
+    LTEXT           "%CURRENT_DIR = Folder of playing file",IDC_STATIC,13,83,166,8
+    GROUPBOX        "Filename template variables",IDC_STATIC,7,103,172,71
+    GROUPBOX        "Root folder variables",IDC_STATIC,7,71,172,28
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_HELP, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 179
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 194
+    END
+END
+#endif    // APSTUDIO_INVOKED
 
 #endif    // Danish resources
 /////////////////////////////////////////////////////////////////////////////
@@ -131,6 +174,40 @@ BEGIN
     RTEXT           "Version:",IDC_STATIC,13,124,36,8
 END
 
+IDD_CONFIG2 DIALOGEX 0, 0, 273, 230
+STYLE DS_SETFONT | DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
+FONT 8, "Tahoma", 400, 0, 0x0
+BEGIN
+    EDITTEXT        IDC_TIME,87,74,51,14,ES_RIGHT | ES_AUTOHSCROLL
+    CONTROL         "",IDC_TIME_SPIN,"msctls_updown32",UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,247,21,11,14
+    LTEXT           "seconds",IDC_STATIC,142,77,42,8
+    LTEXT           "Headline",IDC_STATIC,55,22,28,8
+    GROUPBOX        "Display options",IDC_STATIC,7,6,266,102
+    COMBOBOX        IDC_HEADLINE_COMBO,87,20,51,30,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_TEXT1_COMBO,87,36,51,30,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_TEXT2_COMBO,87,52,51,30,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Wordwrap",IDC_HEADLINE_WRAP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,141,22,46,10
+    CONTROL         "Wordwrap",IDC_TEXT1_WRAP,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_DISABLED | WS_TABSTOP,141,38,47,10
+    CONTROL         "Wordwrap",IDC_TEXT2_WRAP,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_DISABLED | WS_TABSTOP,141,54,46,10
+    LTEXT           "Text1",IDC_STATIC,63,38,20,8
+    LTEXT           "Text2",IDC_STATIC,63,54,20,8
+    RTEXT           "Message timeout",IDC_STATIC,8,77,75,8
+    CONTROL         "Cascade popups",IDC_CASCADE_POPUPS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,87,93,84,10
+    GROUPBOX        "Snarl info",IDC_STATIC,7,178,266,36
+    LTEXT           "Version",IDC_SNARL_VERSION,52,188,152,8
+    RTEXT           "Version:",IDC_STATIC,13,188,36,8
+    RTEXT           "Build:",IDC_STATIC,13,199,36,8
+    LTEXT           "Build",IDC_SNARL_BUILD,52,199,144,8
+    GROUPBOX        "Cover art",IDC_STATIC,7,111,266,64
+    CONTROL         "Display cover art",IDC_COVERART_DISPLAY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,87,121,111,10
+    EDITTEXT        IDC_COVERART_TEMPLATE,87,152,125,14,ES_AUTOHSCROLL
+    RTEXT           "Filename template",IDC_STATIC,12,155,71,8
+    EDITTEXT        IDC_COVERART_ROOT,87,134,125,14,ES_AUTOHSCROLL
+    RTEXT           "Root folder",IDC_STATIC,21,138,62,8
+    PUSHBUTTON      "Help",IDC_COVERART_HELP,217,152,49,14
+    PUSHBUTTON      "Browse",IDC_COVERART_BROWSE,217,133,49,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -147,6 +224,12 @@ BEGIN
         TOPMARGIN, 3
         BOTTOMMARGIN, 155
     END
+
+    IDD_CONFIG2, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        TOPMARGIN, 6
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -157,6 +240,31 @@ END
 //
 
 IDD_CONFIG DLGINIT
+BEGIN
+    IDC_HEADLINE_COMBO, 0x403, 7, 0
+0x7241, 0x6974, 0x7473, "\000" 
+    IDC_HEADLINE_COMBO, 0x403, 6, 0
+0x6954, 0x6c74, 0x0065, 
+    IDC_HEADLINE_COMBO, 0x403, 6, 0
+0x6c41, 0x7562, 0x006d, 
+    IDC_TEXT1_COMBO, 0x403, 7, 0
+0x7241, 0x6974, 0x7473, "\000" 
+    IDC_TEXT1_COMBO, 0x403, 6, 0
+0x6954, 0x6c74, 0x0065, 
+    IDC_TEXT1_COMBO, 0x403, 6, 0
+0x6c41, 0x7562, 0x006d, 
+    IDC_TEXT2_COMBO, 0x403, 7, 0
+0x7241, 0x6974, 0x7473, "\000" 
+    IDC_TEXT2_COMBO, 0x403, 6, 0
+0x6954, 0x6c74, 0x0065, 
+    IDC_TEXT2_COMBO, 0x403, 6, 0
+0x6c41, 0x7562, 0x006d, 
+    IDC_TEXT2_COMBO, 0x403, 8, 0
+0x6f4e, 0x6874, 0x6e69, 0x0067, 
+    0
+END
+
+IDD_CONFIG2 DLGINIT
 BEGIN
     IDC_HEADLINE_COMBO, 0x403, 7, 0
 0x7241, 0x6974, 0x7473, "\000" 

@@ -19,6 +19,7 @@
 			OutputDirectory=".\Debug"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
+			CharacterSet="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -53,10 +54,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).dll"
+				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).dll"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).pdb"
+				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).pdb"
 				GenerateMapFile="false"
 				MapExports="true"
 			/>
@@ -128,12 +129,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).dll"
+				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).dll"
 				LinkIncremental="1"
 				IgnoreAllDefaultLibraries="false"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\$(ProjectName).pdb"
+				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).pdb"
 				OptimizeForWindows98="1"
 				BaseAddress="0x30010000"
 			/>
@@ -172,7 +173,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\Config.cpp"
+				RelativePath=".\Help.cpp"
 				>
 			</File>
 			<File
@@ -195,6 +196,14 @@
 			>
 			<File
 				RelativePath=".\Config.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CoverArt.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Help.h"
 				>
 			</File>
 			<File
