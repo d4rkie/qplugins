@@ -42,7 +42,6 @@ class SnarlInterface {
 			M_TIMED_OUT			= 0x8000000A
 		};
 
-
 		enum SNARL_COMMANDS {
 			SNARL_SHOW = 1,
 			SNARL_HIDE,

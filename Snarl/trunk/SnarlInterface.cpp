@@ -73,9 +73,9 @@ LONG32 SnarlInterface::snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeo
 	StringCbCopyA((LPSTR)&ss.Icon,  SNARL_STRING_LENGTH, szIconPath);
 	ss.Timeout = timeout;
 
-    ss.LngData2 = reinterpret_cast<LONG32>(hWndReply);
-    ss.Id = uReplyMsg;
-    return uSend(ss);
+	ss.LngData2 = reinterpret_cast<LONG32>(hWndReply);
+	ss.Id = uReplyMsg;
+	return uSend(ss);
 }
 
 
@@ -96,8 +96,8 @@ LONG32 SnarlInterface::snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR sz
 
 	ssex.Cmd = SNARL_SHOW;
 	ssex.Timeout = timeout;
-    ssex.LngData2 = reinterpret_cast<LONG32>(hWndReply);
-    ssex.Id = uReplyMsg;
+	ssex.LngData2 = reinterpret_cast<LONG32>(hWndReply);
+	ssex.Id = uReplyMsg;
 
 	StringCbCopyA((LPSTR)&ssex.Class, SNARL_STRING_LENGTH, szClass);
 	StringCbCopyA((LPSTR)&ssex.Title, SNARL_STRING_LENGTH, szTitle);
@@ -105,7 +105,7 @@ LONG32 SnarlInterface::snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR sz
 	StringCbCopyA((LPSTR)&ssex.Icon,  SNARL_STRING_LENGTH, szIconPath);
 	StringCbCopyA((LPSTR)&ssex.Extra, SNARL_STRING_LENGTH, szSoundFile);
 
-    return uSendEx(ssex);
+	return uSendEx(ssex);
 }
 
 
@@ -119,8 +119,8 @@ LONG32 SnarlInterface::snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR sz
 
 BOOL SnarlInterface::snHideMessage(LONG32 Id)
 {
-    SNARLSTRUCT ss;
-    ss.Cmd = SNARL_HIDE;
+	SNARLSTRUCT ss;
+	ss.Cmd = SNARL_HIDE;
 	ss.Id = Id;
 
 	if (uSend(ss) == M_OK)
@@ -138,19 +138,14 @@ BOOL SnarlInterface::snHideMessage(LONG32 Id)
 
 BOOL SnarlInterface::snIsMessageVisible(LONG32 Id)
 {
-    SNARLSTRUCT ss;
-    ss.Cmd = SNARL_IS_VISIBLE;
+	SNARLSTRUCT ss;
+	ss.Cmd = SNARL_IS_VISIBLE;
 	ss.Id = Id;
 
 	if (uSend(ss) != 0)
 		return TRUE;
 	else
 		return FALSE;
-
-	/*LONG32 nRet = uSend(ss);
-	CHAR strDbg[128];
-	sprintf(strDbg, "Snarl >> snIsMessageVisible: %u", nRet);
-	OutputDebugStringA(strDbg);*/
 }
 
 
@@ -165,12 +160,12 @@ BOOL SnarlInterface::snIsMessageVisible(LONG32 Id)
 BOOL SnarlInterface::snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath)
 {
 	SNARLSTRUCT ss;
-    ss.Cmd = SNARL_UPDATE;
+	ss.Cmd = SNARL_UPDATE;
 	ss.Id = id;
 
 	StringCbCopyA((LPSTR)&ss.Title, SNARL_STRING_LENGTH, szTitle);
 	StringCbCopyA((LPSTR)&ss.Text,  SNARL_STRING_LENGTH, szText);
-    StringCbCopyA((LPSTR)&ss.Icon,  SNARL_STRING_LENGTH, szIconPath);
+	StringCbCopyA((LPSTR)&ss.Icon,  SNARL_STRING_LENGTH, szIconPath);
 
 	if (uSend(ss) == M_OK)
 		return TRUE;
@@ -190,10 +185,10 @@ SnarlInterface::M_RESULT SnarlInterface::snRegisterConfig(HWND hWnd, LPCSTR szAp
 	SNARLSTRUCT ss;
 
 	m_hwndFrom = hWnd;
-    
-    ss.Cmd = SNARL_REGISTER_CONFIG_WINDOW;
-    ss.LngData2 = reinterpret_cast<LONG32>(hWnd);
-    ss.Id = replyMsg;
+
+	ss.Cmd = SNARL_REGISTER_CONFIG_WINDOW;
+	ss.LngData2 = reinterpret_cast<LONG32>(hWnd);
+	ss.Id = replyMsg;
 	StringCbCopyA((LPSTR)&ss.Title, SNARL_STRING_LENGTH, szAppName);
 
 	return static_cast<M_RESULT>(uSend(ss));
@@ -236,8 +231,8 @@ BOOL SnarlInterface::snRevokeConfig(HWND hWnd)
 	
 	m_hwndFrom = NULL;
 
-    ss.Cmd = SNARL_REVOKE_CONFIG_WINDOW;
-    ss.LngData2 = reinterpret_cast<LONG32>(hWnd);
+	ss.Cmd = SNARL_REVOKE_CONFIG_WINDOW;
+	ss.LngData2 = reinterpret_cast<LONG32>(hWnd);
 
 	if (uSend(ss) == M_OK)
 		return TRUE;
@@ -255,12 +250,12 @@ BOOL SnarlInterface::snRevokeConfig(HWND hWnd)
 BOOL SnarlInterface::snGetVersion(WORD* Major, WORD* Minor)
 {
 	SNARLSTRUCT ss;
-    ss.Cmd = SNARL_GET_VERSION;
-    LONG32 versionInfo = uSend(ss);
+	ss.Cmd = SNARL_GET_VERSION;
+	LONG32 versionInfo = uSend(ss);
 	if (versionInfo != M_FAILED && versionInfo != M_TIMED_OUT) {
 		*Major = HIWORD(versionInfo);
 		*Minor = LOWORD(versionInfo);
-        return TRUE;
+		return TRUE;
 	}
 	return FALSE;
 }
@@ -276,7 +271,7 @@ BOOL SnarlInterface::snGetVersion(WORD* Major, WORD* Minor)
 LONG32 SnarlInterface::snGetVersionEx()
 {
 	SNARLSTRUCT ss;
-    ss.Cmd = SNARL_GET_VERSION_EX;
+	ss.Cmd = SNARL_GET_VERSION_EX;
 	return uSend(ss);
 }
 
@@ -291,10 +286,10 @@ LONG32 SnarlInterface::snGetVersionEx()
 SnarlInterface::M_RESULT SnarlInterface::snSetTimeout(LONG32 Id, LONG32 Timeout)
 {
 	SNARLSTRUCT ss;
-    ss.Cmd = SNARL_SET_TIMEOUT;
-    ss.Id = Id;
-    ss.LngData2 = Timeout;
-	
+	ss.Cmd = SNARL_SET_TIMEOUT;
+	ss.Id = Id;
+	ss.LngData2 = Timeout;
+
 	return static_cast<M_RESULT>(uSend(ss));
 }
 
@@ -308,11 +303,11 @@ SnarlInterface::M_RESULT SnarlInterface::snSetTimeout(LONG32 Id, LONG32 Timeout)
 SnarlInterface::M_RESULT SnarlInterface::snRegisterAlert(LPCSTR szAppName, LPCSTR szClass)
 {
 	SNARLSTRUCT ss;
-    ss.Cmd = SNARL_REGISTER_ALERT;
+	ss.Cmd = SNARL_REGISTER_ALERT;
 	StringCbCopyA((LPSTR)&ss.Title, SNARL_STRING_LENGTH, szAppName);
 	StringCbCopyA((LPSTR)&ss.Text, SNARL_STRING_LENGTH, szClass);
 
-    return static_cast<M_RESULT>(uSend(ss));
+	return static_cast<M_RESULT>(uSend(ss));
 }
 
 
@@ -361,42 +356,6 @@ LPCTSTR SnarlInterface::snGetAppPath()
 		}
 	}
 	return NULL;
-
-	/*DWORD nDataSize = 1; // Query data size in bytes
-	LONG nRet = RegGetValue(HKEY_LOCAL_MACHINE, 
-		_T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Snarl.exe"), 
-		NULL, RRF_RT_REG_SZ, NULL, NULL, &nDataSize);
-	
-	if (nRet == ERROR_SUCCESS || nRet == ERROR_MORE_DATA)
-	{
-		TCHAR szDrive[_MAX_DRIVE];
-		TCHAR szDir[_MAX_DIR];
-		TCHAR* szFile = new TCHAR[nDataSize / sizeof(TCHAR)];
-		TCHAR* szPath = new TCHAR[nDataSize / sizeof(TCHAR)];
-
-		nRet = RegGetValue(HKEY_LOCAL_MACHINE, 
-			_T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Snarl.exe"), 
-			NULL, REG_SZ, NULL, szFile, &nDataSize);
-
-		if (_tsplitpath_s(szFile, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, NULL, 0, NULL, 0) == 0) { // success
-			StringCbCopy(szPath, nDataSize, szDrive);
-			StringCbCat(szPath, nDataSize, szDir);
-			// StringCbCat(szPath, nDataSize, _T("\\"));
-		}
-		else {
-			delete [] szPath;
-			szPath = NULL;
-		}
-
-		delete [] szFile;
-		return szPath;
-	}
-	else {
-		TCHAR szError[1024] = {0};
-		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, nRet, 0, szError, 1024, 0);
-		MessageBox(NULL, szError, _T("SnarlInterface error"), 0);
-	}
-	return NULL;*/
 }
 
 
