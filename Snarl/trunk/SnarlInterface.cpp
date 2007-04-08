@@ -405,12 +405,12 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 		cds.lpData = &ss;
 		if (!SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn))
 		{
-			OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
 			nReturn = M_TIMED_OUT;
+			//OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
 		}
-		CHAR strDbg[MAX_PATH];
+		/*CHAR strDbg[MAX_PATH];
 		sprintf(strDbg, "Snarl >> uSend >> nReturn: %u", nReturn);
-		OutputDebugStringA(strDbg);
+		OutputDebugStringA(strDbg);*/
 
 	}
 	return nReturn;
@@ -431,8 +431,8 @@ LONG32 SnarlInterface::uSendEx(SNARLSTRUCTEX ssex)
 		cds.lpData = &ssex;
 		if (!SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn))
 		{
-			OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
 			nReturn = M_TIMED_OUT;
+			//OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
 		}
 	}
 	return nReturn;
