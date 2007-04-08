@@ -3,7 +3,6 @@
 // Used by Snarl.rc
 //
 #define IDD_HELP                        9
-#define IDD_CONFIG                      102
 #define IDD_CONFIG1                     103
 #define IDD_CONFIG2                     103
 #define IDC_TIME_SPIN                   1001
@@ -22,7 +21,6 @@
 #define IDC_COVERART_TEMPLATE           1015
 #define IDC_COVERART_ROOT               1016
 #define IDC_COVERART_HELP               1018
-#define IDC_ART_                        1019
 #define IDC_COVERART_BROWSE             1019
 
 // Next default values for new objects

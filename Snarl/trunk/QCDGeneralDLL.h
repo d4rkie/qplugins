@@ -55,11 +55,13 @@ extern bool            IsPlaying();
 
 extern SnarlInterface* snarl;
 
+
 // Calls from the Player
 int Initialize(QCDModInfo *modInfo, int flags);
 void Configure(int flags);
 void About(int flags);
 void ShutDown(int flags);
+
 
 // Helper functions
 void LoadSettings();

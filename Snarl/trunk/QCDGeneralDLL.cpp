@@ -23,14 +23,11 @@
 // http://www.k23productions.com/haiku/snarl/dev/
 // http://www.quinnware.com/forum/showthread.php?t=5594
 //-----------------------------------------------------------------------------
-// Version history:
-//-----------------------------------------------------------------------------
 // Todo:
-//   All string routines are uckly hacks and should be compile against
-//   Unicows.dll instead!
+// 
 //-----------------------------------------------------------------------------
 
-#define PLUGIN_NAME "Snarl v1.3"
+#define PLUGIN_NAME "Snarl v1.4"
 
 
 #define UNICODE 1
@@ -58,9 +55,10 @@ QString          g_strDefaultIcon;
 
 long             g_nConfigPageId = 0;
 LONG32	         g_nMsgId = 0;
+UINT_PTR         g_nDelayTimerID = 0;
 
 static const WCHAR INI_SECTION[] = L"Snarl";
-static const int WM_REGISTER_MSG = 62091;
+static const int WM_REGISTER_MSG = 0; // 62091;
 
 //-----------------------------------------------------------------------------
 
@@ -264,7 +262,7 @@ void InsertNextLine(LPSTR str, int nPos)
 
 void DisplaySongInfo()
 {
-	const static int nHeadlineChars = 19;
+	const static int nHeadlineChars = 26;
 	const static int nText1Chars = 30;
 	const static int nText2Chars = 30;
 
@@ -292,12 +290,13 @@ void DisplaySongInfo()
 
 	// Hide if not cascade
 	if (!settings.bCascade && g_nMsgId > 0 && snarl->snIsMessageVisible(g_nMsgId))
-		snarl->snHideMessage(g_nMsgId);
-	g_nMsgId = snarl->snShowMessage(strHeadline, strText1, settings.nTimeout, (strIcon[0] != '\0') ? strIcon : g_strDefaultIcon.GetUTF8(), 0, 0);
+		snarl->snUpdateMessage(g_nMsgId, strHeadline, strText1, (strIcon[0] != '\0') ? strIcon : g_strDefaultIcon.GetUTF8());
+	else
+		g_nMsgId = snarl->snShowMessage(strHeadline, strText1, settings.nTimeout, (strIcon[0] != '\0') ? strIcon : g_strDefaultIcon.GetUTF8(), 0, 0);
 	
-	CHAR strDbg[128 + MAX_PATH];
+	/*CHAR strDbg[128 + MAX_PATH];
 	sprintf(strDbg, "Snarl >> MsgId: %u\nPath: %s", g_nMsgId, strIcon);
-	OutputDebugStringA(strDbg);
+	OutputDebugStringA(strDbg);*/
 }
 
 //-----------------------------------------------------------------------------
@@ -312,18 +311,42 @@ bool IsPlaying()
 
 //-----------------------------------------------------------------------------
 
+void CALLBACK DelayTimerProc(HWND hwnd, UINT uMsg, UINT idEvent, DWORD dwTime)
+{
+	KillTimer(NULL, g_nDelayTimerID);
+	DisplaySongInfo();
+}
+
+//-----------------------------------------------------------------------------
+
+void StartDisplayTimer(UINT nTime)
+{
+	if (g_nDelayTimerID) {
+		KillTimer(NULL, g_nDelayTimerID);
+		g_nDelayTimerID = 0;
+	}
+	g_nDelayTimerID = SetTimer(NULL, 0, nTime, DelayTimerProc);
+}
+
+//-----------------------------------------------------------------------------
+
 LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) 
 {
-	switch (msg) {
+	switch (msg)
+	{
+		case WM_PN_TRACKCHANGED :
+			StartDisplayTimer(100);	// Workaround for CD track change
+			break;
+
 		case WM_PN_PLAYSTARTED :
-		{
 			DisplaySongInfo();
 			break;
-		}
-		case WM_REGISTER_MSG :
+
+		/*case WM_REGISTER_MSG :
 			// MessageBox(0, _T("WM_REGISTER_MSG"), _T(""), 0);
 			Configure(0);
 			break;
+		*/
 	}
 
 	return CallWindowProc(QCDProc, hwnd, msg, wparam, lparam);
