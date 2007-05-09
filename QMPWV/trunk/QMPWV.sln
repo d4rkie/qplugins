@@ -2,11 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QMPWV", "QMPWV.vcproj", "{EDDEA347-1546-419B-921F-8AE6CC7B7982}"
-	ProjectSection(ProjectDependencies) = postProject
-		{F387BE75-2CBB-42B7-A62F-42F7230E6A68} = {F387BE75-2CBB-42B7-A62F-42F7230E6A68}
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wvunpack", "wavpack\wvunpack.vcproj", "{F387BE75-2CBB-42B7-A62F-42F7230E6A68}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,10 +13,6 @@ Global
 		{EDDEA347-1546-419B-921F-8AE6CC7B7982}.Debug|Win32.Build.0 = Debug|Win32
 		{EDDEA347-1546-419B-921F-8AE6CC7B7982}.Release|Win32.ActiveCfg = Release|Win32
 		{EDDEA347-1546-419B-921F-8AE6CC7B7982}.Release|Win32.Build.0 = Release|Win32
-		{F387BE75-2CBB-42B7-A62F-42F7230E6A68}.Debug|Win32.ActiveCfg = Release|Win32
-		{F387BE75-2CBB-42B7-A62F-42F7230E6A68}.Debug|Win32.Build.0 = Release|Win32
-		{F387BE75-2CBB-42B7-A62F-42F7230E6A68}.Release|Win32.ActiveCfg = Release|Win32
-		{F387BE75-2CBB-42B7-A62F-42F7230E6A68}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -2,7 +2,7 @@
 
 #include "resource.h" // resource
 
-extern HINSTANCE	hInstance;    // The unique module instance handle
+extern HINSTANCE	g_hInstance;    // The unique module instance handle
 
 //////////////////////////////////////////////////////////////////////////
 

@@ -6,7 +6,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 // Global variables
-static HINSTANCE	hInstance;    // The unique module instance handle
+HINSTANCE	g_hInstance;    // The unique module instance handle
 
 INT g_bUseWVC;
 
@@ -18,7 +18,7 @@ int WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 	if ( fdwReason == DLL_PROCESS_ATTACH) {
 		DisableThreadLibraryCalls( hInst);
 
-		hInstance = hInst;
+		g_hInstance = hInst;
 	}
 
 	return TRUE;

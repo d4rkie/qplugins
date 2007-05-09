@@ -23,7 +23,7 @@
 #include "QMPWV.h"
 #include "QMPFileInfo.h"
 
-#include "wputils.h"
+#include "wavpack.h"
 
 //..............................................................................
 // Static Class Variables
@@ -52,15 +52,15 @@ void QMPFileInfo::ShutDown(int flags)
 
 BOOL QMPFileInfo::ReadInfo(const WCHAR* medianame, void* infoHandle, int flags)
 {
-	char filename[MAX_PATH];
+	CStringA filename;
 	WavpackContext * wpc;
 	char error [128] = {'\0'};
 	int duration;
 	int nch;
 
-	UCS2toMB( medianame, filename, MAX_PATH);
+	UCS2toMB( medianame, filename);
 
-	if ( !(wpc = WavpackOpenFileInput( filename, error, (g_bUseWVC & OPEN_WVC) | OPEN_TAGS | OPEN_2CH_MAX, 0)))
+	if ( !(wpc = WavpackOpenFileInput( filename, error, (g_bUseWVC & OPEN_WVC) | OPEN_2CH_MAX, 0)))
 		return FALSE;
 
 	duration = (int)((int)(WavpackGetNumSamples( wpc) * 1000.0 / WavpackGetSampleRate( wpc)));

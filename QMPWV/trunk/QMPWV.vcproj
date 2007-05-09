@@ -20,7 +20,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
-			CharacterSet="2"
+			CharacterSet="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -40,8 +40,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="wavpack"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS"
+				AdditionalIncludeDirectories="qmppdk;qmppdk/include;wavpack/include"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS;QCDPLAYER"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -61,8 +61,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="libwavpack.lib"
 				OutputFile="D:\Media\Quintessential Media Player\Plugins\$(ProjectName).dll"
 				LinkIncremental="2"
+				AdditionalLibraryDirectories="wavpack/lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
 				SubSystem="2"
@@ -99,7 +101,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
-			CharacterSet="2"
+			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -119,8 +121,8 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="wavpack"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS;UNPACK;SEEKING;TAGS;VER3;USE_FSTREAMS;STRICT"
+				AdditionalIncludeDirectories="qmppdk;qmppdk/include;wavpack/include"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS;QCDPLAYER"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -138,7 +140,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="libwavpack.lib"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="wavpack/lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
 				SubSystem="2"

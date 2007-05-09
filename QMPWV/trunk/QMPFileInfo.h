@@ -36,7 +36,7 @@ protected:
 	friend class QMPModule< QMPFileInfo, QCDModInitFileInfo >;
 	QMPFileInfo(void)
 	{
-		QCDCallbacks.version				= PLUGIN_API_VERSION_NTUTF8;
+		QCDCallbacks.version				= PLUGIN_API_VERSION_UNICODE;
 
 		QCDCallbacks.toModule.Initialize	= Initialize;
 		QCDCallbacks.toModule.ShutDown		= ShutDown;

@@ -1,6 +1,6 @@
 //-----------------------------------------------------------------------------
 // 
-// File:	QMPInput.h
+// File:	QCDInputDLL.h
 //
 // About:	QCD Player Input module DLL interface.  For more documentation, see
 //			QCDModInput.h.
@@ -24,19 +24,19 @@
 #define QMPInput_H
 
 #include "QCDModInput.h"
-#include "IQCDMediaDecoder.h"
 
 #include "QMPModule.h"
+
 
 //////////////////////////////////////////////////////////////////////////
 
 class QMPInput : public QMPModule< QMPInput, QCDModInitIn >
 {
-protected:
 	friend class QMPModule< QMPInput, QCDModInitIn >;
+protected:
 	QMPInput(void)
 	{
-		QCDCallbacks.version					= PLUGIN_API_VERSION_NTUTF8;
+		QCDCallbacks.version					= PLUGIN_API_VERSION_UNICODE;
 		QCDCallbacks.toModule.Initialize		= Initialize;
 		QCDCallbacks.toModule.ShutDown			= ShutDown;
 		QCDCallbacks.toModule.GetTrackExtents	= GetTrackExtents;
@@ -46,6 +46,7 @@ protected:
 		QCDCallbacks.toModule.Stop				= Stop;
 		QCDCallbacks.toModule.About				= About;
 		QCDCallbacks.toModule.Configure			= Configure;	
+		QCDCallbacks.toModule.SetEQ				= NULL;//SetEQ;
 		QCDCallbacks.toModule.SetVolume			= SetVolume;
 
 		// IQCDMediaDecoder
@@ -74,6 +75,7 @@ private:
 	static IQCDMediaDecoder* CreateDecoderInstance(const WCHAR* medianame, int flags);
 
 private:
+	static HWND hwndPlayer;
 	static DWORD WINAPI DecodeThread(LPVOID lpParameter);
 };
 

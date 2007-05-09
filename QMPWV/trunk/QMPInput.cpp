@@ -1,11 +1,10 @@
 //-----------------------------------------------------------------------------
 //
-// File:	QMPInput.cpp
+// File:	QCDInputDLL.cpp
 //
-// About:	See QMPInput.h
+// About:	See QCDInputDLL.h
 //
 // Authors:	Written by Paul Quinn and Richard Carlson.
-//          OO Wrapped by Shao Hao.
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
@@ -25,52 +24,60 @@
 #include "QMPInput.h"
 
 #include "QDecoder.h"
+
 #include "ConfigDlg.h"
 #include "AboutDlg.h"
 
-typedef struct _DecoderInfo_t
-{
-	QDecoder		*pDecoder;
-	int				killThread;
-	HANDLE			thread_handle;
-	CString			playingFile; // UTF8 coding
-} DecoderInfo_t;
 
-//..............................................................................
-// Static Class Variables
+//////////////////////////////////////////////////////////////////////////
+// Static Class member variables
 HWND			QMPInput::hwndPlayer;
-QCDModInitIn	QMPInput::QCDCallbacks; 
+QCDModInitIn	QMPInput::QCDCallbacks;
 
 //////////////////////////////////////////////////////////////////////////
 
-DecoderInfo_t decoderInfo; // the unique decoding instance
-BOOL	seek_needed = -1;
-BOOL	isPaused = 0;
-CConfigDlg * g_pdlgCfg;
+// plugin name and supported extensions
+//     must be global since player has reference to these
+WCHAR g_szPluginDisplayStr[1024] = {0};
+CStringW g_strPluginExtensions;
 
-CString g_utf8String, g_utf8Extensions;
+HANDLE	g_hDecoderThread = NULL;
+BOOL	g_bDecoderThreadKill = FALSE;
+
+HANDLE	g_hReadingLoopKillEvent = NULL; // event for killing loop of reading
+
+typedef struct
+{
+	QMediaReader mediaReader;
+	int playFrom;
+
+} DecodeThreadData_t;
+
+// playback states
+BOOL	g_bIsPaused = FALSE;
+BOOL	g_bSeekNeeded = FALSE;
+DWORD	g_dwSeekPos = 0;
+CStringW g_strCurrentMedia;
+
+CConfigDlg * g_pdlgCfg = NULL;
 
 //-----------------------------------------------------------------------------
 
 int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 {
-	char inifile[MAX_PATH];
+	WCHAR inifile[MAX_PATH] = {0};
 
-	if ( !decoderInfo.pDecoder)
-		decoderInfo.pDecoder = new QDecoder;
+	// module info for plugin remains pointed to these strings
+	ModInfo->moduleString = (char*)g_szPluginDisplayStr;
+	ModInfo->moduleExtensions = (char*)L"WV";//(char*)(LPCWSTR)g_strPluginExtensions;
 
-	MBtoUTF8(decoderInfo.pDecoder->GetFullName(),g_utf8String);
-	MBtoUTF8(decoderInfo.pDecoder->GetExtensions(),g_utf8Extensions);
-	ModInfo->moduleString = (LPTSTR)(LPCTSTR)g_utf8String;
-	ModInfo->moduleExtensions = (LPTSTR)(LPCTSTR)g_utf8Extensions;
-	ModInfo->moduleCategory = "AUDIO";
+	// load display name
+	ResInfo resInfo = { sizeof(ResInfo), g_hInstance, MAKEINTRESOURCE(IDS_DISPLAYNAME), 0, 0 };
+	QCDCallbacks.Service(opLoadResString, (void*)g_szPluginDisplayStr, (long)sizeof(g_szPluginDisplayStr), (long)&resInfo);
 
-	hwndPlayer = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
-
+	// load settings
 	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
-	g_bUseWVC = GetPrivateProfileInt( "WavPack", "ConfigBit", 0, inifile);
-
-	decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
+	g_bUseWVC = GetPrivateProfileInt( L"WavPack", L"ConfigBit", 0, inifile);
 
 	// return TRUE for successful initialization
 	return TRUE;
@@ -78,167 +85,169 @@ int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 
 //----------------------------------------------------------------------------
 
-void QMPInput::ShutDown(int flags) 
+void QMPInput::ShutDown(int flags)
 {
-	char inifile[MAX_PATH];
-	char buf[10];
+	WCHAR inifile[MAX_PATH] = {0};
+	WCHAR buf[10] = {0};
 
-	Stop( decoderInfo.playingFile, STOPFLAG_FORCESTOP);
+	Stop( NULL, STOPFLAG_FORCESTOP);
 
-	if ( g_pdlgCfg)
-		g_pdlgCfg->DestroyWindow();
+	// shutdown all dlgs
+	if ( g_pdlgCfg) g_pdlgCfg->DestroyWindow();
 
+	// save settings
 	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
-	wsprintf( buf, "%d", g_bUseWVC);
-	WritePrivateProfileString( "WavPack", "ConfigBit", buf, inifile);
-
-	if ( !decoderInfo.pDecoder) {
-		delete decoderInfo.pDecoder;
-		decoderInfo.pDecoder = NULL;
-	}
+	wsprintf( buf, L"%d", g_bUseWVC);
+	WritePrivateProfileString( L"WavPack", L"ConfigBit", buf, inifile);
 }
 
 //-----------------------------------------------------------------------------
 
 int QMPInput::GetMediaSupported(const char* medianame, MediaInfo *mediaInfo) 
 {
-	CString filename;
-	UTF8toMB(medianame,filename);
-
 	if ( !medianame || !*medianame)
 		return FALSE;
 
-	if ( PathIsURL( filename)) {
+	// blindly accept streams?
+	if ( PathIsURLW( (LPCWSTR)medianame)) {
 		if ( mediaInfo) {
-			mediaInfo->mediaType = DIGITAL_STREAM_MEDIA;
-			mediaInfo->op_canSeek = FALSE; // set false for streaming but reset it later.
+			mediaInfo->mediaType = DIGITAL_AUDIOSTREAM_MEDIA;
 		}
-		return TRUE; // detail check in Play
-	} else {
-		if ( filename.ReverseFind( '.') < 0)
-			return lstrlen( medianame) > 2; // no extension defaults to me (if not drive letter)
-
-		QDecoder dec;
-		if ( dec.IsOurFile( filename)) {
-			if (mediaInfo) {
-				mediaInfo->mediaType = DIGITAL_AUDIOFILE_MEDIA;
-				mediaInfo->op_canSeek = TRUE;
-			}
-			return TRUE;
-		}
-		return FALSE;
+		return TRUE;
 	}
+
+	WCHAR *testExt = (WCHAR*)wcsrchr((LPCWSTR)medianame, '.');
+	if (!testExt)
+		return FALSE;
+	testExt++;
+
+	QDecoder dec;
+	if ( dec.IsOurFile( (LPCWSTR)medianame)) {
+		if (mediaInfo) {
+			mediaInfo->mediaType = DIGITAL_AUDIOFILE_MEDIA;
+			mediaInfo->op_canSeek = TRUE;
+		}
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 //-----------------------------------------------------------------------------
 
 int QMPInput::GetTrackExtents(const char* medianame, TrackExtents *ext, int flags)
 {
-	CString filename;
-	UTF8toMB(medianame,filename);
-
-	if ( PathIsURL( filename)) { // for URL address
+	if ( PathIsURLW( (LPCWSTR)medianame)) {
 		ext->track = 1;
-		ext->start = 0;
-		ext->end = 0;
 		ext->bytesize = 0;
-		ext->unitpersec = 1000;
-
-		return TRUE; // detail check in Play
-	} else {
-		QDecoder dec;
-		int duration;
-		
-		if ( (duration = dec.GetDuration( filename)) < 0)
-			return FALSE;
-
-		ext->track = 1;
 		ext->start = 0;
-		ext->end = duration;
-		ext->bytesize = 0;
+		ext->end = 1;
 		ext->unitpersec = 1000;
-
 		return TRUE;
 	}
+
+	BOOL ret = FALSE;
+	QDecoder dec;
+	QMediaReader mr((IQCDMediaSource *)QCDCallbacks.Service( opGetIQCDMediaSource, (void*)medianame, 0, 0));
+
+	if ( !mr.Open()) return FALSE;
+	ret = (NOERROR == dec.GetTrackExtents( mr, *ext));
+	mr.Close();
+
+	return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 int QMPInput::Play(const char* medianame, int playfrom, int playto, int flags)
 {
-	CString filename;
-	UTF8toMB(medianame,filename);
+	int ret = FALSE;
 
-	if ( !decoderInfo.playingFile.IsEmpty() && decoderInfo.playingFile.CompareNoCase( medianame) != 0) {
-		QCDCallbacks.toPlayer.OutputStop(STOPFLAG_PLAYDONE);
-		Stop(decoderInfo.playingFile, STOPFLAG_PLAYDONE);
-	}
+	// a new file is being sent for play, stop whatever we were doing
+	if ( !g_strCurrentMedia.IsEmpty() && g_strCurrentMedia.CompareNoCase( (LPCWSTR)medianame) != 0)
+		Stop( NULL, STOPFLAG_PLAYSKIP);
 
-	if (isPaused) {
-		// Update the player controls to reflect the new unpaused state
-		QCDCallbacks.toPlayer.OutputPause(0);
+	if ( g_hDecoderThread) { // playback thread active
+		if ( g_bIsPaused) { // playback is paused, unpause on play
+			// Update the player controls to reflect the new unpaused state
+			QCDCallbacks.toPlayer.OutputPause(0);
 
-		Pause(medianame, 0);
+			Pause( medianame, 0);
 
-		if (playfrom >= 0)
-			seek_needed = playfrom;
+			if ( playfrom >= 0) {
+				g_dwSeekPos = (DWORD)playfrom;
+				g_bSeekNeeded = TRUE;
+				if ( g_hReadingLoopKillEvent) // kill the reading loop
+					SetEvent( g_hReadingLoopKillEvent);
+			}
 
-		return TRUE;
-	} else if (decoderInfo.thread_handle != INVALID_HANDLE_VALUE) { // is playing
-		seek_needed = playfrom;
-		return TRUE;
-	} else {
-		int ret;
+			ret = TRUE;
+		} else { // is playing, do seek
+			if ( playfrom >= 0) {
+				g_dwSeekPos = (DWORD)playfrom;
+				g_bSeekNeeded = TRUE;
+				if ( g_hReadingLoopKillEvent) // kill the reading loop
+					SetEvent( g_hReadingLoopKillEvent);
 
-		if ( !decoderInfo.pDecoder)
-			decoderInfo.pDecoder = new QDecoder;
-        decoderInfo.pDecoder->Close();
+			}
 
-		if ( PathIsURL( filename))
-            ret = decoderInfo.pDecoder->OpenStream( filename, playfrom);
-		else
-			ret = decoderInfo.pDecoder->OpenFile( filename);
-
-		if ( ret != 1) {
-			delete decoderInfo.pDecoder;
-			decoderInfo.pDecoder = NULL;
-
-			return ret;
+			ret = TRUE;
 		}
-
+	} else { // not currently playing, start play
 		// create decoding thread
-		DWORD thread_id;
+		DecodeThreadData_t * threadData = new DecodeThreadData_t;
+		if ( threadData) {
+			threadData->playFrom = playfrom;
+			IQCDMediaSource * pms = (IQCDMediaSource *)QCDCallbacks.Service( opGetIQCDMediaSource, (void*)medianame, 0, 0);
+			g_hReadingLoopKillEvent = CreateEvent( NULL, FALSE, FALSE, NULL);
+			if ( pms && g_hReadingLoopKillEvent) {
+				DWORD dwTId;
 
-		seek_needed = playfrom > 0 ? playfrom : -1;
-		decoderInfo.killThread = 0;
-		decoderInfo.playingFile = medianame;
+				// attach mediasource interface to mediareader wrapper with a reading loop killing signal
+				threadData->mediaReader.Attach( pms, g_hReadingLoopKillEvent);
 
-		decoderInfo.thread_handle = CreateThread( NULL, 0, (LPTHREAD_START_ROUTINE)DecodeThread, &decoderInfo, 0, &thread_id);
-		SetThreadPriority( decoderInfo.thread_handle, THREAD_PRIORITY_HIGHEST);
+				g_bDecoderThreadKill = FALSE;
+				g_hDecoderThread = CreateThread( NULL, 0, (LPTHREAD_START_ROUTINE)DecodeThread, (void *)threadData, CREATE_SUSPENDED, &dwTId);
+				if ( g_hDecoderThread) {
+					// like to run the decoder with good responsiveness
+					SetThreadPriority( g_hDecoderThread, THREAD_PRIORITY_HIGHEST);
+					ret = TRUE;
 
-		return TRUE;
+					g_strCurrentMedia = (LPCWSTR)medianame;
+
+					ResumeThread( g_hDecoderThread);
+				}
+			}
+
+			if ( !g_hDecoderThread) delete threadData;
+		}
 	}
+
+	return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 int QMPInput::Stop(const char* medianame, int flags)
 {
-	if ( medianame && *medianame && decoderInfo.playingFile.CompareNoCase( medianame) == 0)
-	{
-		QCDCallbacks.toPlayer.OutputStop(flags);
+	// I'm choosing to just ignore the medianame and
+	// trust we're always talking about whatever is
+	// currently playing
 
-		decoderInfo.killThread = 1;
-		if ( WaitForSingleObject( decoderInfo.thread_handle, 2000) == WAIT_TIMEOUT) {
-//			MessageBox(hwndPlayer, "thread kill timeout", "debug", 0);
-//			TerminateThread(decoderInfo.thread_handle, 0);
-		}
-		CloseHandle( decoderInfo.thread_handle);
-		decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
+	QCDCallbacks.toPlayer.OutputStop(flags);
 
-		decoderInfo.playingFile.Empty();
-		isPaused = 0;
+	if ( g_hDecoderThread) {
+		g_bDecoderThreadKill = TRUE;
+		if ( g_hReadingLoopKillEvent) // kill the reading loop
+			SetEvent( g_hReadingLoopKillEvent);
+
+		WaitForSingleObject( g_hDecoderThread, INFINITE);
+
+		assert(g_hDecoderThread == NULL);
 	}
+
+	g_strCurrentMedia.Empty();
+	g_bIsPaused = 0;
 
 	return TRUE;
 }
@@ -247,14 +256,14 @@ int QMPInput::Stop(const char* medianame, int flags)
 
 int QMPInput::Pause(const char* medianame, int flags)
 {
-	isPaused = flags;
+	g_bIsPaused = flags;
 
 	if ( QCDCallbacks.toPlayer.OutputPause(flags)) {
 		// send back pause/unpause notification
 		return TRUE;
 	}
 
-	isPaused = !flags;
+	g_bIsPaused = !flags;
 	return FALSE;
 }
 
@@ -315,7 +324,7 @@ void QMPInput::Configure(int flags)
 {
 	if ( !g_pdlgCfg) {
 		g_pdlgCfg = new CConfigDlg;
-		g_pdlgCfg->Create( (HWND)QCDCallbacks.Service( opGetPropertiesWnd, NULL, 0, 0), (LPARAM)&g_pdlgCfg);
+		g_pdlgCfg->Create( (HWND)QCDCallbacks.Service( opGetPropertiesWnd, NULL, 0, 0), (LPARAM)(&g_pdlgCfg));
 	}
 	g_pdlgCfg->ShowWindow( SW_SHOW);
 }
@@ -324,107 +333,251 @@ void QMPInput::Configure(int flags)
 
 void QMPInput::About(int flags)
 {
-	CAboutDlg dlgAbout;
-
-	dlgAbout.DoModal( (HWND)QCDCallbacks.Service( opGetPropertiesWnd, NULL, 0, 0));
+	CAboutDlgInput dlg;
+	dlg.DoModal( (HWND)QCDCallbacks.Service( opGetPropertiesWnd, NULL, 0, 0));
 }
 
 //-----------------------------------------------------------------------------
 
-IQCDMediaDecoder * QMPInput::CreateDecoderInstance(const WCHAR * medianame, int flags)
+IQCDMediaDecoder* QMPInput::CreateDecoderInstance(const WCHAR* medianame, int flags)
 {
-	char filename[MAX_PATH];
+	if ( !medianame || !*medianame)
+		return NULL;
 
-	UCS2toMB( medianame, filename, MAX_PATH);
+	if ( PathIsURLW( medianame))
+		return NULL; // no streams for now
 
-	return new QDecoder(filename);
+	QDecoder * pDec = new QDecoder;
+	QMediaReader * pmr = new QMediaReader((IQCDMediaSource *)QCDCallbacks.Service( opGetIQCDMediaSource, (void*)medianame, 0, 0));
+
+	if ( !pDec || !pmr)
+		return NULL;
+
+	return pDec->CreateDecoderInstance( pmr, flags);
 }
+
+//-----------------------------------------------------------------------------
+// IQCDMediaSourceStatus impl
+
+class MediaSourceStatus : public IQCDMediaSourceStatus
+{
+	QMediaReader * m_pMediaReader;
+	PluginServiceFunc m_opService;
+
+	void _metadataAvailable()
+	{
+		IQCDMediaInfo* pMediaInfo = (IQCDMediaInfo*)m_opService( opGetIQCDMediaInfo, 0, 0, 0);
+		if ( pMediaInfo) {
+			if ( m_pMediaReader->GetAvailableMetadata( pMediaInfo) > 0) {
+				IQCDMediaInfo *pPlayerInfo = (IQCDMediaInfo*)m_opService( opGetIQCDMediaInfo, (void*)(LPCWSTR)m_pMediaReader->GetName(), DIGITAL_AUDIOSTREAM_MEDIA, 0);
+				if ( pPlayerInfo) {
+					WCHAR szName[1024], szValue[1024], szURL[1024] = {0};
+					long nameLen = 1024, valueLen = 1024, index = 0;
+
+					while ( pMediaInfo->GetInfoByIndex( index, szName, &nameLen, szValue, &valueLen)) {
+						if ( lstrcmpiW( szName, L"StreamTitle") == 0) {
+							pPlayerInfo->SetInfoByName( QCDInfo_TitleTrack, szValue, 0);
+						} else if ( (lstrcmpiW( szName, L"icy-name") == 0) || 
+						            (lstrcmpiW( szName, L"ice-name") == 0)
+						          ) {
+							pPlayerInfo->SetInfoByName( QCDInfo_ArtistAlbum, szValue, 0);
+						} else if ( lstrcmpiW( szName, L"StreamUrl") == 0) {
+							if ( wcsstr( szValue, L"://"))
+								lstrcpynW( szURL, szValue, 1024);
+						} else if ( (lstrcmpiW( szName, L"icy-url") == 0) || 
+						            (lstrcmpiW( szName, L"ice-url") == 0)
+						          ) {
+							if ( (szURL[0] == 0) && wcsstr( szValue, L"://"))
+								lstrcpynW( szURL, szValue, 1024);
+						}
+
+						index++;
+						nameLen = 1024;
+						valueLen = 1024;
+					}
+
+					// TODO: need to test that metadata changed before applying
+					// (saves all the effort)
+
+					pPlayerInfo->ApplyToAll(0);
+					pPlayerInfo->Release();
+
+					if ( szURL[0]) m_opService( opSetBrowserUrl, (void*)szURL, 0, 0);
+				}
+			}
+
+			pMediaInfo->Release();
+		}
+	};
+
+public:
+	MediaSourceStatus(QMediaReader & mediaReader, PluginServiceFunc opService)
+	{
+		m_pMediaReader = &mediaReader;
+		m_opService = opService;
+		m_pMediaReader->SetStatusCallback( this, 0);
+	};
+
+	void __stdcall StatusMessage(long statusFlag, LPCWSTR statusMsg, long userData)
+	{
+		if ( statusFlag == MEDIASOURCE_STATUS_RECEIVEDMETADATA)
+			_metadataAvailable();
+		else if ( statusMsg && *statusMsg)
+			m_opService( opSetStatusMessage, (void*)statusMsg, TEXT_TOOLTIP|TEXT_UNICODE, 0);
+	};
+};
 
 //-----------------------------------------------------------------------------
 
 DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
 {
-	DecoderInfo_t * decoderInfo = (DecoderInfo_t *)lpParameter;
-	BOOL done = FALSE, updatePos = FALSE, outputOpened = FALSE;
+	DecodeThreadData_t * threadData = (DecodeThreadData_t *)lpParameter;
+	assert(threadData);
 
-	AudioInfo ai;
-	WriteDataStruct wd;
+	bool bOutputOpened = false;
 
+	MediaSourceStatus* pReaderStatus = new MediaSourceStatus(threadData->mediaReader, QCDCallbacks.Service);
+	QDecoder * pQDecoder = NULL;
+	WAVEFORMATEX wfex;
+	bool bSuccess = false;
+	do {
+		if ( !threadData->mediaReader.Open())
+			break;
 
-	// decoding loop
-	while ( !decoderInfo->killThread) {
-		if ( !done && seek_needed >= 0) { /********************** SEEK ************************/
-			QCDCallbacks.toPlayer.OutputFlush( 0);
+		pQDecoder = new QDecoder;
+		if ( !pQDecoder)
+			break;
 
-			if ( !decoderInfo->pDecoder->Seek( seek_needed))
-				done = TRUE;
+		if ( !pQDecoder->Open( threadData->mediaReader))
+			break;
 
-			seek_needed = -1;
-			updatePos = 1;
+		bSuccess = true;
+	} while (0);
+
+	// no joy, tell player, kill decoder
+	if ( !bSuccess) {
+		//WCHAR title[300] = {0}, msg[300] = {0};
+
+		//ResInfo resInfo = { sizeof(ResInfo), g_hInstance, MAKEINTRESOURCE(IDS_ERR_TITLE), 0, 0 };
+		//QCDCallbacks.Service(opLoadResString, (void*)title, (long)sizeof(title), (long)&resInfo);
+
+		//resInfo.resID = MAKEINTRESOURCE(IDS_ERR_BADFILE);
+		//QCDCallbacks.Service(opLoadResString, (void*)msg, (long)sizeof(msg), (long)&resInfo);
+
+		//HWND hwndPlayer = (HWND)QCDCallbacks.Service(opGetParentWnd, 0, 0, 0);
+		//MessageBox(hwndPlayer, msg, title, MB_ICONINFORMATION);
+
+		QCDCallbacks.toPlayer.PlayStopped( (LPCSTR)(LPCWSTR)threadData->mediaReader.GetName(), 0);
+		g_bDecoderThreadKill = TRUE;
+		if ( g_hReadingLoopKillEvent) // kill the reading loop
+			SetEvent( g_hReadingLoopKillEvent);
+	} else {
+		// Is media seekable?
+		QCDCallbacks.Service( opSetTrackSeekable, (void*)(LPCWSTR)threadData->mediaReader.GetName(), pQDecoder->IsSeekable(), 0);
+	}
+
+	AudioInfo aiLast = {sizeof(AudioInfo), 0, 0, 0, 0, 0, ""};
+	BOOL bDecodeDone = FALSE;
+
+	while ( !g_bDecoderThreadKill && !bDecodeDone) {
+		//
+		// Perform Seek
+		// 
+		if ( !bDecodeDone && g_bSeekNeeded) {
+			QCDCallbacks.toPlayer.OutputFlush(0);
+			g_bSeekNeeded = FALSE;
+
+			pQDecoder->Seek( g_dwSeekPos);
 		}
 
-		if ( done) { /********************* QUIT *************************/
-			if ( QCDCallbacks.toPlayer.OutputDrain( 0) && !(seek_needed >= 0)) {
-				decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
-				QCDCallbacks.toPlayer.OutputStop( STOPFLAG_PLAYDONE);
-				QCDCallbacks.toPlayer.PlayDone( decoderInfo->playingFile);
-			} else if ( seek_needed >= 0) {
-				done = FALSE;
-				continue;
-			}
-			break;
-		} else { /******************* DECODE TO BUFFER ****************/
-			// set track seekable flag
-			if ( !outputOpened)
-				QCDCallbacks.Service( opSetTrackSeekable, (void *)(LPCTSTR)decoderInfo->playingFile, decoderInfo->pDecoder->IsSeekable(), 0);
+		//
+		// Perform Decoding
+		//
+		if ( !pQDecoder->IsActive()) {
+			bDecodeDone = TRUE;
+		} else {
+			WriteDataStruct wd;
+			memset( &wd, 0, sizeof(wd));
 
-			// decoding
-			if ( !decoderInfo->pDecoder->Decode( &wd))
-				done = 1;
-
-			// open output
-			if ( !done && !outputOpened) {
-				WAVEFORMATEX wf;
-				decoderInfo->pDecoder->GetWaveFormFormat( &wf);
-
-				if ( !QCDCallbacks.toPlayer.OutputOpen( decoderInfo->playingFile, &wf)) {
-					MessageBox( hwndPlayer, "Error: Open playback plug-in failed!", "Decoder plug-in error", MB_ICONINFORMATION);
-					QCDCallbacks.toPlayer.PlayStopped( decoderInfo->playingFile);
-					done = TRUE; // cannot open sound device
-
-					continue;
-				} else {
-					outputOpened = TRUE;
+			if ( pQDecoder->Decode( wd)){
+				//
+				// open output
+				//
+				if ( !bOutputOpened) {
+					pQDecoder->GetWaveFormFormat( wfex);
+					if ( !QCDCallbacks.toPlayer.OutputOpen( (LPCSTR)(LPCWSTR)threadData->mediaReader.GetName(), &wfex))
+						break;
+					else
+						bOutputOpened = true;
 				}
+
+				//
+				// setup AudioInfo
+				//
+				AudioInfo ai;
+				memset(&ai, 0, sizeof(ai));
+				ai.struct_size = sizeof(AudioInfo);
+				pQDecoder->GetAudioInfo( ai);
+				if ( memcmp( &ai, &aiLast, sizeof(AudioInfo))) { // change audio info when necessary
+					if ( !(threadData->mediaReader.GetProperties() & MEDIASOURCE_PROP_INTERNETSTREAM)) {
+						LPCWSTR ch = wcsrchr( threadData->mediaReader.GetName(), '.');
+						if ( ch) {
+							ZeroMemory( ai.text, sizeof(ai.text));
+							WideCharToMultiByte( CP_ACP, 0, ch+1, -1, ai.text, sizeof(ai.text), 0, 0);
+							CharUpperA(ai.text);
+						}
+					}
+					QCDCallbacks.Service( opSetAudioInfo, &ai, sizeof(AudioInfo), 0);
+					aiLast = ai;
+				}
+
+				//
+				// send to output
+				//
+				if ( !QCDCallbacks.toPlayer.OutputWrite( &wd))
+					Sleep(10); // to avoid racing if output closes
+			} else {
+				// handle decoder error?
+				Sleep(10);
+			}
+		}
+
+		//
+		// Decoding Complete
+		//
+		if ( bDecodeDone) {
+			// check for seek after drain return since draincancel could have been called
+			if ( QCDCallbacks.toPlayer.OutputDrain(0) && !g_bSeekNeeded) {
+				QCDCallbacks.toPlayer.OutputStop(STOPFLAG_PLAYDONE);
+				QCDCallbacks.toPlayer.PlayDone( (LPCSTR)(LPCWSTR)threadData->mediaReader.GetName(), 0);
 			}
 
-			if (updatePos) {
-				QCDCallbacks.toPlayer.PositionUpdate( decoderInfo->pDecoder->GetCurPos());
-				updatePos = 0;
-			}
-
-			// update audio info
-			decoderInfo->pDecoder->GetAudioInfo( &ai);
-			QCDCallbacks.Service( opSetAudioInfo, &ai, sizeof(AudioInfo), 0);
-
-			// send data to output
-			if (!QCDCallbacks.toPlayer.OutputWrite( &wd))
-				done = 1;
+			if ( g_bSeekNeeded)
+				bDecodeDone = FALSE;
+			else
+				break;
 		}
 
 		// catch pause
-		while ( isPaused && !decoderInfo->killThread)
+		while ( g_bIsPaused && !g_bDecoderThreadKill)
 			Sleep(50);
 	}
 
 	// close up
-	decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
-
-	if ( decoderInfo->pDecoder) {
-		decoderInfo->pDecoder->Close();
-		delete decoderInfo->pDecoder;
-		decoderInfo->pDecoder = NULL;
+	if ( g_hDecoderThread) {
+		CloseHandle( g_hDecoderThread);
+		g_hDecoderThread = NULL;
 	}
+	if ( g_hReadingLoopKillEvent) {
+		CloseHandle( g_hReadingLoopKillEvent);
+		g_hReadingLoopKillEvent = NULL;
+	}
+
+	if ( pQDecoder) delete pQDecoder;
+
+	if ( threadData) delete threadData;
+
+	if ( pReaderStatus) delete pReaderStatus;
 
 	return 0;
 }

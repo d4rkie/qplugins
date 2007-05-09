@@ -18,6 +18,7 @@
 #define _WIN32_IE		0x0501
 #endif
 
+#include <assert.h>
 
 #define _WTL_NO_CSTRING
 #define _WTL_NEW_PAGE_NOTIFY_HANDLERS
@@ -36,4 +37,6 @@
 #include <atldlgs.h>
 #include <atluser.h>
 #include <atlddx.h>
+
+#define END_MSG_MAP_EX END_MSG_MAP
 

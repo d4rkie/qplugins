@@ -19,12 +19,12 @@ public:
 	enum { IDD = IDD_CONFIG };
 
 	// Maps
-	BEGIN_MSG_MAP(CConfigDlg)
+	BEGIN_MSG_MAP_EX(CConfigDlg)
 		MSG_WM_INITDIALOG(OnInitDialog)
 		MSG_WM_CLOSE(OnClose)
-		COMMAND_ID_HANDLER_EX(IDC_CLOSE, OnClose)
-		COMMAND_ID_HANDLER_EX(IDC_USEWVC, OnUseWVC)
-	END_MSG_MAP()
+		COMMAND_ID_HANDLER_EX(IDC_CLOSE, OnButtons)
+		COMMAND_ID_HANDLER_EX(IDC_USEWVC, OnButtons)
+	END_MSG_MAP_EX()
 
 	// DDX
 	BEGIN_DDX_MAP(CConfigDlg)
@@ -32,12 +32,12 @@ public:
 	END_DDX_MAP()
 
 	// Message handlers
-	BOOL OnInitDialog(HWND hwndFocus, LPARAM lParam)
+	LRESULT OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 	{
 		CenterWindow();
 
 		// Save the pointer to myself for self-destroy
-		m_pME = (CConfigDlg **)lParam;
+		m_pME = (CConfigDlg **)lInitParam;
 
 		// DDX controls, Hook it.
 		DoDataExchange( FALSE);
@@ -45,12 +45,22 @@ public:
 		return TRUE;
 	}
 
-	void OnUseWVC(UINT uCode, int nID, HWND hwndCtrl)
+	void OnButtons(UINT uNotifyCode, int nID, CWindow wndCtl)
 	{
-		DoDataExchange( TRUE);
+		switch (nID)
+		{
+		case IDC_USEWVC:
+			DoDataExchange( TRUE);
+
+			break;
+		case IDC_CLOSE:
+			OnClose();
+
+			break;
+		}
 	}
 
-	void OnClose(UINT uCode = 0, int nID = 0, HWND hwndCtrl = NULL)
+	void OnClose()
 	{
 		DestroyWindow();
 	}

@@ -14,11 +14,21 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder(LPCTSTR lpszFileName)
-: QDecoderBase(_T("QPlugins WavPack decoder"), _T("3.0"), _T("WV"))
+: QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.0"), _T("WV"))
 , m_wpc(NULL)
+, m_wvcreader(NULL)
+, m_bAbort(FALSE)
 , sample_buffer(NULL)
 {
-	_fn = lpszFileName; // !!save the filename used by IQCDMediaDecoder interface!!
+	// initialize the stream reader struct
+	m_wpsr.read_bytes     = _read_cb;
+	m_wpsr.get_pos        = _get_pos_cb;
+	m_wpsr.set_pos_abs    = _abs_seek_cb;
+	m_wpsr.set_pos_rel    = _rel_seek_cb;
+	m_wpsr.push_back_byte = NULL;
+	m_wpsr.get_length     = _get_len_cb;
+	m_wpsr.can_seek       = _can_seek_cb;
+	m_wpsr.write_bytes    = NULL;
 }
 
 QDecoder::~QDecoder(void)
@@ -36,69 +46,106 @@ QDecoder::~QDecoder(void)
 // return <0 for unsupported format or can't get the duration. (normal -1)
 // normal return the actually duration
 //////////////////////////////////////////////////////////////////////////
-unsigned int QDecoder::GetDuration(LPCTSTR lpszFileName)
+int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 {
 	WavpackContext *wpc;
 	char error [128] = {'\0'};
 	double len;
 
-	if ( !(wpc = WavpackOpenFileInput( lpszFileName, error, (g_bUseWVC & OPEN_WVC) | OPEN_TAGS | OPEN_2CH_MAX, 0)))
-		return -1;
+	char infilename[1024];
+	ZeroMemory( infilename, sizeof(infilename));
+	WideCharToMultiByte( CP_ACP, 0, mediaReader.GetName(), -1, infilename, sizeof(infilename), 0, 0);
+	if ( !(wpc = WavpackOpenFileInput( infilename, error, (g_bUseWVC & OPEN_WVC) | OPEN_2CH_MAX, 0)))
+		return E_FAIL;
 
-	len = (int)(WavpackGetNumSamples( wpc) * 1000.0 / WavpackGetSampleRate( wpc));
+	te.track = 1;
+	te.bytesize = mediaReader.GetSize();
+	te.start = 0;
+	te.end = (int)(WavpackGetNumSamples( wpc) * 1000.0 / WavpackGetSampleRate( wpc));
+	te.unitpersec = 1000;
 
 	wpc = WavpackCloseFile( wpc);
 
-	return (unsigned int)len;
+	return NOERROR;
 }
 
-int QDecoder::Close(void)
+int QDecoder::Open(QMediaReader & mediaReader)
 {
-	if ( m_wpc) {
-        m_wpc = WavpackCloseFile( m_wpc);
-		m_wpc = NULL;
-	}
-
-	if ( sample_buffer) {
-		delete [] sample_buffer;
-		sample_buffer = NULL;
-	}
-
-	return 1;
-}
-
-int QDecoder::OpenFile(LPCTSTR lpszFileName)
-{
-	// open file for decoding
-	// check format accurately, return PLAYSTATUS_UNSUPPORTED for unsupported file
-	// create a decoder object for decoding which should be a member of this class
-	// return PLAYSTATUS_FAILED for open failed, PLAYSTATUS_SUCCESS for OK.
+	// open file for decoding.
+	// check format accurately, return PLAYSTATUS_UNSUPPORTED for unsupported file.
+	// create a decoder object for decoding which should be a member of this class.
+	// return PLAYSTATUS_FAILED for open failed, PLAYSTATUS_SUCCESS for OK..
+	//
+	// remember to save the passed mediaReader to _pmr before doing opening operation
 	//
 	// remember to set m_bSeek after checking format.
 	char error [128] = {'\0'};
 
-	if ( !(m_wpc = WavpackOpenFileInput( lpszFileName, error, (g_bUseWVC & OPEN_WVC) | OPEN_TAGS | OPEN_2CH_MAX | OPEN_NORMALIZE, 23)))
+	// open correction file
+	if ( (g_bUseWVC & OPEN_WVC) == 1) {
+		m_wvcreader = new QFileReader;
+		if ( !m_wvcreader || !m_wvcreader->Open( mediaReader.GetName() + L"c"))
+			return PLAYSTATUS_FAILED;
+	}
+
+	// save the media reader pointer
+	_pmr = &mediaReader;
+
+	if ( !(m_wpc = WavpackOpenFileInputEx( &m_wpsr, _pmr, m_wvcreader, error, OPEN_2CH_MAX | OPEN_NORMALIZE, 23))) {
 		// check by parsing the returned error string.
 		return (strstr( error, "not compatible") || strstr( error, "problem")) ? PLAYSTATUS_UNSUPPORTED : PLAYSTATUS_FAILED;
+	}
 
 	//play_gain = _calculate_gain ( m_wpc, &soft_clipping);
 
 	sample_buffer = new BYTE[576*MAX_NCH*(MAX_BPS/8)*2];
 
-	m_bSeek = TRUE;
+	_seekable = _pmr->CanSeek();
 
 	return PLAYSTATUS_SUCCESS;
 }
 
-int QDecoder::Decode(WriteDataStruct * wd)
+int QDecoder::Close(void)
 {
+	// close the decoder context
+	if ( m_wpc) {
+		m_wpc = WavpackCloseFile( m_wpc);
+		m_wpc = NULL;
+	}
+
+	// close te correction file
+	if ( m_wvcreader) {
+		delete m_wvcreader;
+		m_wvcreader = NULL;
+	}
+
+	// destroy the sampling buffer
+	if ( sample_buffer) {
+		delete [] sample_buffer;
+		sample_buffer = NULL;
+	}
+
+	// reset state
+	m_bAbort = FALSE;
+	_pmr = NULL;
+
+	return 1;
+}
+
+int QDecoder::Decode(WriteDataStruct & wd)
+{
+	if ( m_bAbort)
+		return 0;
+
 	// decode data
 	// remember to set _srate, _bps, _nch and _pos member of base class
 	int tsamples = WavpackUnpackSamples( m_wpc, (int32_t *)sample_buffer, 576) * NCH;
 	int tbytes = tsamples * (BPS/8);
 
-	if ( !tsamples)
+	if ( !tsamples) {
+		m_bAbort = TRUE;
 		return 0;
+	}
 
 	_format_samples( (uchar*)sample_buffer, WavpackGetBytesPerSample( m_wpc), (long *) sample_buffer, tsamples);
 
@@ -122,14 +169,14 @@ int QDecoder::Decode(WriteDataStruct * wd)
 
 	_pos = (int)(WavpackGetSampleIndex( m_wpc) * 1000.0 / WavpackGetSampleRate( m_wpc));
 
-	wd->data = sample_buffer;
-	wd->bytelen = tbytes;
-	_bps = wd->bps = BPS;
-	wd->markerend = 0;
-	wd->markerstart = _pos;
-	_nch = wd->nch = NCH;
-	wd->numsamples = tsamples / wd->nch;
-	_srate = wd->srate = SAMPRATE;
+	wd.data = sample_buffer;
+	wd.bytelen = tbytes;
+	_bps = wd.bps = BPS;
+	wd.markerend = 0;
+	wd.markerstart = _pos;
+	_nch = wd.nch = NCH;
+	wd.numsamples = tsamples / wd.nch;
+	_srate = wd.srate = SAMPRATE;
 
 	_br = (int)(WavpackGetInstantBitrate( m_wpc) + 500.0);
 
@@ -151,42 +198,39 @@ int QDecoder::Seek(int ms)
 	return 1;
 }
 
-int QDecoder::GetWaveFormFormat(WAVEFORMATEX * pwf)
+int QDecoder::GetWaveFormFormat(WAVEFORMATEX & wfex)
 {
 	// return the wave form format for opening playback device
 	// no changed needed normally.
-	if ( !pwf)
-		return 0;
-	else {
-		pwf->wFormatTag = WAVE_FORMAT_PCM;
-		pwf->nChannels  = _nch;
-		pwf->nSamplesPerSec = _srate;
-		pwf->wBitsPerSample = _bps;
-		pwf->nBlockAlign = pwf->nChannels * pwf->wBitsPerSample / 8;
-		pwf->nAvgBytesPerSec = pwf->nSamplesPerSec * pwf->nBlockAlign;
-		pwf->cbSize = 0;
+	wfex.wFormatTag = WAVE_FORMAT_PCM;
+	wfex.nChannels  = _nch;
+	wfex.nSamplesPerSec = _srate;
+	wfex.wBitsPerSample = _bps;
+	wfex.nBlockAlign = wfex.nChannels * wfex.wBitsPerSample / 8;
+	wfex.nAvgBytesPerSec = wfex.nSamplesPerSec * wfex.nBlockAlign;
+	wfex.cbSize = 0;
 
-		return 1;
-	}
+	return 1;
 }
 
-int QDecoder::GetAudioInfo(AudioInfo * pai)
+int QDecoder::GetAudioInfo(AudioInfo & ai)
 {
 	// return the audio info for display when playing
 	// no changed needed normally.
-	if ( !pai)
-		return 0;
-	else {
-		pai->struct_size = sizeof(AudioInfo);
-		pai->frequency = _srate;
-		pai->bitrate = _br;
-		pai->mode = (_nch == 2) ? 0 : (_nch > 2) ? 4 :	3;
-		pai->layer = 0;
-		pai->level = 0;
-		lstrcpyn(pai->text, "WavPack", sizeof(pai->text));
+	ai.struct_size = sizeof(AudioInfo);
+	ai.frequency = _srate;
+	ai.bitrate = _br;
+	ai.mode = (_nch == 2) ? 0 : (_nch > 2) ? 4 :	3;
+	ai.layer = 0;
+	ai.level = 0;
+	lstrcpynA( ai.text, "WavPack", sizeof(ai.text));
 
-		return 1;
-	}
+	return 1;
+}
+
+int QDecoder::IsActive(void)
+{
+	return !m_bAbort;
 }
 
 //------------------------------------------------------------------------------------------
@@ -205,7 +249,6 @@ void QDecoder::_format_samples (uchar *dst, int bps, long *src, unsigned long sa
 		}
 
 		break;
-
 	case 2:
 		while ( samcnt--) {
 			dst [0] = temp = *src++;
@@ -214,7 +257,6 @@ void QDecoder::_format_samples (uchar *dst, int bps, long *src, unsigned long sa
 		}
 
 		break;
-
 	case 3:
 		while ( samcnt--) {
 			temp = *src++;
@@ -226,7 +268,6 @@ void QDecoder::_format_samples (uchar *dst, int bps, long *src, unsigned long sa
 		}
 
 		break;
-
 	case 4:
 		while ( samcnt--) {
 			dst [0] = temp = *src++;
