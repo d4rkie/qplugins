@@ -10,7 +10,7 @@
 class QDecoder : public QDecoderBase
 {
 public:
-	QDecoder(LPCTSTR lpszFileName = NULL);
+	QDecoder();
 	~QDecoder(void);
 
 public:

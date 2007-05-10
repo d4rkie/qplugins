@@ -13,7 +13,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 
-QDecoder::QDecoder(LPCTSTR lpszFileName)
+QDecoder::QDecoder()
 : QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.0"), _T("WV"))
 , m_wpc(NULL)
 , m_wvcreader(NULL)
