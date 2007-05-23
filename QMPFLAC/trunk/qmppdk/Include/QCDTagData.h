@@ -39,8 +39,8 @@
 #define		QCDTag_Lyricist					L"LYRICIST"			// QTD_TYPE_STRINGUNICODE
 #define		QCDTag_Mood						L"MOOD"				// QTD_TYPE_STRINGUNICODE
 #define		QCDTag_Remix					L"REMIX"			// QTD_TYPE_STRINGUNICODE
-#define		QCDTag_Comment					L"COMMENT"			// QTD_STRUCT_COMMENT* (QTD_TYPE_BINARY)
-#define		QCDTag_Artwork					L"ARTWORK"			// QTD_STRUCT_ARTWORK* (QTD_TYPE_BINARY)
+#define		QCDTag_Comment					L"COMMENT"			// QTAGDATA_HEADER_COMMENT* (QTD_TYPE_BINARY)
+#define		QCDTag_Artwork					L"ARTWORK"			// QTAGDATA_HEADER_ARTWORK* (QTD_TYPE_BINARY)
 #define		QCDTag_Lyrics					L"LYRICS"			// TBD
 											
 	// classical							
@@ -74,56 +74,61 @@
 #define		QCDTag_ReplayGain_Track_Peak	L"REPLAYGAIN_TRACK_PEAK" // QTD_TYPE_STRINGUNICODE
 
 //-----------------------------------------------------------------------------
-// QCD_TAGDATA_TYPE
+// QTAGDATA_TYPE
 // All tag fields will be declared on of the following types
 // Note: due to fields be set by any plugin, do not anticipate proper
 //       type setting or formatting of tag data.
 
-typedef enum _QCD_TAGDATA_TYPE
+enum QTAGDATA_TYPE
 {
+	QTD_TYPE_UNKNOWN		= 0,
 	QTD_TYPE_LONG			= 1,
 	QTD_TYPE_BINARY			= 2,
 	QTD_TYPE_STRINGUNICODE	= 3
-
-} QCD_TAGDATA_TYPE;
+};
 
 //-----------------------------------------------------------------------------
-// Structure definitions for complex tag data type (noted in tag field list above)
+// Struct definitions for complex tag data type (noted in tag field list above)
 // 
 
 // these structure are byte aligned
 #include <pshpack1.h>
 
-typedef struct _QTD_STRUCT_ARTWORK
+struct QTAGDATA_HEADER_ARTWORK
 {
 	LPWSTR	pszMimeType;
 	BYTE	bPictureType;
 	LPWSTR	pwszDescription;
 	DWORD	dwDataLen;
 	BYTE*	pbData;
+};
 
-} QTD_STRUCT_ARTWORK;
 
-
-typedef struct _QTD_STRUCT_COMMENT
+struct QTAGDATA_HEADER_COMMENT
 {
 	BYTE	bLang[3];
 	LPWSTR	pwszDescription;
 	LPWSTR	pwszComment;
+};
 
-} QTD_STRUCT_COMMENT;
 
-
-typedef struct _QTD_STRUCT_LYRICS
+struct QTAGDATA_HEADER_LYRICS
 {
 	BYTE	bLang[3];
 	LPWSTR	pwszDescription;
 	LPWSTR	pwszLyrics;
-
-} QTD_STRUCT_LYRICS;
+};
 
 #include <poppack.h>
 
 //-----------------------------------------------------------------------------
+// Legacy type names
+//
+
+#define QCD_TAGDATA_TYPE			QTAGDATA_TYPE;
+#define QTD_STRUCT_ARTWORK			QTAGDATA_HEADER_ARTWORK;
+#define QTD_STRUCT_COMMENT			QTAGDATA_HEADER_COMMENT;
+#define QTD_STRUCT_LYRICS			QTAGDATA_HEADER_LYRICS;
+
 
 #endif // QCDTAGADATA_H

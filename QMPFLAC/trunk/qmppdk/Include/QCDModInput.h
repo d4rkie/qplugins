@@ -11,7 +11,7 @@
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
-//	Copyright (C) 1997-2005 Quinnware
+//	Copyright (C) 1997-2007 Quinnware
 //
 //	This code is free.  If you redistribute it in any form, leave this notice 
 //	here.
@@ -73,24 +73,29 @@
 #define GETTRACKEXTENTS_VERIFY		0x100   // when passed to GetTrackExtents, indicates TrackExtents parameter has prepopulated values
                                             // that the plug-in can either ignore, verify, and/or modify to its needs
 
-//-----------------------------------------------------------------------------
-// Input Module
-//-----------------------------------------------------------------------------
-typedef struct _QCDModInitIn
-{
-	unsigned int		size;			// size of init structure
-	unsigned int		version;		// plugin structure version (set to PLUGIN_API_VERSION)
-	PluginServiceFunc	Service;		// player supplied services callback
 
+// \Input plug-in initialization structure.
+struct QCDModInitIn
+{
+	unsigned int		size;			// Size in bytes of QCDModInitIn structure.
+	unsigned int		version;		// Plug-in API version. Set to one of the PLUGIN_API_VERSION
+	            		        		// macros.
+	            		        		// See Also
+	            		        		// <link PLUGIN_API_VERSION, PLUGIN_API_VERSION Macro>      
+	PluginServiceFunc	Service;		// Player supplied Services callback.
+	                 	        		// See Also
+	                 	        		// <link Player Services>            
+
+	// Set of functions defined by player that the plug-in can call.
 	struct _toPlayer
 	{
 		void (*PositionUpdate)(unsigned int position);
-		void (*PlayStopped)(const char* medianame, int flags);		// notify player of play stop
-		void (*PlayStarted)(const char* medianame);					// notify player of play start
+		void (*PlayStopped)(const char* medianame, int flags);			// notify player of play stop
+		void (*PlayStarted)(const char* medianame, int flags);		// notify player of play start
 		void (*PlayPaused)(const char* medianame, int flags);		// notify player of play pause
 		void (*PlayDone)(const char* medianame, int flags);			// notify player when play done
-		void (*PlayTrackChanged)(const char* medianame);			// notify player when playing track changes (cd audio relevant only)
-		void (*MediaEjected)(const char* medianame);				// notify player of media eject (cd audio relevant)
+		void (*PlayTrackChanged)(const char* medianame, int flags);	// notify player when playing track changes (cd audio relevant only)
+		void (*MediaEjected)(const char* medianame, int flags);		// notify player of media eject (cd audio relevant)
 		void (*MediaInserted)(const char* medianame, int flags);	// notify player of media insert (cd audio relevant)
 
 																	// output plugin calls
@@ -112,6 +117,7 @@ typedef struct _QCDModInitIn
 		void *Reserved[9];
 	} toPlayer;
 
+	// Set of functions defined by plug-in that the player can call.
 	struct _toModule
 	{
 		int  (*Initialize)(QCDModInfo *modInfo, int flags);			// initialize plugin
@@ -119,24 +125,30 @@ typedef struct _QCDModInitIn
 
 		int  (*Play)(const char* medianame, int playfrom, int playto, int flags);	// start playing playfrom->playto
 		int  (*Stop)(const char* medianame, int flags);				// stop playing
-		int  (*Pause)(const char* medianame, int flags);			// pause playback
-		int  (*Eject)(const char* medianame, int flags);			// eject media
+		int  (*Pause)(const char* medianame, int flags);			
+		int  (*Eject)(const char* medianame, int flags);			// Eject media
 		void (*SetEQ)(EQInfo*);										// update EQ settings
 
 		int  (*GetMediaSupported)(const char* medianame, MediaInfo *mediaInfo);			// does plugin support medianame (and provides info for media)
 		int  (*GetTrackExtents)(const char* medianame, TrackExtents *ext, int flags);	// get media start, end & units
-		int  (*GetCurrentPosition)(const char* medianame, long *track, long *offset);	// get playing media's position
+		int  (*GetCurrentPosition)(const char* medianame, long *track, long *offset);	// Get playing media's position
 
-		void (*Configure)(int flags);									// launch configuration
-		void (*About)(int flags);										// launch about info
+		// lLaunch or set configuration for plug-in.
+		void (*Configure)(int flags);
+		// Display 'Abut Plug-in' information.
+		void (*About)(int flags);										
 
 		void (*SetVolume)(int levelleft, int levelright, int flags);	// level 0 - 100
 
-		IQCDMediaDecoder* (*CreateDecoderInstance)(const WCHAR* medianame, int flags); // create independant decoder instance to facilitate IQCDMediaDecoder
+		IQCDMediaDecoder* (*CreateDecoderInstance)(const WCHAR* medianame, int flags); // Create new instance of class that implementsIQCDMediaDecoder.
+		                                                                               // All instances of IQCDMediaDecoder must be independant and
+		                                                                               // thread safe.                                                 
 
+		// <copy Player_Plugin_Common_reserved>
+		// 
+		// \ \                                 
 		void *Reserved[9];
 	} toModule;
-
-} QCDModInitIn;
+};
 
 #endif //QCDMODINPUT_H

@@ -113,7 +113,7 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 					if ( wn == QCDTag_Comment) { // for comment tag-group
 						DWORD cl = 0, dl = 0;
 						CStringW c, d;
-						QTD_STRUCT_COMMENT comment; ZeroMemory( &comment, sizeof(QTD_STRUCT_COMMENT));
+						QTAGDATA_HEADER_COMMENT comment; ZeroMemory( &comment, sizeof(QTAGDATA_HEADER_COMMENT));
 
 						// get comment
 						cl = lstrlenA( (LPCSTR)bv) + 1;
@@ -132,11 +132,11 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 							memcpy( &comment.bLang, bv+cl+dl, sizeof(comment.bLang));
 
 						// set the comment
-						QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_BINARY, (BYTE *)&comment, sizeof(QTD_STRUCT_COMMENT), &index);
+						QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_BINARY, (BYTE *)&comment, sizeof(QTAGDATA_HEADER_COMMENT), &index);
 					} else if ( wn == QCDTag_Lyrics) { // for lyrics tag-group
 						DWORD ll = 0, dl = 0;
 						CStringW l, d;
-						QTD_STRUCT_LYRICS lyrics; ZeroMemory( &lyrics, sizeof(QTD_STRUCT_LYRICS));
+						QTAGDATA_HEADER_LYRICS lyrics; ZeroMemory( &lyrics, sizeof(QTAGDATA_HEADER_LYRICS));
 
 						// get lyrics
 						ll = lstrlenA( (LPCSTR)bv) + 1;
@@ -156,7 +156,7 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 							memcpy( &lyrics.bLang, bv+ll+dl, sizeof(lyrics.bLang));
 
 						// set the lyrics
-						QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_BINARY, (BYTE *)&lyrics, sizeof(QTD_STRUCT_LYRICS), &index);
+						QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_BINARY, (BYTE *)&lyrics, sizeof(QTAGDATA_HEADER_LYRICS), &index);
 					} else if ( wn == QCDTag_GracenoteFileId || wn == QCDTag_GracenoteExtData) { // for CDDB id/data binary-data
 						QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_BINARY, bv, bvl - 1, &index);
 					} else {
@@ -184,7 +184,7 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 					return FALSE;
 
 				// start reading & processing artwork metadata
-				QTD_STRUCT_ARTWORK aw;
+				QTAGDATA_HEADER_ARTWORK aw;
 
 				CStringW mtstr;
 				UTF8toUCS2( picdata->get_mime_type(), mtstr);
@@ -200,7 +200,7 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 
 				aw.pbData = (LPBYTE)picdata->get_data();
 
-				QCDCallbacks.toPlayer.SetTagData( tagHandle, QCDTag_Artwork, QTD_TYPE_BINARY, (BYTE *)&aw, sizeof(QTD_STRUCT_ARTWORK), &index);
+				QCDCallbacks.toPlayer.SetTagData( tagHandle, QCDTag_Artwork, QTD_TYPE_BINARY, (BYTE *)&aw, sizeof(QTAGDATA_HEADER_ARTWORK), &index);
 
 				++index;
 
@@ -241,7 +241,7 @@ BOOL QMPTags::WriteToFile(LPCWSTR filename, void* tagHandle, int flags)
 	FLAC::Metadata::VorbisComment * vcdata;
 	FLAC::Metadata::Picture * picdata;
 	DWORD wnl, bvl;
-	QCD_TAGDATA_TYPE type;
+	QTAGDATA_TYPE type;
 	int index;
 	bool found;
 	bool ret;
@@ -331,7 +331,7 @@ BOOL QMPTags::WriteToFile(LPCWSTR filename, void* tagHandle, int flags)
 		if ( wn == QCDTag_Comment && type == QTD_TYPE_BINARY) {
 			// the comment field is wrapped in the form "comment\0description\0lang"
 			CStringA tmp;
-			QTD_STRUCT_COMMENT * comment = (QTD_STRUCT_COMMENT *)bv;
+			QTAGDATA_HEADER_COMMENT * comment = (QTAGDATA_HEADER_COMMENT *)bv;
 			valuelen = ( lstrlenW( comment->pwszComment) + 1/*\0*/ + lstrlenW( comment->pwszDescription) + 1/*\0*/ + sizeof(comment->bLang)) * 3;
 			value = new CHAR[valuelen]; ZeroMemory( value, sizeof(CHAR)*valuelen);
 			// process comment
@@ -350,7 +350,7 @@ BOOL QMPTags::WriteToFile(LPCWSTR filename, void* tagHandle, int flags)
 		} else if ( wn == QCDTag_Lyrics && type == QTD_TYPE_BINARY) {
 			CStringA tmp;
 			// the lyrics field is wrapped in the form "content\0description\0lang"
-			QTD_STRUCT_LYRICS * lyrics = (QTD_STRUCT_LYRICS *)bv;
+			QTAGDATA_HEADER_LYRICS * lyrics = (QTAGDATA_HEADER_LYRICS *)bv;
 			valuelen = ( lstrlenW( lyrics->pwszLyrics) + 1/*\0*/ + lstrlenW( lyrics->pwszDescription) + 1/*\0*/ + sizeof(lyrics->bLang)) * 3;
 			value = new CHAR[valuelen]; ZeroMemory( value, sizeof(CHAR)*valuelen);
 			// process lyrics
@@ -425,7 +425,7 @@ BOOL QMPTags::WriteToFile(LPCWSTR filename, void* tagHandle, int flags)
 			LPBYTE bv = new BYTE[bvl]; ZeroMemory( bv, bvl);
 			QCDCallbacks.toPlayer.GetTagDataByName( tagHandle, QCDTag_Artwork, &type, bv, &bvl, &index);
 
-			QTD_STRUCT_ARTWORK * aw = (QTD_STRUCT_ARTWORK *)bv;
+			QTAGDATA_HEADER_ARTWORK * aw = (QTAGDATA_HEADER_ARTWORK *)bv;
 
 			// create a new picture block
 			iterator.insert_block_after( new FLAC::Metadata::Picture);

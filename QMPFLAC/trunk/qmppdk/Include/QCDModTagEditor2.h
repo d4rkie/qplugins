@@ -11,7 +11,7 @@
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
-//	Copyright (C) 1997-2005 Quinnware
+//	Copyright (C) 1997-2007 Quinnware
 //
 //	This code is free.  If you redistribute it in any form, leave this notice 
 //	here.
@@ -36,7 +36,8 @@
 #define TAGCAPS_READ				0x1
 #define TAGCAPS_WRITE				0x2
 #define TAGCAPS_STRIP				0x4
-#define TAGCAPS_WANTUTF8			0x1000
+#define TAGCAPS_NTUTF8				0x1000
+#define TAGCAPS_UNICODE				0x2000
 
 //-----------------------------------------------------------------------------
 // read/write/strip flag defines
@@ -47,7 +48,7 @@
 
 //-----------------------------------------------------------------------------
 
-typedef struct _QCDModInitTag2
+struct QCDModInitTag2
 {
 	UINT				size;			// size of init structure
 	UINT				version;		// plugin structure version (set to PLUGIN_API_VERSION)
@@ -69,15 +70,14 @@ typedef struct _QCDModInitTag2
 
 	struct
 	{
-		int 	(*SetTagData)(void* tagHandle, const WCHAR* pszName, QCD_TAGDATA_TYPE type, BYTE* pbData, DWORD dwDataLen, int* startIndex);
+		int 	(*SetTagData)(void* tagHandle, const WCHAR* pszName, QTAGDATA_TYPE type, BYTE* pbData, DWORD dwDataLen, int* startIndex);
 
-		int 	(*GetTagDataByName)(void* tagHandle, const WCHAR* pszName, QCD_TAGDATA_TYPE* pType, BYTE* pbData, DWORD* pdwDataLen, int* startIndex);
-		int 	(*GetTagDataByIndex)(void* tagHandle, int index, WCHAR* pszName, DWORD* pdwNameLen, QCD_TAGDATA_TYPE* pType, BYTE* pData, DWORD* pdwDataLen);
+		int 	(*GetTagDataByName)(void* tagHandle, const WCHAR* pszName, QTAGDATA_TYPE* pType, BYTE* pbData, DWORD* pdwDataLen, int* startIndex);
+		int 	(*GetTagDataByIndex)(void* tagHandle, int index, WCHAR* pszName, DWORD* pdwNameLen, QTAGDATA_TYPE* pType, BYTE* pData, DWORD* pdwDataLen);
 
 		void*	reserved[4];
 	} toPlayer;
-
-} QCDModInitTag2;
+};
 
 
 

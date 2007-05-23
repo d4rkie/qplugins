@@ -43,17 +43,24 @@
 struct _declspec(novtable)
 IQCDMediaDecoderCallback
 {
+	// Receives decoded audio data
 	virtual long	OnReceive(BYTE* buffer, int bufferSize, WAVEFORMATEX* wf, long userData);
+	// Called at end of stream
 	virtual void	OnEOF(long userData);
+	// Called if there is an error decoding the stream
 	virtual void	OnError(long error, long userData);
 };
 
-//-----------------------------------------------------------------------------
+// <title IQCDMediaDecoder>
+// 
+// Provides access to decoded audio data for media files.  
 
 struct _declspec(novtable)
 IQCDMediaDecoder
 {
+	// Discards the interface
 	virtual void	__stdcall Release();
+	// Initiates decoding of media
 	virtual BOOL	__stdcall StartDecoding(IQCDMediaDecoderCallback* pMDCallback, long userData);
 };
 
