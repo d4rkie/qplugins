@@ -244,6 +244,7 @@ int QMPInput::Stop(const char* medianame, int flags)
 		WaitForSingleObject( g_hDecoderThread, INFINITE);
 
 		assert(g_hDecoderThread == NULL);
+		assert(g_hReadingLoopKillEvent == NULL);
 	}
 
 	g_strCurrentMedia.Empty();

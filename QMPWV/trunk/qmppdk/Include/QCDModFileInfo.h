@@ -11,7 +11,7 @@
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
-//	Copyright (C) 1997-2005 Quinnware
+//	Copyright (C) 1997-2007 Quinnware
 //
 //	This code is free.  If you redistribute it in any form, leave this notice 
 //	here.
@@ -54,7 +54,7 @@
 
 //-----------------------------------------------------------------------------
 
-typedef struct _QCDModInitFileInfo
+struct QCDModInitFileInfo
 {
 	UINT				size;			// size of init structure
 	UINT				version;		// plugin structure version (set to PLUGIN_API_VERSION)
@@ -77,8 +77,7 @@ typedef struct _QCDModInitFileInfo
 		void*	reserved[4];
 
 	} toPlayer;
-
-} QCDModInitFileInfo;
+};
 
 
 #endif //QCDMODFILEINFO_H

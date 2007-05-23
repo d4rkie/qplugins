@@ -83,34 +83,54 @@
 #define MEDIAINFO_SETIFNOTEMPTY		0x20
 
 
-//-----------------------------------------------------------------------------
+// <title IQCDMediaInfo>
+// 
+// Provides container to request and store metadata about a single piece of media.  
 
 
 struct _declspec(novtable)
 IQCDMediaInfo
 {
+	// Increment reference count for interface.
 	virtual ULONG	__stdcall AddRef();
+	// Decrement reference count on interface.
 	virtual ULONG	__stdcall Release();
 
-	virtual LPCWSTR __stdcall GetMediaName();				// retrieves media name
-	virtual long	__stdcall GetMediaType();				// file, cd, stream
+	// Gets name of media this interface is for
+	virtual LPCWSTR __stdcall GetMediaName();
+	// Get type of media this interface is for 
+	virtual long	__stdcall GetMediaType();
 
-	virtual BOOL	__stdcall Clear();						// erase all data
+	// Erase all metadata in interface
+	virtual BOOL	__stdcall Clear();
 
-	virtual BOOL	__stdcall LoadPlayerData();				// sets fields to player's metadata store
-	virtual BOOL	__stdcall LoadFullData();				// queries library plugins to get all available data
+	// Loads metadata stored in the player for set media
+	virtual BOOL	__stdcall LoadPlayerData();
+	// Loads metadata for the media from supporting library modules
+	virtual BOOL	__stdcall LoadFullData();
 
-	virtual BOOL	__stdcall ApplyToPlayer(long flags);	// apply any changes to player's metadata store
-	virtual BOOL	__stdcall ApplyToAll(long flags);		// apply any changes to player and library plugins
+	// Apply any metadata set in interface to player only (not to library plug-ins)
+	virtual BOOL	__stdcall ApplyToPlayer(long flags);
+	
+	// Apply any metadata set in interface to player and library plug-ins
+	virtual BOOL	__stdcall ApplyToAll(long flags);		
 
-	virtual BOOL	__stdcall SetInfoIndex(long nIndex);	// 0 for album, 1-99 for tracks (for when type == cd)
-	virtual long	__stdcall GetInfoIndex();				// current info index
-	virtual long	__stdcall GetInfoIndexForMedia();		// info index for medianame
+	// Set the info index members to read or write the correct information for the
+	// media.
+	virtual BOOL	__stdcall SetInfoIndex(long nIndex);
+	// Gets the current info index
+	virtual long	__stdcall GetInfoIndex();
+	// Get the info index for medianame
+	virtual long	__stdcall GetInfoIndexForMedia();
 
+	// Sets the given value for the given field
 	virtual BOOL	__stdcall SetInfoByName(LPCWSTR pszName, LPCWSTR pValue, long flags);
 
+	// Retrieves the string value for a given field name
 	virtual BOOL	__stdcall GetInfoByName(LPCWSTR pszName, WCHAR* pValue, long* pnLength);
+	// Retrieves the integer value for given field name
 	virtual BOOL	__stdcall GetInfoAsLong(LPCWSTR pszName, long* pValue);
+	// Retrieves the string value for given index
 	virtual BOOL	__stdcall GetInfoByIndex(long index, WCHAR* pszName, long* pnNameLen, WCHAR* pValue, long* pnLength);
 };
 

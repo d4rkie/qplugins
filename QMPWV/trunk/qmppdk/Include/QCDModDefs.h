@@ -33,23 +33,7 @@
 #define PLUGIN_API __declspec(dllexport)
 #endif
 
-// Plugin Prefix (for branded players)
-// The prefix will make plugins from other brands incompatible
-
-#if defined GNPLAYER
-	#define PLUGIN_PREFIX		GN
-#elif defined DDIPLAYER
-	#define PLUGIN_PREFIX		DDi
-#elif defined LIVEDOOR
-	#define PLUGIN_PREFIX		LD
-#elif defined TRANS
-	#define PLUGIN_PREFIX		Trans
-#elif defined QCDPLAYER
-	#define PLUGIN_PREFIX		Q
-#else
-	#error No player brand defined
-#endif
-
+#define PLUGIN_PREFIX								Q
 #define PLUGIN_ENTRY_POINT_PREFIX(prefix, name)		prefix ## name
 #define PLUGIN_ENTRY_POINT_EXPAND(prefix, name)		PLUGIN_ENTRY_POINT_PREFIX(prefix, name)
 #define PLUGIN_ENTRY_POINT(name)					PLUGIN_ENTRY_POINT_EXPAND(PLUGIN_PREFIX, name)
@@ -65,35 +49,39 @@
 #define PLUGIN_API_NTUTF8				100
 #define PLUGIN_API_UNICODE				1000
 
-//-----------------------------------------------------------------------------
-// QCDModInfo
-// Populated by plugins on initialization to give player description of 
-// plugin and indicate supported functionality. Populating this struct
-// differs based on plugin type
-//
-// For Input Plugins
-//		moduleString - string to display for plugin in player
-//		moduleExtensions - colon delmited list of supported extensions
-//		moduleCategory - category for extensions (audio or video). If null, defaults to audio
-//
-// For Encoder Plugins
-//		moduleString - string to display for plugin in player
-//		moduleExtensions - string to display for encoder format
-//		moduleCategory -  ignored
-//
-// For All other plugins
-//		moduleString - string to display for plugin in player
-//		moduleExtensions - ignored
-//		moduleCategory -  ignored
-//
+// Summary:
+//   Used by all plug-ins to pass needed information to the player on initialization.
+// Description:
+//   Due to support for older modules, this structure's members are only valid for
+//   some modules. For older module initialization interfaces--ones where there is no
+//   flags parameter accompanying the QCDModInfo* parameter--only the first two members
+//   are valid (moduleString and moduleExtensions).
+//   
+//   For newer initialization routines where there is a flags parameter accompanying
+//   this structure, the following flags are defined:
+//   
+//   MODINFO_VALID_CATEGORY: the moduleCategory member is available
+//   
+//   MODINFO_VALID_PARAM: the moduleParam member is available
+//   
+//   MODINFO_VALID_FLAGS: the moduleFlags member is available
+//   
+//   It is important to check for these flags before de-referencing the members in
+//   this structure as older player versions will not support all the members. The
+//   first two members (moduleString and moduleExtensions) can always be considered
+//   valid.
+//   
+//   This method of managing the QCDModInfo parameter on initialization is
+//   unfortunately complicated. This is based on design decisions in an early version
+//   \of the player, and due to reverse compatibility it has survived to this day.    
 
 struct QCDModInfo
 {
-    char*        moduleString;                  // display string for plugin
-    char*        moduleExtensions;              // file extensions (colon delimited)
-    char*        moduleCategory;                // "audio" or "video"
-    int          moduleParam;                   // rank or other parameter for the plugin (TBD)
-    int          moduleFlags;                   // MODINFO_FLAGS_*
+    char*        moduleString;                  // set to display string for module (this will show in plug-in browser)
+    char*        moduleExtensions;              // set to file extensions (colon- delimited, for Input modules)
+    char*        moduleCategory;                // set to "audio" or "video"
+    int          moduleParam;                   // set to rank or other parameter for the module (TBD)
+    int          moduleFlags;                   // set to 0 or flags currently defined: MODINFO_FLAGS_LOADONSTARTUP
 };
 
 #define MODINFO_VALID_CATEGORY          0x100   // moduleCategory field exists
@@ -101,10 +89,10 @@ struct QCDModInfo
 #define MODINFO_VALID_FLAGS			    0x400   // moduleFlags field exists
 #define MODINFO_VALID_CURRENT          (MODINFO_VALID_CATEGORY|MODINFO_VALID_PARAM|MODINFO_VALID_FLAGS)
 
-
-#define MODINFO_FLAGS_LOADONSTARTUP		0x1000	// Many plugins are not loaded until needed. This flag
-                                                // will tell the player to load it on startup. Only
-                                                // use if truly need to initialize on startup.
+#define MODINFO_FLAGS_LOADONSTARTUP		0x1000	// By default the player does not load most modules until it needs them. This
+                                                // flag will tell the player to load the module on startup. Only use if
+                                                // truly need to initialize on startup because if everyone did this, the
+                                                // app would load much slower.
 
 
 //-----------------------------------------------------------------------------
@@ -146,7 +134,7 @@ enum PluginServiceOp
     opGetAboutWnd = 36,             // Returns HWND to the about window (returns 0 if window is closed)
     opGetEQPresetsWnd = 38,         // Returns HWND to the EQ presets window (returns 0 if window is closed)
 
-    opGetVisualsWnd = 31,            // Returns HWND to the external visual window (returns 0 if window is closed)
+    opGetVisualsWnd = 31,           // Returns HWND to the external visual window (returns 0 if window is closed)
     opGetVisTarget = 21,            // Returns where visual effect is being drawn (1 - internal to skin, 2 - external window, 3 - fullscreen)
     opGetVisDimensions = 50,        // Returns width and height of visual window (HEIGHT in high word, WIDTH in low word )
                                     //      param1 = -1 current vis window, 1 internal vis, 2 external vis, 3 fullscreen
@@ -182,7 +170,7 @@ enum PluginServiceOp
 
     opGetTrackNum = 13,             // Returns track number of index
                                     //      param1 = index of track in playlist, -1 for current
-                                    //          The 'track number' is the number of the track in it's respective album, as opposed to playlist number
+                                    //          The 'track number' is the number of the track in its respective album, as opposed to playlist number
                                     //          The track number for digital files will be 1 if the tag is not set or the file is not identified
                                     //      param2 = 8 - apply to encoder list
 
@@ -253,7 +241,7 @@ enum PluginServiceOp
                                     //      param1 = index of first track
                                     //      param2 = index of second track (swap only switches indecies param1 and param2)
 
-    opGetQueriesComplete = 60,      // Returns status on whether all tracks in playlist have been queryied for their info (1 yes, 0 no)
+    opGetQueriesComplete = 60,      // Returns status on whether all tracks in playlist have been queried for their info (1 yes, 0 no)
 
     opLoadMediaList = 1030,         // Load media files into playlist using IQCDMediaList* interface (alternative to opSetPlaylist)
                                     //      buffer = IQCDMediaList* interface pointer
@@ -615,7 +603,7 @@ enum PluginServiceOp
                                     //      buffer = (char*)playlistname
                                     //      call Release on interface when done
 
-    opGetIQCDSkinHelper = 4050,     // Get pointer to skinhelper info interface
+    opGetIQCDSkinHelper = 4050,     // Get pointer to skinhelper interface
                                     // Returns IQCDSkinHelper*
                                     //      call Release on interface when done
 
@@ -624,12 +612,12 @@ enum PluginServiceOp
                                     //      buffer = (char*)filename
                                     //      call Release on interface when done
 
-    opGetIQCDMediaSource = 4070,    // Get pointer to skinhelper info interface
-                                    // Returns IQCDMediaSource* if filename supported
-                                    //      buffer = (char*)filename
-                                    //      param1 = MEDIASOURCE_* creation flags
-                                    //      param2 = (char*)name of source module (optional: request named implementation)
-                                    //      call Release on interface when done
+    opGetIQCDMediaSource = 4070,    // Get pointer to mediasource interface 
+                                    // Returns IQCDMediaSource* if filename supported 
+                                    // buffer = (char*)filename
+                                    // param1 = MEDIASOURCE_* creation flags
+                                    // param2 = (char*)name of source plug-in (optional: request named implementation) 
+                                    //     call Release on interface when done         
 
     opGetIQCDMediaLibrary = 4080,   // Get pointer to media library interface
                                     // Returns IQCDMediaLibrary*
@@ -676,7 +664,7 @@ enum PluginServiceOp
     opUTF8toUCS2 = 9000,            // Convert UTF8 string to UCS2 (Unicode) string
                                     //      buffer = null terminated utf8 string
                                     //      param1 = (WCHAR*)result string buffer
-                                    //      param2 = size of result buffer (int WCHARs)
+                                    //      param2 = size of result buffer (in WCHARs)
 
     opUCS2toUTF8 = 9001,            // Convert UCS2 (Unicode) string to UTF8 string
                                     //      buffer = null terminated ucs2 string
@@ -711,15 +699,13 @@ enum PluginServiceOp
     opGetNetworkLogin = 11100,      // Shows Network Login dialog
                                     // Returns 1 on OK, 0 on Cancel
                                     //     buffer = (char*)result str buffer (result will be formatted username:password)
-                                    //     param1 = sizeof result buffer (in bytes)
+                                    //     param1 = size of result buffer (in bytes)
                                     //     param2 = (char*)null separated string of initialization values (double null terminated)
                                     //         hostname\0realm\0username\0password\0\0
 };
 
 
-//-----------------------------------------------------------------------------
-// Info services api provided by the Player, called by Plugin.
-//-----------------------------------------------------------------------------
+// Services function provided by the player, called by plug-ins.
 typedef long (*PluginServiceFunc)(enum PluginServiceOp op, void *buffer, long param1, long param2);
 
 // Use to retrieve service func for DSP plugins (or other inproc process that doesn't have access to PluginServiceFunc)
@@ -733,9 +719,13 @@ typedef long (*PluginServiceFunc)(enum PluginServiceOp op, void *buffer, long pa
 //-----------------------------------------------------------------------------
 
 
-//----WriteDataStruct----------------------------------------------------------
+// Used with QCDModInitIn::toPlayer::OutputWrite.
+// 
+// Used with QCDModInitPlay2::toModule::Write.
+// 
+// Used with QCDModInitEnc::toModule::Write.     
 
-struct WriteDataStruct  // for Output Plugin Write callback
+struct WriteDataStruct
 {
     void    *data;               // pointer to valid data
     int     bytelen;             // length of data pointed to by 'data' in bytes
@@ -750,9 +740,11 @@ struct WriteDataStruct  // for Output Plugin Write callback
 };
 
 
-//----TrackExtents-------------------------------------------------------------
+// Used with opUpdateIndexExts, opSetTrackExtents services.
+// 
+// Used with QCDModInitIn::GetTrackExtents Input plug-in API
 
-struct TrackExtents     // for GetTrackExtents Input Plugin callback
+struct TrackExtents
 {
     UINT track;                  // for CD's, set the track number. Otherwise set to 1.
     UINT start;                  // for CD's or media that doesn't start at the beginning 
@@ -765,9 +757,9 @@ struct TrackExtents     // for GetTrackExtents Input Plugin callback
 };
 
 
-//----AudioInfo----------------------------------------------------------------
+// Used with opSetAudioInfo service
 
-struct AudioInfo        // for opSetAudioInfo service
+struct AudioInfo
 {
     long struct_size;            // sizeof(AudioInfo)
     long level;                  // MPEG level (1 for MPEG1, 2 for MPEG2, 3 for MPEG2.5, 7 for MPEGpro)
@@ -779,9 +771,9 @@ struct AudioInfo        // for opSetAudioInfo service
 };
 
 
-//-----EQInfo------------------------------------------------------------------
+// Used with opGetEQVals, opSetEQVals services
 
-struct EQInfo           // for EQ settings
+struct EQInfo
 {
     long struct_size;            // sizeof(EQInfo)
     char enabled;                // eq is enabled, 0 is disabled
@@ -790,9 +782,9 @@ struct EQInfo           // for EQ settings
 };
 
 
-//----ProxyInfo----------------------------------------------------------------
+// Used with opGetProxyInfo service
 
-struct ProxyInfo        // for opGetProxyInfo
+struct ProxyInfo
 {
     long struct_size;            // sizeof(ProxyInfo)
     char hostname[200];
@@ -804,74 +796,68 @@ struct ProxyInfo        // for opGetProxyInfo
 };
 
 
-//----MediaTypes---------------------------------------------------------------
+// Media type identifiers
+// Supported media is assigned one of these MediaTypes
+// 
+// Used with MediaInfo::mediaType and throughout player and media library interfaces
 
-enum MediaTypes        // for MediaInfo.mediaType
+enum MediaTypes
 {
-    UNKNOWN_MEDIA				= 0x00000000,
+    UNKNOWN_MEDIA				= 0x00000000, // unsupported media
 
-	// Supported media is assigned one of these MediaTypes
-	CD_AUDIO_MEDIA				= 0x00000100,
+	CD_AUDIO_MEDIA				= 0x00000100, // CD audio media
 
-    DIGITAL_AUDIOFILE_MEDIA		= 0x00001000,
-	DIGITAL_AUDIOSTREAM_MEDIA	= 0x00002000,
+    DIGITAL_AUDIOFILE_MEDIA		= 0x00001000, // digital audio file media (e.g.: MP3 files)
+	DIGITAL_AUDIOSTREAM_MEDIA	= 0x00002000, // digital audio stream media (e.g.: Internet radio)
 
-    DIGITAL_VIDEOFILE_MEDIA		= 0x00010000,
-    DIGITAL_VIDEOSTREAM_MEDIA	= 0x00020000,
+    DIGITAL_VIDEOFILE_MEDIA		= 0x00010000, // digital video file media (e.g.: AVI files)
+    DIGITAL_VIDEOSTREAM_MEDIA	= 0x00020000, // digital video stream media (e.g.: Internet video)
 
-	PLAYLIST_FILE_MEDIA			= 0x00100000,
-	PLAYLIST_STREAM_MEDIA		= 0x00200000,
+	PLAYLIST_FILE_MEDIA			= 0x00100000, // playlist file media (e.g.: M3U)
+	PLAYLIST_STREAM_MEDIA		= 0x00200000, // playlist stream media (e.g.: M3U URL on Internet)
 
-	DIGITAL_PHOTOFILE_MEDIA		= 0x01000000,
-	DIGITAL_PHOTOSTREAM_MEDIA	= 0x02000000,
+	DIGITAL_PHOTOFILE_MEDIA		= 0x01000000, // image file media (e.g.: JPG)
+	DIGITAL_PHOTOSTREAM_MEDIA	= 0x02000000, // image stream media (e.g.: JPG URL on Internet)
 
 	// MediaType groups, for comparisons
+
+	// Audio media
     DIGITAL_AUDIO_MEDIA			= (DIGITAL_AUDIOFILE_MEDIA|DIGITAL_AUDIOSTREAM_MEDIA),
+	// Video media
     DIGITAL_VIDEO_MEDIA			= (DIGITAL_VIDEOFILE_MEDIA|DIGITAL_VIDEOSTREAM_MEDIA),
+	// Image media
     DIGITAL_PHOTO_MEDIA			= (DIGITAL_PHOTOFILE_MEDIA|DIGITAL_PHOTOSTREAM_MEDIA),
+	// Playlist media
 	PLAYLIST_MEDIA				= (PLAYLIST_FILE_MEDIA|PLAYLIST_STREAM_MEDIA),
 
+	// File based media
 	DIGITAL_FILE_MEDIA			= (DIGITAL_AUDIOFILE_MEDIA|DIGITAL_VIDEOFILE_MEDIA),
+	// Streamed or Internet based media
 	DIGITAL_STREAM_MEDIA		= (DIGITAL_AUDIOSTREAM_MEDIA|DIGITAL_VIDEOSTREAM_MEDIA),
 
+	// All of the above
 	MEDIATYPE_ANY				= (CD_AUDIO_MEDIA|DIGITAL_AUDIO_MEDIA|DIGITAL_VIDEO_MEDIA|PLAYLIST_MEDIA),
-
-	// legacy values, do not use
-	LEGACY_MEDIATYPE_MASK				= 0x000000FF,
-
-    LEGACY_CD_AUDIO_MEDIA				= 1,
-    LEGACY_DIGITAL_AUDIOFILE_MEDIA		= 2,
-    LEGACY_DIGITAL_AUDIOSTREAM_MEDIA	= 3,
-    LEGACY_DIGITAL_VIDEOFILE_MEDIA		= 4,
-    LEGACY_DIGITAL_VIDEOSTREAM_MEDIA	= 5,
-	LEGACY_PLAYLIST_FILE_MEDIA			= 10
-
 };
 
+// Used with QCDModInitIn::GetMediaSupported Input plug-in API
 
-//----MediaInfo----------------------------------------------------------------
-
-#define MAX_TOC_LEN         2048
 struct MediaInfo
 {
-    // media descriptors
-    char		     mediaFile[MAX_PATH];
-    enum MediaTypes  mediaType;
+    char		     mediaFile[MAX_PATH];       // [in] filename or URL of media.
+    enum MediaTypes  mediaType;                 // [out] the mediaType of mediaFile.
 
-    // cd audio media info
-    char             cd_mediaTOC[MAX_TOC_LEN];
-    int              cd_numTracks;
-    int              cd_hasAudio;
+	#define			 MAX_TOC_LEN	2048
+    char             cd_mediaTOC[MAX_TOC_LEN];  // [out] table of contents of current CD (if applicable)
+    int              cd_numTracks;              // [out] the number of tracks on current CD (if applicable)
+    int              cd_hasAudio;               // [out] whether current CD has audio tracks or not (0 = no, 1 = yes) (if applicable)
 
-    // operation info
-    int              op_canSeek;
+    int              op_canSeek;                // [out] whether the current media is seekable (0 = no, 1 = yes)
 
-    // not used
-    int              reserved[4];
+    int              reserved[4];               // Used internally or reserved for future expansion
 };
 
 
-//----FormatMetaInfo-----------------------------------------------------------
+// Used with opRenderTemplate service
 
 struct FormatMetaInfo
 {
@@ -890,9 +876,9 @@ struct FormatMetaInfo
 };
 
 
-//----PluginPrefPage-----------------------------------------------------------
+// Used with opSetPluginPage service
 
-struct PluginPrefPage      // for opSetPluginPage
+struct PluginPrefPage
 {
     long        struct_size;        // sizeof(PluginPrefPage)
     HINSTANCE   hModule;            // plugin HINSTANCE
@@ -927,7 +913,7 @@ struct PluginPrefPage      // for opSetPluginPage
 #define PREFPAGE_CATEGORY_PLAYBACK				0x1100
 
 
-//----ResInfo------------------------------------------------------------------
+// Used with opLoadResString, opLoadResDialog, opLoadResMenu services
 
 struct ResInfo
 {
@@ -939,7 +925,7 @@ struct ResInfo
 };
 
 
-//----AccelInfo----------------------------------------------------------------
+// Used with opSetAccelerator service
 
 struct AccelInfo
 {
@@ -984,7 +970,7 @@ struct AccelInfo
 
 #define ODF_DEFAULT_OPENFILES			(ODF_SHOWOPENURL|ODF_SHOWADDUNIQUE|ODF_FILTER_ALL|ODF_SETUSERFOLDER)
 
-// common flags
+// flags for both opOpenFolderDlg, opOpenFilesDlg
 #define ODF_SETUSERFOLDER				0x10
 
 #define ODF_FILTER_AUDIO				0x100000
@@ -1023,6 +1009,9 @@ struct AccelInfo
 #define CONTEXTMENU_VIDEOFILE            0x40000
 #define CONTEXTMENU_AUDIOSTREAM          0x80000
 #define CONTEXTMENU_VIDEOSTREAM          0x100000
+
+#define CONTEXTMENU_AUDIO                (CONTEXTMENU_AUDIOFILE|CONTEXTMENU_AUDIOSTREAM)
+#define CONTEXTMENU_VIDEO                (CONTEXTMENU_VIDEOFILE|CONTEXTMENU_VIDEOSTREAM)
 
 #define CONTEXTMENU_ANYFILE              (CONTEXTMENU_AUDIOFILE|CONTEXTMENU_VIDEOFILE)
 #define CONTEXTMENU_ANYSTREAM            (CONTEXTMENU_AUDIOSTREAM|CONTEXTMENU_VIDEOSTREAM)

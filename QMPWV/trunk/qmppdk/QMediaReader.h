@@ -17,7 +17,10 @@ public:
 	{}
 	virtual ~QMediaReader()
 	{
-		if ( m_pms) m_pms->Release();
+		if ( m_pms) {
+			m_pms->CloseMedia(0);
+			m_pms->Release();
+		}
 	}
 
 	// Interfaces

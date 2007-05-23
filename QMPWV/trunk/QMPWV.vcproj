@@ -41,7 +41,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="qmppdk;qmppdk/include;wavpack/include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS;QCDPLAYER"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -62,7 +62,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="libwavpack.lib"
-				OutputFile="D:\Media\Quintessential Media Player\Plugins\$(ProjectName).dll"
+				OutputFile="$(OutDir)\$(ProjectName).dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="wavpack/lib"
 				GenerateDebugInformation="true"
@@ -122,7 +122,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="qmppdk;qmppdk/include;wavpack/include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS;QCDPLAYER"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;QMPWV_EXPORTS"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"

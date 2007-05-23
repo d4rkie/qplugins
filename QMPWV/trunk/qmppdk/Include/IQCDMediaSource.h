@@ -96,7 +96,9 @@ IQCDMediaSourceStatus
 	virtual void	__stdcall StatusMessage(long statusFlag, LPCWSTR statusMsg, long userData);
 };
 
-//-----------------------------------------------------------------------------
+// <title IQCDMediaSource>
+// 
+// \ \                    
 
 struct _declspec(novtable)
 IQCDMediaSource
