@@ -45,7 +45,6 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		LONG32 nBuild;
 		WORD nHi, nLo;
 		TCHAR str[64];
-		HWND hwnd;
 		HWND hwndCombos[3];
 
 		// Fill combobox with standard stuff
@@ -62,28 +61,31 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 		// Setup via variables
 		SendDlgItemMessage(hwndDlg, IDC_TIME_SPIN, UDM_SETRANGE, 0, MAKELONG(30, 0));
-		SetDlgItemInt(hwndDlg, IDC_TIME, settings.nTimeout, FALSE);
+		SetDlgItemInt(hwndDlg, IDC_TIME, Settings.nTimeout, FALSE);
 		
 		for (int i = 0; i < 4; i++)
 		{
-			if (settings.Headline_ServiceOp == ServiceOps[i])
+			if (Settings.Headline_ServiceOp == ServiceOps[i])
 				SendMessage(hwndCombos[0], CB_SETCURSEL, i, 0);
-			if (settings.Text1_ServiceOp == ServiceOps[i])
+			if (Settings.Text1_ServiceOp == ServiceOps[i])
 				SendMessage(hwndCombos[1], CB_SETCURSEL, i, 0);
-			if (settings.Text2_ServiceOp == ServiceOps[i])
+			if (Settings.Text2_ServiceOp == ServiceOps[i])
 				SendMessage(hwndCombos[2], CB_SETCURSEL, i, 0);
 		}
 		
-		CheckDlgButton(hwndDlg, IDC_CASCADE_POPUPS, settings.bCascade);
-		CheckDlgButton(hwndDlg, IDC_HEADLINE_WRAP,  settings.bHeadline_wrap);
-		//CheckDlgButton(hwndDlg, IDC_TEXT1_WRAP,     settings.bText1_wrap);
-		//CheckDlgButton(hwndDlg, IDC_TEXT2_WRAP,     settings.bText2_wrap);
+		CheckDlgButton(hwndDlg, IDC_CASCADE_POPUPS, Settings.bCascade);
+		CheckDlgButton(hwndDlg, IDC_HEADLINE_WRAP,  Settings.bHeadline_wrap);
+		CheckDlgButton(hwndDlg, IDC_START_SNARL,  Settings.bStartSnarl);
+		CheckDlgButton(hwndDlg, IDC_CLOSE_SNARL,  Settings.bCloseSnarl);
+		
+		//CheckDlgButton(hwndDlg, IDC_TEXT1_WRAP,     Settings.bText1_wrap);
+		//CheckDlgButton(hwndDlg, IDC_TEXT2_WRAP,     Settings.bText2_wrap);
 
 		
 		// Cover Art
-		CheckDlgButton(hwndDlg, IDC_COVERART_DISPLAY,  settings.bDisplayCoverArt);
-		SetDlgItemText(hwndDlg, IDC_COVERART_ROOT,     settings.strCoverArtRoot);
-		SetDlgItemText(hwndDlg, IDC_COVERART_TEMPLATE, settings.strCoverArtTemplate);
+		CheckDlgButton(hwndDlg, IDC_COVERART_DISPLAY,  Settings.bDisplayCoverArt);
+		SetDlgItemText(hwndDlg, IDC_COVERART_ROOT,     Settings.strCoverArtRoot);
+		SetDlgItemText(hwndDlg, IDC_COVERART_TEMPLATE, Settings.strCoverArtTemplate);
 
 
 		// Snarl version
@@ -124,27 +126,30 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		hwndCombos[2] = GetDlgItem(hwndDlg, IDC_TEXT2_COMBO);
 
 		// Validate and save
-		settings.bCascade       = IsDlgButtonChecked(hwndDlg, IDC_CASCADE_POPUPS);
-		settings.bHeadline_wrap = IsDlgButtonChecked(hwndDlg, IDC_HEADLINE_WRAP);
-		//settings.bText1_wrap    = IsDlgButtonChecked(hwndDlg, IDC_TEXT1_WRAP);
-		//settings.bText2_wrap    = IsDlgButtonChecked(hwndDlg, IDC_TEXT2_WRAP);
+		Settings.bCascade       = IsDlgButtonChecked(hwndDlg, IDC_CASCADE_POPUPS);
+		Settings.bHeadline_wrap = IsDlgButtonChecked(hwndDlg, IDC_HEADLINE_WRAP);
+		Settings.bStartSnarl    = IsDlgButtonChecked(hwndDlg, IDC_START_SNARL);
+		Settings.bCloseSnarl    = IsDlgButtonChecked(hwndDlg, IDC_CLOSE_SNARL);
+
+		//Settings.bText1_wrap    = IsDlgButtonChecked(hwndDlg, IDC_TEXT1_WRAP);
+		//Settings.bText2_wrap    = IsDlgButtonChecked(hwndDlg, IDC_TEXT2_WRAP);
 		
-		settings.Headline_ServiceOp = ServiceOps[SendMessage(hwndCombos[0], CB_GETCURSEL, 0, 0)];
-		settings.Text1_ServiceOp    = ServiceOps[SendMessage(hwndCombos[1], CB_GETCURSEL, 0, 0)];
-		settings.Text2_ServiceOp    = ServiceOps[SendMessage(hwndCombos[2], CB_GETCURSEL, 0, 0)];
+		Settings.Headline_ServiceOp = ServiceOps[SendMessage(hwndCombos[0], CB_GETCURSEL, 0, 0)];
+		Settings.Text1_ServiceOp    = ServiceOps[SendMessage(hwndCombos[1], CB_GETCURSEL, 0, 0)];
+		Settings.Text2_ServiceOp    = ServiceOps[SendMessage(hwndCombos[2], CB_GETCURSEL, 0, 0)];
 
 		if (GetDlgItemText(hwndDlg, IDC_TIME, strBuff, sizeof(strBuff)/sizeof(_TCHAR)))
-			settings.nTimeout = _ttoi(strBuff);
+			Settings.nTimeout = _ttoi(strBuff);
 
 
 		// Cover art
-		settings.bDisplayCoverArt = IsDlgButtonChecked(hwndDlg, IDC_COVERART_DISPLAY);
+		Settings.bDisplayCoverArt = IsDlgButtonChecked(hwndDlg, IDC_COVERART_DISPLAY);
 		
 		GetDlgItemText(hwndDlg, IDC_COVERART_ROOT, strTemp, MAX_PATH);
-		settings.strCoverArtRoot = strTemp;
+		Settings.strCoverArtRoot = strTemp;
 		CheckRootFolder();
 		GetDlgItemText(hwndDlg, IDC_COVERART_TEMPLATE, strTemp, MAX_PATH);
-		settings.strCoverArtTemplate = strTemp;
+		Settings.strCoverArtTemplate = strTemp;
 
 		
 		if (IsPlaying())
@@ -164,7 +169,7 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			}
 			case IDC_COVERART_BROWSE :
 				BrowseForRootFolder();
-				SetDlgItemText(hwndDlg, IDC_COVERART_ROOT, settings.strCoverArtRoot);
+				SetDlgItemText(hwndDlg, IDC_COVERART_ROOT, Settings.strCoverArtRoot);
 				break;
 		}
 		break;
@@ -176,13 +181,13 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			NMUPDOWN* nm = (NMUPDOWN*)lParam;
 
 			GetDlgItemText(hwndDlg, IDC_TIME, strTemp, sizeof(strTemp)/sizeof(_TCHAR));
-			settings.nTimeout  = _ttoi(strTemp);
-			settings.nTimeout += nm->iDelta;
-			if (settings.nTimeout > 30 && nm->iDelta > 0)
-				settings.nTimeout = 30;
-			else if (settings.nTimeout > 30 && nm->iDelta < 0)
-				settings.nTimeout = 0;
-			_itot_s(settings.nTimeout, strTemp, sizeof(strTemp)/sizeof(_TCHAR), 10);
+			Settings.nTimeout  = _ttoi(strTemp);
+			Settings.nTimeout += nm->iDelta;
+			if (Settings.nTimeout > 30 && nm->iDelta > 0)
+				Settings.nTimeout = 30;
+			else if (Settings.nTimeout > 30 && nm->iDelta < 0)
+				Settings.nTimeout = 0;
+			_itot_s(Settings.nTimeout, strTemp, sizeof(strTemp)/sizeof(_TCHAR), 10);
 			SetDlgItemText(hwndDlg, IDC_TIME, strTemp);
 
 			bReturn = TRUE;
@@ -198,10 +203,10 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 void CheckRootFolder()
 {
-	if (settings.strCoverArtRoot.substr(0, 12) == L"%CURRENT_DIR")
+	if (Settings.strCoverArtRoot.substr(0, 12) == L"%CURRENT_DIR")
 		return;
-	if (settings.strCoverArtRoot.at(settings.strCoverArtRoot.length() - 1))
-		settings.strCoverArtRoot.push_back('\\');
+	if (Settings.strCoverArtRoot.at(Settings.strCoverArtRoot.length() - 1))
+		Settings.strCoverArtRoot.push_back('\\');
 }
 
 
@@ -227,8 +232,8 @@ void BrowseForRootFolder()
 	{
 		TCHAR szPath[MAX_PATH];
 		if (SHGetPathFromIDList(pidl, szPath)) {
-			settings.strCoverArtRoot.assign(szPath);
-			settings.strCoverArtRoot.push_back('\\');
+			Settings.strCoverArtRoot.assign(szPath);
+			Settings.strCoverArtRoot.push_back('\\');
 		}
 
         // free memory used

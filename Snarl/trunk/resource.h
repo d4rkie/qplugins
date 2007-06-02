@@ -22,6 +22,9 @@
 #define IDC_COVERART_ROOT               1016
 #define IDC_COVERART_HELP               1018
 #define IDC_COVERART_BROWSE             1019
+#define IDC_START_SNARL                 1020
+#define IDC_CHECK3                      1021
+#define IDC_CLOSE_SNARL                 1021
 
 // Next default values for new objects
 // 
@@ -29,7 +32,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        105
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1019
+#define _APS_NEXT_CONTROL_VALUE         1021
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

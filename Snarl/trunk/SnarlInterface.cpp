@@ -25,6 +25,7 @@
 // Last Update: 2007/03/25
 
 // History
+//  2007/05/23 : snGetGlobalMsg & snGetSnarlWindow made static
 //  2007/03/25 : 1.6 RC1 fixup
 //  2007/03/04 : Added - snGetAppPath, snGetIconsPath, snGetVersionEx, 
 //                       snSetTimeout, uSendEx

@@ -27,19 +27,19 @@ class SnarlInterface {
 		static const DWORD WM_MANAGE_SNARL = WM_USER + 238; 
 		
 		typedef enum M_RESULT {
-			M_ABORTED			= 0x80000007,
-			M_ACCESS_DENIED		= 0x80000009,
-			M_ALREADY_EXISTS	= 0x8000000C,
-			M_BAD_HANDLE		= 0x80000006,
-			M_BAD_POINTER		= 0x80000005,
-			M_FAILED			= 0x80000008,
-			M_INVALID_ARGS		= 0x80000003,
-			M_NO_INTERFACE		= 0x80000004,
-			M_NOT_FOUND			= 0x8000000B,
-			M_NOT_IMPLEMENTED	= 0x80000001,
-			M_OK				= 0x00000000,
-			M_OUT_OF_MEMORY		= 0x80000002,
-			M_TIMED_OUT			= 0x8000000A
+			M_ABORTED         = 0x80000007,
+			M_ACCESS_DENIED   = 0x80000009,
+			M_ALREADY_EXISTS  = 0x8000000C,
+			M_BAD_HANDLE      = 0x80000006,
+			M_BAD_POINTER     = 0x80000005,
+			M_FAILED          = 0x80000008,
+			M_INVALID_ARGS    = 0x80000003,
+			M_NO_INTERFACE    = 0x80000004,
+			M_NOT_FOUND       = 0x8000000B,
+			M_NOT_IMPLEMENTED = 0x80000001,
+			M_OK              = 0x00000000,
+			M_OUT_OF_MEMORY   = 0x80000002,
+			M_TIMED_OUT       = 0x8000000A
 		};
 
 		enum SNARL_COMMANDS {
@@ -98,8 +98,9 @@ class SnarlInterface {
 		LPCTSTR snGetAppPath();
 		LPCTSTR snGetIconsPath();
 		
-		LONG32    snGetGlobalMsg();
-		HWND      snGetSnarlWindow();		
+		static HWND   snGetSnarlWindow();		
+		static LONG32 snGetGlobalMsg();
+
 		BOOL      snGetVersion(WORD* Major, WORD* Minor);
 		LONG32    snGetVersionEx();
 		BOOL      snHideMessage(LONG32 Id);

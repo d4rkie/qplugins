@@ -24,10 +24,10 @@
 // http://www.quinnware.com/forum/showthread.php?t=5594
 //-----------------------------------------------------------------------------
 // Todo:
-// 
+//  - Snarl doesn't show popups on track change on internet radio stations.
 //-----------------------------------------------------------------------------
 
-#define PLUGIN_NAME "Snarl v1.4"
+static const wchar_t PLUGIN_NAME[] = L"Snarl v1.4.5";
 
 
 #define UNICODE 1
@@ -45,17 +45,20 @@
 #include "QCDGeneralDLL.h"
 
 
-QCDModInitGen2   QCDCallbacks;
-HINSTANCE        hInstance  = NULL;
-HWND             hwndPlayer = NULL;
-WNDPROC          QCDProc    = NULL;
-SnarlInterface*  snarl      = NULL;
-Settings         settings;
-QString          g_strDefaultIcon;
+QCDModInitGen2    QCDCallbacks;
+PluginServiceFunc Service;
+HINSTANCE         hInstance  = NULL;
+HWND              hwndPlayer = NULL;
+WNDPROC           QCDProc    = NULL;
+SnarlInterface*   snarl      = NULL;
+_Settings         Settings;
+QString           g_strDefaultIcon;
 
-long             g_nConfigPageId = 0;
-LONG32	         g_nMsgId = 0;
-UINT_PTR         g_nDelayTimerID = 0;
+long              g_nConfigPageId = 0;
+LONG32            g_nMsgId = 0;
+LONG32            g_nSnarlGlobalMessage = 0;
+LONG32            g_nSnarlVersion = 0;
+UINT_PTR          g_nDelayTimerID = 0;
 
 static const WCHAR INI_SECTION[] = L"Snarl";
 static const int WM_REGISTER_MSG = 0; // 62091;
@@ -77,9 +80,9 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 PLUGIN_API QCDModInitGen2* GENERAL2_DLL_ENTRY_POINT()
 {
 	QCDCallbacks.size				 = sizeof(QCDModInitGen2);
-	QCDCallbacks.version			 = PLUGIN_API_VERSION_NTUTF8;
+	QCDCallbacks.version			 = PLUGIN_API_VERSION_UNICODE;
 
-	QCDCallbacks.toModule.Initialize = Initialize;
+	QCDCallbacks.toModule.Initialize  = Initialize;
 	QCDCallbacks.toModule.ShutDown	 = ShutDown;
 	QCDCallbacks.toModule.About		 = About;
 	QCDCallbacks.toModule.Configure	 = Configure;
@@ -91,13 +94,33 @@ PLUGIN_API QCDModInitGen2* GENERAL2_DLL_ENTRY_POINT()
 
 int Initialize(QCDModInfo *modInfo, int flags)
 {
-	modInfo->moduleString = PLUGIN_NAME;
+	modInfo->moduleString = (char*)PLUGIN_NAME;
+	Service = QCDCallbacks.Service;
 
-	hwndPlayer = (HWND)QCDCallbacks.Service(opGetParentWnd, 0, 0, 0);
+	// Check Windows
+	OSVERSIONINFO osvi;
+	ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+	GetVersionEx(&osvi);
+	if (osvi.dwMajorVersion < 5) {
+		MessageBox(0, L"This version of Snarl plug-in for QMP will only run on Windows 2000 or later!",
+			L"QMP:Snarl initialization error", MB_ICONSTOP);
+		return FALSE;
+	}
+
+	// Check QMP version (b117+)
+	if (Service(opGetPlayerVersion, NULL, 1, 0) < 117) {
+		MessageBox(0, L"The latest beta builds of Quintessential Media Player\nis needed to run this Snarl plug-in.\n\nAt least build 117 required!",
+			L"QMP:Snarl initialization error", MB_ICONSTOP);
+		return FALSE;
+	}
+
+	hwndPlayer = (HWND)Service(opGetParentWnd, 0, 0, 0);
+
 	LoadSettings();
-
-	snarl = new SnarlInterface();
-	snarl->snRegisterConfig2(hwndPlayer, "Quintessential Media Player", WM_REGISTER_MSG, g_strDefaultIcon.GetUTF8());
+	if (Settings.bStartSnarl && !snarl->snGetSnarlWindow())
+		StartSnarl();
+	CoverArtInitialize();
 
 	// Subclass the player and listen for WM_PN_? and WM_REGISTER_MSG
 	if ((QCDProc = (WNDPROC)SetWindowLong(hwndPlayer, GWL_WNDPROC, (LONG)QCDSubProc)) == 0) {
@@ -117,7 +140,15 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	ppp.groupID       = 0;
 	ppp.createParam   = 0;
 
-	g_nConfigPageId = QCDCallbacks.Service(opSetPluginPage, (void*)&ppp, 0, 0);
+	g_nConfigPageId   = Service(opSetPluginPage, (void*)&ppp, 0, 0);
+
+	// Create snarl object
+	snarl = new SnarlInterface();
+	if (SnarlInterface::M_OK != snarl->snRegisterConfig2(hwndPlayer, "Quintessential Media Player", WM_REGISTER_MSG, g_strDefaultIcon.GetUTF8()))
+		OutputDebugInfo(L"Failed to register Snarl config");
+	
+	g_nSnarlGlobalMessage = snarl->snGetGlobalMsg();
+	g_nSnarlVersion = snarl->snGetVersionEx();
 
 	if (IsPlaying())
 		DisplaySongInfo();
@@ -128,12 +159,18 @@ int Initialize(QCDModInfo *modInfo, int flags)
 
 //----------------------------------------------------------------------------
 
-void ShutDown(int flags) 
+void ShutDown(int flags)
 {
 	QCDProc = (WNDPROC)SetWindowLong(hwndPlayer, GWL_WNDPROC, (LONG)QCDProc);
-	QCDCallbacks.Service(opRemovePluginPage, hInstance, g_nConfigPageId, 0);
-	snarl->snRevokeConfig(hwndPlayer);
+	Service(opRemovePluginPage, hInstance, g_nConfigPageId, 0);
+
+	if (Settings.bCloseSnarl)
+		CloseSnarl();
+	else
+		snarl->snRevokeConfig(hwndPlayer);
 	delete snarl;
+
+	CoverArtShutdown();
 	SaveSettings();
 }
 
@@ -141,8 +178,7 @@ void ShutDown(int flags)
 
 void Configure(int flags)
 {
-	QCDCallbacks.Service(opShowPluginPage, hInstance, g_nConfigPageId, 0);
-
+	Service(opShowPluginPage, hInstance, g_nConfigPageId, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -150,11 +186,9 @@ void Configure(int flags)
 void About(int flags)
 {
 #if 1
-	QString str;
-	str.SetMultiByte(PLUGIN_NAME);
-	str += _T("\n\nPlug-in by:\nToke Noer (toke@noer.it)");
-	MessageBox(hwndPlayer, str , _T("About"), MB_OK | MB_ICONINFORMATION);
-
+	QString strAbout = PLUGIN_NAME;
+	strAbout += _T("\n\nPlug-in by:\nToke Noer (toke@noer.it)");
+	MessageBox(hwndPlayer, strAbout , _T("About"), MB_OK | MB_ICONINFORMATION);
 #else
 	Test();
 #endif 
@@ -164,98 +198,75 @@ void About(int flags)
 
 void LoadSettings()
 {
-	WCHAR strIni[MAX_PATH];
 	WCHAR strTmp[MAX_PATH];
-	QCDCallbacks.Service(opGetPluginSettingsFile, strTmp, MAX_PATH*sizeof(WCHAR), 0); // Returns UTF8
-	QCDCallbacks.Service(opUTF8toUCS2, strTmp, (long)strIni, MAX_PATH);
+	WCHAR strIni[MAX_PATH];
+	Service(opGetPluginSettingsFile, strIni, MAX_PATH*sizeof(WCHAR), 0);
 
-	settings.nTimeout           = GetPrivateProfileIntW(INI_SECTION, L"nTimeout", 10, strIni);
-	settings.bCascade           = GetPrivateProfileIntW(INI_SECTION, L"bCascade", 0, strIni);
-	settings.bHeadline_wrap     = GetPrivateProfileIntW(INI_SECTION, L"bHeadline_Wrap", 0, strIni);
-	//settings.bText1_wrap         = GetPrivateProfileIntW(INI_SECTION, L"bText1_Wrap", 1, strIni);
-	//settings.bText2_wrap         = GetPrivateProfileIntW(INI_SECTION, L"bText2_Wrap", 0, strIni);
-	settings.Headline_ServiceOp = (PluginServiceOp)GetPrivateProfileIntW(INI_SECTION, L"bHeadline_Op", opGetArtistName, strIni);
-	settings.Text1_ServiceOp    = (PluginServiceOp)GetPrivateProfileIntW(INI_SECTION, L"bText1_Op", opGetTrackName, strIni);
-	settings.Text2_ServiceOp    = (PluginServiceOp)GetPrivateProfileIntW(INI_SECTION, L"bText2_Op", opGetDiscName, strIni);
+	Settings.bDebug             = GetPrivateProfileIntW(INI_SECTION, L"bDebug", 0, strIni);
+	Settings.nTimeout           = GetPrivateProfileIntW(INI_SECTION, L"nTimeout", 10, strIni);
+	Settings.bCascade           = GetPrivateProfileIntW(INI_SECTION, L"bCascade", 0, strIni);
+	Settings.bHeadline_wrap     = GetPrivateProfileIntW(INI_SECTION, L"bHeadline_Wrap", 0, strIni);
+	Settings.bStartSnarl        = GetPrivateProfileIntW(INI_SECTION, L"bStartSnarl", 1, strIni);
+	Settings.bCloseSnarl        = GetPrivateProfileIntW(INI_SECTION, L"bCloseSnarl", 0, strIni);
+	//Settings.bText1_wrap         = GetPrivateProfileIntW(INI_SECTION, L"bText1_Wrap", 1, strIni);
+	//Settings.bText2_wrap         = GetPrivateProfileIntW(INI_SECTION, L"bText2_Wrap", 0, strIni);
+
+	Settings.Headline_ServiceOp = (PluginServiceOp)GetPrivateProfileIntW(INI_SECTION, L"bHeadline_Op", opGetArtistName, strIni);
+	Settings.Text1_ServiceOp    = (PluginServiceOp)GetPrivateProfileIntW(INI_SECTION, L"bText1_Op", opGetTrackName, strIni);
+	Settings.Text2_ServiceOp    = (PluginServiceOp)GetPrivateProfileIntW(INI_SECTION, L"bText2_Op", opGetDiscName, strIni);
 
 	// Cover art
-	settings.bDisplayCoverArt = GetPrivateProfileIntW(INI_SECTION, L"bDisplayCoverArt", 1, strIni);
+	Settings.bDisplayCoverArt = GetPrivateProfileIntW(INI_SECTION, L"bDisplayCoverArt", 1, strIni);
 	GetPrivateProfileStringW(INI_SECTION, L"CoverArtRoot", L"%CURRENT_DIR", strTmp, MAX_PATH, strIni);
-	settings.strCoverArtRoot.assign(strTmp);
+	Settings.strCoverArtRoot.assign(strTmp);
 	GetPrivateProfileStringW(INI_SECTION, L"CoverArtTemplate", L"%A - %D - Front.%E", strTmp, MAX_PATH, strIni);
-	settings.strCoverArtTemplate.assign(strTmp);
+	Settings.strCoverArtTemplate.assign(strTmp);
 
 	// Get icon path
-	char szPluginfolder[MAX_PATH];
-	QCDCallbacks.Service(opGetPluginFolder, szPluginfolder, MAX_PATH, 0);
-	g_strDefaultIcon.SetUTF8(szPluginfolder);
+	WCHAR szPluginfolder[MAX_PATH];
+	Service(opGetPluginFolder, szPluginfolder, MAX_PATH*sizeof(WCHAR), 0);
+	g_strDefaultIcon = szPluginfolder;
 	g_strDefaultIcon.append(L"\\snarl.png");
 
-	swprintf(strTmp, L"Snarl >> Defaul icon: %s", g_strDefaultIcon.GetUnicode());
-	OutputDebugStringW(strTmp);
+	OutputDebugInfo(L"Defaul icon: %s", g_strDefaultIcon.GetUnicode());
 }
 
 //-----------------------------------------------------------------------------
 
 void SaveSettings()
 {
-	WCHAR buf[32];
+	static const size_t BUF_SIZE = 32;
+	WCHAR buf[BUF_SIZE];
 	WCHAR strIni[MAX_PATH];
-	WCHAR strTmp[MAX_PATH];
-	QCDCallbacks.Service(opGetPluginSettingsFile, strTmp, MAX_PATH*sizeof(WCHAR), 0); // Returns UTF8
-	QCDCallbacks.Service(opUTF8toUCS2, strTmp, (long)strIni, MAX_PATH);
+	Service(opGetPluginSettingsFile, strIni, MAX_PATH*sizeof(WCHAR), 0);
 	
-	wsprintfW(buf, L"%u", settings.nTimeout);          	WritePrivateProfileStringW(INI_SECTION, L"nTimeout",        buf, strIni);
-	wsprintfW(buf, L"%u", settings.bCascade);          	WritePrivateProfileStringW(INI_SECTION, L"bCascade",        buf, strIni);
-	wsprintfW(buf, L"%u", settings.bHeadline_wrap);     WritePrivateProfileStringW(INI_SECTION, L"bHeadline_Wrap",  buf, strIni);
-	//wsprintfW(buf, L"%u", settings.bText1_wrap);        WritePrivateProfileStringW(INI_SECTION, L"bText1_Wrap",     buf, strIni);
-	//wsprintfW(buf, L"%u", settings.bText2_wrap);        WritePrivateProfileStringW(INI_SECTION, L"bText2_Wrap",     buf, strIni);
-	wsprintfW(buf, L"%u", settings.Headline_ServiceOp); WritePrivateProfileStringW(INI_SECTION, L"bHeadline_Op",    buf, strIni);
-	wsprintfW(buf, L"%u", settings.Text1_ServiceOp);    WritePrivateProfileStringW(INI_SECTION, L"bText1_Op",       buf, strIni);
-	wsprintfW(buf, L"%u", settings.Text2_ServiceOp);    WritePrivateProfileStringW(INI_SECTION, L"bText2_Op",       buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.bDebug);             WritePrivateProfileStringW(INI_SECTION, L"bDebug",          buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.nTimeout);           WritePrivateProfileStringW(INI_SECTION, L"nTimeout",        buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.bCascade);           WritePrivateProfileStringW(INI_SECTION, L"bCascade",        buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.bHeadline_wrap);     WritePrivateProfileStringW(INI_SECTION, L"bHeadline_Wrap",  buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.bStartSnarl);        WritePrivateProfileStringW(INI_SECTION, L"bStartSnarl",     buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.bCloseSnarl);        WritePrivateProfileStringW(INI_SECTION, L"bCloseSnarl",     buf, strIni);
+
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.Headline_ServiceOp); WritePrivateProfileStringW(INI_SECTION, L"bHeadline_Op",    buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.Text1_ServiceOp);    WritePrivateProfileStringW(INI_SECTION, L"bText1_Op",       buf, strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.Text2_ServiceOp);    WritePrivateProfileStringW(INI_SECTION, L"bText2_Op",       buf, strIni);
 
 	// Cover art
-	wsprintfW(buf, L"%u", settings.bDisplayCoverArt);   WritePrivateProfileStringW(INI_SECTION, L"bDisplayCoverArt", buf, strIni);
-	WritePrivateProfileStringW(INI_SECTION, L"CoverArtRoot",     settings.strCoverArtRoot.GetUnicode(), strIni);
-	WritePrivateProfileStringW(INI_SECTION, L"CoverArtTemplate", settings.strCoverArtTemplate.GetUnicode(), strIni);
+	swprintf_s(buf, BUF_SIZE, L"%u", Settings.bDisplayCoverArt);   WritePrivateProfileStringW(INI_SECTION, L"bDisplayCoverArt", buf, strIni);
+	WritePrivateProfileStringW(INI_SECTION, L"CoverArtRoot",     Settings.strCoverArtRoot.GetUnicode(), strIni);
+	WritePrivateProfileStringW(INI_SECTION, L"CoverArtTemplate", Settings.strCoverArtTemplate.GetUnicode(), strIni);
 }
 
 //-----------------------------------------------------------------------------
 
-int FindSpaceRew(LPSTR str, int nPos)
+void InsertNextLine(QString* str, size_t nPos)
 {
-	if (!str || !*str)
-		return -1;
+	if (nPos >= str->length())
+		return;
 
-	while (nPos > 0)
-	{
-		if (str[nPos] == ' ')
-			return nPos;
-		nPos--;
-	}
-	return -1;
-}
-
-//-----------------------------------------------------------------------------
-
-void InsertNextLine(LPSTR str, int nPos)
-{
-	char strTemp[1024];
-	int strLen = strlen(str);
-	int nSpace = FindSpaceRew(str, nPos); // Find space before edge
-	
-	/*char strD[1024];
-	sprintf(strD, "nSpace: %d", nSpace);
-	MessageBox(hwndPlayer, strD, "Debug", 0);*/
-
-	if (nSpace > 5 && (nSpace+1 < strLen) )
-	{
-		strncpy_s(strTemp, 1024, str, nSpace);
-		strcat_s(strTemp, 1024, "\n");
-		strcat_s(strTemp, 1024, (str + nSpace + 1));
-
-		strcpy_s(str, 1024, strTemp);
-	}
+	int nSpace = str->rfind(L" ", nPos);
+	if (nSpace > 0)
+		str->replace(nSpace, 1, L"\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -266,44 +277,48 @@ void DisplaySongInfo()
 	const static int nText1Chars = 30;
 	const static int nText2Chars = 30;
 
-	char strHeadline[SnarlInterface::SNARL_STRING_LENGTH];
-	char strText1[SnarlInterface::SNARL_STRING_LENGTH];
-	char strText2[SnarlInterface::SNARL_STRING_LENGTH];
-	char strIcon[MAX_PATH] = "";
+	if (!snarl)
+		return;
 
-	long nTrack = QCDCallbacks.Service(opGetCurrentIndex, NULL, 0, 0);
+	WCHAR strTmp[SnarlInterface::SNARL_STRING_LENGTH];
+	QString strHeadline;
+	QString strText1;
+	QString strText2;
+	QString strIcon;
 
-	QCDCallbacks.Service(settings.Headline_ServiceOp, strHeadline, SnarlInterface::SNARL_STRING_LENGTH, nTrack);
-	QCDCallbacks.Service(settings.Text1_ServiceOp, strText1, SnarlInterface::SNARL_STRING_LENGTH, nTrack);
-	QCDCallbacks.Service(settings.Text2_ServiceOp, strText2, SnarlInterface::SNARL_STRING_LENGTH, nTrack);
+	long nTrack = Service(opGetCurrentIndex, NULL, 0, 0);
 
-	if (settings.bHeadline_wrap && strnlen(strHeadline, sizeof(strHeadline)) > nHeadlineChars)
-		InsertNextLine(strHeadline, nHeadlineChars);
+	// Retrieve song information from QMP
+	Service(Settings.Headline_ServiceOp, strTmp, SnarlInterface::SNARL_STRING_LENGTH, nTrack);
+	strHeadline = strTmp;
+	Service(Settings.Text1_ServiceOp,    strTmp, SnarlInterface::SNARL_STRING_LENGTH, nTrack);
+	strText1 = strTmp;
+	Service(Settings.Text2_ServiceOp,    strTmp, SnarlInterface::SNARL_STRING_LENGTH, nTrack);
+	strText2 = strTmp;
 
-	if (settings.Text2_ServiceOp != 0) {
-		strcat_s(strText1, SnarlInterface::SNARL_STRING_LENGTH, "\n");
-		strcat_s(strText1, SnarlInterface::SNARL_STRING_LENGTH, strText2);
+	if (Settings.bHeadline_wrap && strHeadline.length() > nHeadlineChars)
+		InsertNextLine(&strHeadline, nHeadlineChars);
+
+	if (Settings.Text2_ServiceOp != 0) {
+		strText1 += L"\n";
+		strText1 += strText2;
 	}
 
-	if (settings.bDisplayCoverArt)
-		GetCoverArt(nTrack, strIcon);
+	if (Settings.bDisplayCoverArt)
+		GetCoverArt(nTrack, &strIcon);
 
 	// Hide if not cascade
-	if (!settings.bCascade && g_nMsgId > 0 && snarl->snIsMessageVisible(g_nMsgId))
-		snarl->snUpdateMessage(g_nMsgId, strHeadline, strText1, (strIcon[0] != '\0') ? strIcon : g_strDefaultIcon.GetUTF8());
+	if (!Settings.bCascade && g_nMsgId > 0 && snarl->snIsMessageVisible(g_nMsgId))
+		snarl->snUpdateMessage(g_nMsgId, strHeadline.GetUTF8(), strText1.GetUTF8(), (strIcon.length() > 0) ? strIcon.GetUTF8() : g_strDefaultIcon.GetUTF8());
 	else
-		g_nMsgId = snarl->snShowMessage(strHeadline, strText1, settings.nTimeout, (strIcon[0] != '\0') ? strIcon : g_strDefaultIcon.GetUTF8(), 0, 0);
-	
-	/*CHAR strDbg[128 + MAX_PATH];
-	sprintf(strDbg, "Snarl >> MsgId: %u\nPath: %s", g_nMsgId, strIcon);
-	OutputDebugStringA(strDbg);*/
+		g_nMsgId = snarl->snShowMessage(strHeadline.GetUTF8(), strText1.GetUTF8(), Settings.nTimeout, (strIcon.length() > 0) ? strIcon.GetUTF8() : g_strDefaultIcon.GetUTF8(), 0, 0);
 }
 
 //-----------------------------------------------------------------------------
 
 bool IsPlaying()
 {
-	if (2 == QCDCallbacks.Service(opGetPlayerState, 0, 0, 0))
+	if (2 == Service(opGetPlayerState, 0, 0, 0))
 		return true;
 	else
 		return false;
@@ -332,6 +347,11 @@ void StartDisplayTimer(UINT nTime)
 
 LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) 
 {
+	if (msg == g_nSnarlGlobalMessage) {
+		if (wparam == SnarlInterface::SNARL_LAUNCHED && snarl)
+				snarl->snRegisterConfig2(hwndPlayer, "Quintessential Media Player", WM_REGISTER_MSG, g_strDefaultIcon.GetUTF8());
+	}
+
 	switch (msg)
 	{
 		case WM_PN_TRACKCHANGED :
@@ -341,23 +361,130 @@ LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		case WM_PN_PLAYSTARTED :
 			DisplaySongInfo();
 			break;
-
-		/*case WM_REGISTER_MSG :
-			// MessageBox(0, _T("WM_REGISTER_MSG"), _T(""), 0);
-			Configure(0);
-			break;
-		*/
 	}
 
 	return CallWindowProc(QCDProc, hwnd, msg, wparam, lparam);
 }
 
+//-----------------------------------------------------------------------------
+
+void StartSnarl()
+{
+	HWND hWnd = NULL;
+	QString strPath, strDirectory;
+
+	// Check if already running
+	if (IsWindow(SnarlInterface::snGetSnarlWindow()))
+		return;
+
+	// Get path from registry
+	if (!GetSnarlPath(&strPath, &strDirectory))
+		return;
+
+	INT iError = (UINT)ShellExecute(NULL, L"open", strPath, NULL, strDirectory, SW_SHOWDEFAULT);
+	if (iError <= 32) {
+		QString strError;
+		switch (iError) {
+			case 0 :
+				strError = L"The operating system is out of memory or resources.";
+				break;
+			case ERROR_FILE_NOT_FOUND :
+				strError = L"The specified file was not found.";
+				break;
+			case ERROR_PATH_NOT_FOUND :
+				strError = L"The specified path was not found.";
+				break;
+			case SE_ERR_ACCESSDENIED : 
+				strError = L"The operating system denied access to the specified file.";
+			default :
+				strError = L"Unknown error. Error number: %d";
+				break;
+		}
+		OutputDebugInfo(L"StartSnarl() : ShellExecute error : %s", strError.GetUnicode(), iError);
+	}
+	Sleep(0);
+}
 
 //-----------------------------------------------------------------------------
 
+void CloseSnarl()
+{
+	int nCloseMsg = 0; 
+	if (g_nSnarlVersion == 0)
+		g_nSnarlVersion = snarl->snGetVersionEx();
+
+	if (g_nSnarlVersion <= 37)
+		nCloseMsg = WM_USER + 81;
+	else
+		nCloseMsg = WM_CLOSE;
+
+	DWORD nReturn = 0;
+	HWND hWnd = SnarlInterface::snGetSnarlWindow();
+	if (IsWindow(hWnd))
+		SendMessageTimeout(hWnd, nCloseMsg, 0, 0, SMTO_ABORTIFHUNG, 1000, &nReturn);
+}
+
+//-----------------------------------------------------------------------------
+
+BOOL GetSnarlPath(QString* strPath, QString* strDir)
+{
+	const static WCHAR* hSubKey = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Snarl.exe";
+	DWORD nPathSize = MAX_PATH*sizeof(WCHAR);
+	WCHAR strTemp[MAX_PATH] = {0};
+	DWORD dwBufLen = MAX_PATH;
+	
+	
+	//LONG nRet = RegGetValue(HKEY_LOCAL_MACHINE, hSubKey, NULL, RRF_RT_REG_SZ, NULL, strTemp, &nPathSize);
+	HKEY hKey = 0;
+	LONG nRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, hSubKey, 0, KEY_QUERY_VALUE, &hKey);
+	if (nRet == ERROR_SUCCESS)
+	{
+		LONG lRet = RegQueryValueEx(hKey, NULL, NULL, NULL, (LPBYTE)strTemp, &dwBufLen);
+		RegCloseKey(hKey);
+
+		if((lRet != ERROR_SUCCESS) || (dwBufLen >= MAX_PATH))
+			return FALSE;
+
+		strPath->assign(strTemp);
+		int nPos = strPath->rfind(L"\\");
+		strDir->assign(strPath->substr(0, nPos+1));
+		return TRUE;
+	}
+	return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+void OutputDebugInfo(const WCHAR* strDisplay, ...)
+{
+#ifndef _DEBUG
+	if (!Settings.bDebug) return;
+#endif
+
+	const static size_t STR_CHARS = 512;
+	WCHAR strLog[STR_CHARS] = {0};
+
+	for (int i = 0; i < 11; i++)
+		strLog[i] = L"QMP:Snarl: "[i];
+
+	va_list args;
+	va_start(args, strDisplay);
+	int nCopiedChars = vswprintf_s(strLog + 11, STR_CHARS-12, strDisplay, args);
+	va_end(args);
+
+	strLog[nCopiedChars+10] = L'\n';
+	strLog[nCopiedChars+11] = NULL;
+	
+	OutputDebugStringW(strLog);
+}
+
+
+//-----------------------------------------------------------------------------
+
+
 void Test()
 {
-	LPCTSTR str1 = snarl->snGetAppPath();
+	/*LPCTSTR str1 = snarl->snGetAppPath();
 	if (str1) {
 		MessageBox(hwndPlayer, str1, _T("Test"), 0);
 		delete [] str1;
@@ -374,5 +501,5 @@ void Test()
 		return;
 	Sleep(2000);
 	snarl->snUpdateMessage(id, "Test update", "SetTimeout=10");
-	snarl->snSetTimeout(id, 10);
+	snarl->snSetTimeout(id, 10);*/
 }

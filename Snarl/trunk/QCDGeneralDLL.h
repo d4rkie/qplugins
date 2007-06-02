@@ -27,28 +27,29 @@
 #include <QCDCtrlMsgs.h>
 #include "SnarlInterface.h"
 
-struct Settings
+struct _Settings
 {
 	UINT nTimeout;
+	BOOL bDebug;
 	BOOL bCascade;
 	BOOL bHeadline_wrap;
-	//bool bText1_wrap;
-	//bool bText2_wrap;
-
 	BOOL bDisplayCoverArt;
+	BOOL bStartSnarl;
+	BOOL bCloseSnarl;
+
 	QString strCoverArtRoot;
 	QString strCoverArtTemplate;
 
 	PluginServiceOp Headline_ServiceOp;
 	PluginServiceOp Text1_ServiceOp;
-	PluginServiceOp Text2_ServiceOp;
-	
+	PluginServiceOp Text2_ServiceOp;	
 };
 
-extern HINSTANCE       hInstance;
-extern HWND            hwndPlayer;
-extern QCDModInitGen2  QCDCallbacks;
-extern Settings        settings;
+extern HINSTANCE         hInstance;
+extern HWND              hwndPlayer;
+extern QCDModInitGen2    QCDCallbacks;
+extern PluginServiceFunc Service;
+extern _Settings         Settings;
 
 extern void            DisplaySongInfo();
 extern bool            IsPlaying();
@@ -64,12 +65,17 @@ void ShutDown(int flags);
 
 
 // Helper functions
+void OutputDebugInfo(const WCHAR* strDisplay, ...);
 void LoadSettings();
 void SaveSettings();
 void DisplaySongInfo();
 bool IsPlaying();
-void GetCoverArt(long nIndex, LPSTR strIcon);
-//void GetIcon2(long nIndex, LPSTR strIcon);
+// void GetCoverArt(long nIndex, LPSTR strIcon);
+
+void StartSnarl();
+void CloseSnarl();
+BOOL GetSnarlPath(QString* strPath, QString* strDir);
+
 void Test();
 
 // Subclassing

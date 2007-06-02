@@ -54,10 +54,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).dll"
+				OutputFile="$(QMPPATH)\Plugins\$(ProjectName).dll"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).pdb"
+				ProgramDatabaseFile="$(QMPPATH)\Plugins\$(ProjectName).pdb"
 				GenerateMapFile="false"
 				MapExports="true"
 			/>
@@ -129,12 +129,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).dll"
+				OutputFile="$(QMPPATH)\Plugins\$(ProjectName).dll"
 				LinkIncremental="1"
 				IgnoreAllDefaultLibraries="false"
 				IgnoreDefaultLibraryNames=""
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\$(ProjectName).pdb"
+				GenerateDebugInformation="false"
+				ProgramDatabaseFile="$(QMPPATH)\Plugins\$(ProjectName).pdb"
 				OptimizeForWindows98="1"
 				BaseAddress="0x30010000"
 			/>
@@ -181,7 +181,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\QMP_Includes\QString.cpp"
+				RelativePath=".\QString.cpp"
 				>
 			</File>
 			<File
@@ -219,7 +219,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\QMP_Includes\QString.h"
+				RelativePath=".\QString.h"
 				>
 			</File>
 			<File
