@@ -2,47 +2,58 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#include <TCHAR.h>
-#include <windows.h>
+#include "Precompiled.h"
 #include <stdio.h>
 
+#include "md5.h"
+#include "AudioscrobblerDLL.h"
 #include "Audioscrobbler.h"
 #include "Config.h"
 
 //////////////////////////////////////////////////////////////////////
-static const _TCHAR INI_SECTION[] = _T("Audioscrobbler");
-
-void GetPluginSettingsFile(_TCHAR* str)
-{
-#if defined UNICODE
-	WCHAR strTmp[MAX_PATH];
-	QMPCallbacks.Service(opGetPluginSettingsFile, strTmp, MAX_PATH*2, 0);
-	QMPCallbacks.Service(opUTF8toUCS2, strTmp, (long)str, MAX_PATH);
-#else
-	QMPCallbacks.Service(opGetPluginSettingsFile, str, MAX_PATH, 0);
-#endif
-}
+static const _TCHAR INI_SECTION[]   = _T("Audioscrobbler");
+static const char   INI_SECTION_A[] = "Audioscrobbler";
 
 //////////////////////////////////////////////////////////////////////
 
 void LoadSettings()
 {
-	_TCHAR strIni[MAX_PATH];
-	GetPluginSettingsFile(strIni);
+	int nRet = 0;
+	_TCHAR szBuffer[MAX_PATH] = {0};
+	QString strIni;
 
-	//Settings.bShowWindowOnStart = GetPrivateProfileInt(INI_SECTION, _T("bShowWindowOnStart"), 1, strIni);
+	QMPCallbacks.Service(opGetPluginSettingsFile, szBuffer, MAX_PATH*sizeof(TCHAR), 0);
+	strIni = szBuffer;
+
+	Settings.logMode = (LogMode)GetPrivateProfileInt(INI_SECTION, _T("LogMode"), LOG_NONE, strIni);
+	
+	GetPrivateProfileString(INI_SECTION, _T("Username"), NULL, szBuffer, NUMOFTCHARS(szBuffer), strIni);
+	Settings.strUsername = szBuffer;
+	
+	ZeroMemory(Settings.strPassword, sizeof(Settings.strPassword));
+	nRet = GetPrivateProfileStringA(INI_SECTION_A, "Password", NULL, (char*)szBuffer, NUMOFTCHARS(szBuffer), strIni.GetMultiByte());
+	if (nRet == 32)
+		strcpy_s(Settings.strPassword, sizeof(Settings.strPassword), (char*)szBuffer);
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void SaveSettings()
 {
-	_TCHAR buf[32];
-	_TCHAR strIni[MAX_PATH];
-	GetPluginSettingsFile(strIni);
+	_TCHAR szBuffer[MAX_PATH] = {0};
+	QString strIni;
 
-	//_stprintf_s(buf, 32, _T("%d"), Settings.bShowWindowOnStart);
-	//WritePrivateProfileString(INI_SECTION, _T("bShowWindowOnStart"), buf, strIni);
+	QMPCallbacks.Service(opGetPluginSettingsFile, szBuffer, MAX_PATH*sizeof(TCHAR), 0);
+	strIni = szBuffer;
+
+	_stprintf_s(szBuffer, NUMOFTCHARS(szBuffer), _T("%d"), Settings.logMode);
+	WritePrivateProfileString(INI_SECTION, _T("LogMode"), szBuffer, strIni);
+
+	WritePrivateProfileString(INI_SECTION, _T("Username"), Settings.strUsername, strIni);
+
+	// Store password
+	Settings.strPassword[32] = NULL;
+	WritePrivateProfileStringA(INI_SECTION_A, "Password", Settings.strPassword, strIni.GetMultiByte());
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -56,16 +67,44 @@ void CreateConfigDlg(HINSTANCE hInstance, HWND hAppHwnd)
 
 BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	static BOOL g_bPasswordChanged = FALSE;
 	BOOL bReturn = FALSE;
 
 	switch (uMsg)
 	{
 	case WM_INITDIALOG :
 	{
-		//CheckDlgButton(hwndDlg, IDC_SHOW_ON_START, Settings.bShowWindowOnStart);
+		SendMessage(GetDlgItem(hwndDlg, IDC_CONFIG_USERNAME), EM_LIMITTEXT, 64, 0);
+		SendMessage(GetDlgItem(hwndDlg, IDC_CONFIG_PASSWORD), EM_LIMITTEXT, 64, 0);
 
-		//SendDlgItemMessage(hwndDlg, IDC_CONFIG_DELAY_SPIN, UDM_SETRANGE, 0, MAKELONG(30, 0));
-		//SetDlgItemInt(hwndDlg, IDC_CONFIG_DELAY, settings.nDelay / 1000, FALSE);
+		SetDlgItemText(hwndDlg, IDC_CONFIG_USERNAME, Settings.strUsername);
+		if (Settings.strPassword[0])
+			SetDlgItemText(hwndDlg, IDC_CONFIG_PASSWORD, _T("00000000"));
+		g_bPasswordChanged = FALSE;
+
+		SendDlgItemMessage(hwndDlg, IDC_CONFIG_DEBUG, CB_ADDSTRING, 0, (LPARAM)_T("None"));
+		SendDlgItemMessage(hwndDlg, IDC_CONFIG_DEBUG, CB_ADDSTRING, 0, (LPARAM)_T("Debug console"));
+		SendDlgItemMessage(hwndDlg, IDC_CONFIG_DEBUG, CB_ADDSTRING, 0, (LPARAM)_T("File"));
+		SendDlgItemMessage(hwndDlg, IDC_CONFIG_DEBUG, CB_SETCURSEL, (WPARAM)Settings.logMode, 0);
+
+		// Get preferences placement and place accordingly
+		HWND hWndPref = (HWND)QMPCallbacks.Service(opGetPropertiesWnd, NULL, 0, 0);
+		if (hWndPref) {
+			WINDOWPLACEMENT DlgPos, PrefPos;
+			DlgPos.length  = sizeof(WINDOWPLACEMENT);
+			PrefPos.length = sizeof(WINDOWPLACEMENT);
+
+			GetWindowPlacement(hwndDlg, &DlgPos);
+			GetWindowPlacement(hWndPref, &PrefPos);
+			int nWidth  = DlgPos.rcNormalPosition.right - DlgPos.rcNormalPosition.left;
+			int nHeight = DlgPos.rcNormalPosition.bottom - DlgPos.rcNormalPosition.top;
+			DlgPos.rcNormalPosition.left   = PrefPos.rcNormalPosition.left + 220;
+			DlgPos.rcNormalPosition.top    = PrefPos.rcNormalPosition.top + 60;
+			DlgPos.rcNormalPosition.right  = DlgPos.rcNormalPosition.left + nWidth;
+			DlgPos.rcNormalPosition.bottom = DlgPos.rcNormalPosition.top + nHeight;
+			
+			SetWindowPlacement(hwndDlg, &DlgPos);
+		}
 
 		bReturn = TRUE;
 		break;
@@ -81,30 +120,63 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		switch (wParam)
 		{
 		case IDOK :
-			//_TCHAR strBuff[32];
+		{
+			_TCHAR szBuffer[128];
 
 			// Validate and save
 			//Settings.bShowWindowOnStart = IsDlgButtonChecked(hwndDlg, IDC_SHOW_ON_START);
 
-			//if (GetDlgItemText(hwndDlg, IDC_CONFIG_DELAY, strBuff, sizeof(strBuff)/sizeof(_TCHAR)))
-			//	settings.nDelay = _ttoi(strBuff) * 1000;
+			GetDlgItemText(hwndDlg, IDC_CONFIG_USERNAME, szBuffer, NUMOFTCHARS(szBuffer));
+			Settings.strUsername.assign(szBuffer);
+			
+			if (g_bPasswordChanged) {
+				char szMd5[48];
+				GetDlgItemTextA(hwndDlg, IDC_CONFIG_PASSWORD, (char*)szBuffer, NUMOFTCHARS(szBuffer));				
+				md5_32(szMd5, (const BYTE*)szBuffer);
+				for (int i = 0; i < 32; i++)
+					Settings.strPassword[i] = szMd5[i];
+				Settings.strPassword[32] = NULL;
+			}
+
+			LRESULT nSelected = SendDlgItemMessage(hwndDlg, IDC_CONFIG_DEBUG, CB_GETCURSEL, 0, 0);
+			if (nSelected == CB_ERR)
+				nSelected = 0;
+			Settings.logMode = (LogMode)nSelected;
+
+			g_bPasswordChanged = FALSE;
+			
+			PostThreadMessage(g_nASThreadId, AS_MSG_SETTINGS_CHANGED, 0, 0);
 
 			PostMessage(hwndDlg, WM_CLOSE, 0, 0);
 			bReturn = TRUE;
 			break;
+		}
 
 		case IDCANCEL :
+			g_bPasswordChanged = FALSE;
 			PostMessage(hwndDlg, WM_CLOSE, 0, 0);
 			bReturn = TRUE;
 			break;
 
-		} // switch (wParam)
+		default :
+			switch (LOWORD(wParam))
+			{
+			case IDC_CONFIG_PASSWORD :
+				if (HIWORD(wParam) == EN_CHANGE)
+					g_bPasswordChanged = TRUE;
+				break;
+			} // switch (LOWORD(wParam)
+			
+			break; // defauklt
 
+		} // switch (wParam)
 		break;
-	}
-	/*case WM_NOTIFY :
-	{
-		if (wParam == IDC_CONFIG_DELAY_SPIN) {
+	} // WM_COMMAND
+	
+	//case WM_NOTIFY :
+	//{
+		//if (wParam == IDC_
+		/*if (wParam == IDC_CONFIG_DELAY_SPIN) {
 			_TCHAR strTemp[64];
 			NMUPDOWN* nm = (NMUPDOWN*)lParam;
 
@@ -119,10 +191,10 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			SetDlgItemText(hwndDlg, IDC_CONFIG_DELAY, strTemp);
 
 			bReturn = TRUE;
-		}
+		}*/
 			
-		break;
-	}*/
+	//	break;
+	//}
 	} // switch (uMsg)
 
 	return bReturn;

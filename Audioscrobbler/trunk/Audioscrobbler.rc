@@ -52,13 +52,22 @@ END
 // Dialog
 //
 
-IDD_CONFIG DIALOGEX 0, 0, 186, 94
+IDD_CONFIG DIALOGEX 0, 0, 236, 154
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Dialog"
+CAPTION "Audioscrobbler configuration"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,129,7,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,129,24,50,14
+    DEFPUSHBUTTON   "OK",IDOK,67,133,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,120,133,50,14
+    COMBOBOX        IDC_CONFIG_DEBUG,84,96,62,32,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    RTEXT           "Debug output to:",IDC_STATIC,13,98,69,8
+    LTEXT           "* Requires restart of plug-in to take effect",IDC_STATIC,83,111,146,8
+    LTEXT           "*",IDC_STATIC,150,98,8,8
+    CONTROL         105,IDC_STATIC,"Static",SS_BITMAP | SS_CENTERIMAGE | SS_REALSIZEIMAGE,0,0,237,42
+    EDITTEXT        IDC_CONFIG_USERNAME,84,49,102,14,ES_AUTOHSCROLL
+    RTEXT           "Username:",IDC_STATIC,36,51,46,8
+    RTEXT           "Password:",IDC_STATIC,35,69,47,8
+    EDITTEXT        IDC_CONFIG_PASSWORD,84,67,102,14,ES_PASSWORD | ES_AUTOHSCROLL
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 186, 94
@@ -80,10 +89,9 @@ GUIDELINES DESIGNINFO
 BEGIN
     IDD_CONFIG, DIALOG
     BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 179
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 87
+        VERTGUIDE, 8
+        BOTTOMMARGIN, 147
+        HORZGUIDE, 42
     END
 
     IDD_ABOUT, DIALOG
@@ -95,6 +103,51 @@ BEGIN
     END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_LOGO                BITMAP                  "Res\\AS_Logo.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,1,3,0
+ PRODUCTVERSION 0,1,3,0
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000904b0"
+        BEGIN
+            VALUE "FileDescription", "Audioscrobbler plug-in"
+            VALUE "FileVersion", "0, 1, 3, 0"
+            VALUE "InternalName", "Audioscrobbler plug-in"
+            VALUE "LegalCopyright", "Copyright (C) 2007"
+            VALUE "OriginalFilename", "Audioscrobbler.dll"
+            VALUE "ProductName", "Audioscrobbler plug-in for QMP"
+            VALUE "ProductVersion", "0, 1, 3, 0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x9, 1200
+    END
+END
 
 #endif    // Danish resources
 /////////////////////////////////////////////////////////////////////////////

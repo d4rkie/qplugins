@@ -1,7 +1,5 @@
-#include <TCHAR.h>
-#include <windows.h>
-
-#include "Audioscrobbler.h"
+#include "Precompiled.h"
+#include "AudioscrobblerDLL.h"
 #include "About.h"
 
 //////////////////////////////////////////////////////////////////////
