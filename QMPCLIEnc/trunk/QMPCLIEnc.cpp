@@ -20,8 +20,7 @@
 //-----------------------------------------------------------------------------
 
 #include "stdafx.h"
-
-#include ".\qmpclienc.h"
+#include "QMPCLIEnc.h"
 
 #include "ParentDlg.h"
 #include "AboutDlg.h"
@@ -37,7 +36,7 @@ QCLIEncoder	g_cliEnc;
 BOOL		g_bDoTag;
 BOOL		g_bNoWAVHeader;
 BOOL		g_bShowConsole;
-TCHAR		g_szEPFile[MAX_PATH];
+CString		g_strEPFile;
 
 int	prefPageID;
 CString g_strSrc, g_strDst, g_strExt;
@@ -61,7 +60,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 
 PLUGIN_API QCDModInitEnc* ENCODEDLL_ENTRY_POINT()
 {
-	QCDCallbacks.version = PLUGIN_API_VERSION;
+	QCDCallbacks.version = PLUGIN_API_VERSION_UNICODE;
 
 	QCDCallbacks.toModule.Initialize		= Initialize;
 	QCDCallbacks.toModule.ShutDown			= ShutDown;
@@ -80,17 +79,17 @@ PLUGIN_API QCDModInitEnc* ENCODEDLL_ENTRY_POINT()
 
 BOOL Initialize(QCDModInfo *modInfo, int flags)
 {
-	char inifile[MAX_PATH];
+	WCHAR inifile[MAX_PATH] = {0};
 
-	modInfo->moduleString = PLUGIN_FULL_NAME " v" PLUGIN_VERSION;
-	modInfo->moduleExtensions = PLUGIN_NAME;
+	modInfo->moduleString = (char *)(PLUGIN_FULL_NAME L" v" PLUGIN_VERSION);
+	modInfo->moduleExtensions = (char *)(PLUGIN_NAME);
 
 	hwndParent = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
 
 	// load settings
 	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
 
-	char value[MAX_PATH];
+	WCHAR value[MAX_PATH];
 	GetPrivateProfileString( PLUGIN_NAME, _T("Path"), _T("LAME.EXE"), value, MAX_PATH, inifile);
 	g_strPath = value;
 	GetPrivateProfileString( PLUGIN_NAME, _T("Parameter"), _T("-V 2 --vbr-new - %d"), value, MAX_PATH, inifile);
@@ -102,15 +101,15 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 	g_bNoWAVHeader = GetPrivateProfileInt( PLUGIN_NAME, _T("NoWAVHeader"), 0, inifile);
 	g_bShowConsole = GetPrivateProfileInt( PLUGIN_NAME, _T("ShowConsole"), 0, inifile);
 
-	GetModuleFileName( hInstance, g_szEPFile, MAX_PATH);
-	CString tmp = g_szEPFile;
-	tmp.Format( _T("%s.xml"), tmp.Left( tmp.ReverseFind( '.')));
-	GetPrivateProfileString( PLUGIN_NAME, _T("EPFile"), tmp, g_szEPFile, MAX_PATH, inifile);
+	GetModuleFileName( hInstance, value, MAX_PATH);
+	PathRemoveExtension( value); PathAddExtension( value, _T(".xml"));
+	GetPrivateProfileString( PLUGIN_NAME, _T("EPFile"), value, value, MAX_PATH, inifile);
+	g_strEPFile = value;
 
 
 	// init config dialog
 	PluginPrefPage prefPage;
-	prefPage.struct_size = sizeof(prefPage);
+	prefPage.struct_size = sizeof(PluginPrefPage);
 	prefPage.hModule = hInstance;
 	prefPage.lpTemplate = MAKEINTRESOURCEW(IDD_PPP);
 	prefPage.lpDialogFunc = PPPDlgProc;
@@ -119,7 +118,9 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 	prefPage.hModuleParent = NULL;
 	prefPage.groupID = 0;
 	prefPage.createParam = 0;
+	prefPage.hIcon = LoadIcon( hInstance, MAKEINTRESOURCEW(IDI_CLI));
 	prefPageID = QCDCallbacks.Service( opSetPluginPage, &prefPage, 0, 0);
+	//DestroyIcon( prefPage.hIcon);
 
 	// return TRUE for successful initialization
 	return TRUE;
@@ -129,8 +130,8 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 
 void ShutDown(int flags)
 {
-	char inifile[MAX_PATH];
-	char value[32];
+	WCHAR inifile[MAX_PATH];
+	WCHAR value[32];
 
 	Complete(0); // force completing
 
@@ -147,7 +148,7 @@ void ShutDown(int flags)
 	wsprintf(value, _T("%i"), g_bShowConsole);
 	WritePrivateProfileString( PLUGIN_NAME, _T("ShowConsole"), value, inifile);
 
-	WritePrivateProfileString( PLUGIN_NAME, _T("EPFile"), g_szEPFile, inifile);
+	WritePrivateProfileString( PLUGIN_NAME, _T("EPFile"), g_strEPFile, inifile);
 }
 
 //-----------------------------------------------------------------------------
@@ -175,25 +176,26 @@ BOOL Open(LPCSTR outFile, LPCSTR srcFile, WAVEFORMATEX *wf, LPSTR openedFilename
 	BOOL temp_mode = FALSE;
 
 	// destination file
-	g_strDst = outFile;
-	g_strDst += '.';
+	g_strDst = (LPCWSTR)outFile;
+	g_strDst += _T('.');
 	g_strDst += g_strExtension;
 
 	// source file
-	g_strSrc = srcFile;
+	g_strSrc = (LPCWSTR)srcFile;
 
 	// remember extension for tagging
 	g_strExt = g_strExtension;
 
 	// make command line
 	tmp = g_strPath;
-	tmp.Remove('\"');
+	tmp.Remove( _T('\"'));
 
-	cmdline = '\"';
+	cmdline = _T('\"');
 	cmdline += tmp + _T("\" ") + g_strParameter;
 
-	// fix for .vbs script file
-	if ( g_strPath.Mid( g_strPath.ReverseFind( '.'), 4) == _T(".vbs")) {
+	// fix for .vbs/.js script file
+	tmp = g_strPath.Mid( g_strPath.ReverseFind( _T('.')), 4);
+	if ( tmp == _T(".vbs") || tmp == _T(".js")) {
 		tmp = _T("cscript.exe ");
 		cmdline = tmp + cmdline;
 	}
@@ -204,7 +206,7 @@ BOOL Open(LPCSTR outFile, LPCSTR srcFile, WAVEFORMATEX *wf, LPSTR openedFilename
 		return FALSE;
 
 	// copy filename of opened file back
-	lstrcpy( openedFilename, g_strDst);
+	lstrcpyW( (LPWSTR)openedFilename, g_strDst);
 
 
 	// The following is recommended since encoders take a lot of CPU and 
@@ -253,54 +255,51 @@ BOOL Complete(int flags)
 		IQCDTagInfo * piTagSrc;
 		IQCDTagInfo * piTagDst;
 
-		// Get IQCDTagInfo for source file
-		piTagSrc = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCTSTR)g_strSrc, 0, 0);
-		if ( !piTagSrc)
-			return FALSE;
+		try {		
+			// Get IQCDTagInfo for source file
+			piTagSrc = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCWSTR)g_strSrc, 0, 0);
+			if ( !piTagSrc) throw FALSE;
 
-		// Get IQCDTagInfo for destination file
-		piTagDst = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCTSTR)g_strDst, 0, 0);
-		if ( !piTagDst)
-			return FALSE;
+			// Get IQCDTagInfo for destination file
+			piTagDst = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCWSTR)g_strDst, 0, 0);
+			if ( !piTagDst) throw FALSE;
 
-		// read tag from source file
-		if ( !piTagSrc->ReadFromFile( TAG_DEFAULT)) {
-			piTagSrc->Release();
-			return FALSE;
+			// read tag from source file
+			if ( !piTagSrc->ReadFromFile( TAG_DEFAULT)) throw FALSE;
+
+			count = piTagSrc->GetFieldCount();
+			for ( i = 0; i < count; ++i) {
+				LPWSTR lpwszName;
+				LPBYTE lpbData;
+				DWORD lenName, lenData;
+				QTAGDATA_TYPE type;
+				int startIndex;
+				int ret;
+
+				// get length of tag name and tag data
+				ret = piTagSrc->GetTagDataByIndex( i, NULL, &lenName, &type, NULL, &lenData);
+
+				lpwszName = new WCHAR[++lenName];
+				lpbData = new BYTE[++lenData];
+
+				// read tag information from source file
+				ret = piTagSrc->GetTagDataByIndex( i, lpwszName, &lenName, &type, lpbData, &lenData);
+
+				// write tag information into destination file
+				ret = piTagDst->SetTagDataByName( lpwszName, type, lpbData, lenData, &startIndex);
+
+				delete [] lpwszName;
+				delete [] lpbData;
+			}
+
+			if ( !piTagDst->WriteToFile( TAG_DEFAULT)) throw FALSE;
+		} catch (BOOL success) {
+			if ( !success) {
+				if ( piTagSrc) piTagSrc->Release();
+				if ( piTagDst) piTagDst->Release();
+				return FALSE;
+			}
 		}
-
-		count = piTagSrc->GetFieldCount();
-		for ( i = 0; i < count; ++i) {
-			LPWSTR lpwszName;
-			LPBYTE lpbData;
-			DWORD lenName, lenData;
-			QCD_TAGDATA_TYPE type;
-			int startIndex;
-			int ret;
-
-			// get length of tag name and tag data
-			ret = piTagSrc->GetTagDataByIndex( i, NULL, &lenName, &type, NULL, &lenData);
-
-			lpwszName = new WCHAR[++lenName];
-			lpbData = new BYTE[++lenData];
-
-			// read tag information from source file
-			ret = piTagSrc->GetTagDataByIndex( i, lpwszName, &lenName, &type, lpbData, &lenData);
-
-			// write tag information into destination file
-			ret = piTagDst->SetTagDataByName( lpwszName, type, lpbData, lenData, &startIndex);
-
-			delete [] lpwszName;
-			delete [] lpbData;
-		}
-
-		if ( !piTagDst->WriteToFile( TAG_DEFAULT)) {
-			piTagDst->Release();
-			return FALSE;
-		}
-
-		piTagDst->Release();
-		piTagSrc->Release();
 	}
 
 	return TRUE;

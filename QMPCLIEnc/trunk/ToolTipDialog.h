@@ -85,7 +85,7 @@ public:
 		{ TTRemove( GetHWND( idTool ));}
 	
 	void TTSetTitle( HWND hTool, UINT uIcon, LPCTSTR lpstrTitle)
-		{ SetProp( hTool, "ICON", (HANDLE)uIcon); SetProp( hTool, "TITLE", (HANDLE)lpstrTitle);}
+		{ SetProp( hTool, _T("ICON"), (HANDLE)uIcon); SetProp( hTool, _T("TITLE"), (HANDLE)lpstrTitle);}
 	void TTSetTitle( UINT idTool, UINT uIcon, LPCTSTR lpstrTitle)
 		{ TTSetTitle( GetHWND( idTool), uIcon, lpstrTitle);}
 // Message map and handlers
@@ -119,8 +119,8 @@ public:
 		m_strToolTip.LoadString( idTool );
 		lpTTDI->lpszText = (LPTSTR)(LPCTSTR)m_strToolTip;
 
-		LPTSTR title = (LPTSTR)GetProp( (HWND)lpTTDI->hdr.idFrom, "TITLE");
-		UINT icon = (UINT)GetProp( (HWND)lpTTDI->hdr.idFrom, "ICON");
+		LPTSTR title = (LPTSTR)GetProp( (HWND)lpTTDI->hdr.idFrom, _T("TITLE"));
+		UINT icon = (UINT)GetProp( (HWND)lpTTDI->hdr.idFrom, _T("ICON"));
 		if ( title)
 			m_TT.SetTitle( icon, title);
 

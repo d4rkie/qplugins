@@ -61,15 +61,15 @@ void QCLIWatcher::_run()
 // QCLIEncoder
 
 QCLIEncoder::QCLIEncoder()
-: m_bInitialized( FALSE)
-, m_hStdinWrite( INVALID_HANDLE_VALUE)
-, m_strCommandLine( "")
-, m_strOutFileName( "")
-, m_strTempFileName( "")
-, m_bTempMode( FALSE)
-, m_bNoWAVHeader( FALSE)
-, m_bShowConsole( FALSE)
-, m_hwndParent( NULL)
+: m_bInitialized(FALSE)
+, m_hStdinWrite(INVALID_HANDLE_VALUE)
+, m_strCommandLine(_T(""))
+, m_strOutFileName(_T(""))
+, m_strTempFileName(_T(""))
+, m_bTempMode(FALSE)
+, m_bNoWAVHeader(FALSE)
+, m_bShowConsole(FALSE)
+, m_hwndParent(NULL)
 {
 	m_piProcInfo.hProcess = INVALID_HANDLE_VALUE;
 	m_piProcInfo.hThread = INVALID_HANDLE_VALUE;
@@ -81,7 +81,7 @@ QCLIEncoder::~QCLIEncoder()
 		if ( !m_bTempMode)
 			_stop_piped_encoder();
 		else
-			m_tempFile.Close();
+			fclose( m_tempFile);
 	}
 }
 
@@ -105,21 +105,21 @@ BOOL QCLIEncoder::Start(LPCTSTR lpszCommandLine, LPCTSTR lpszOutFileName, WAVEFO
 {
 	BOOL ret;
 
-	QFile::Remove(lpszOutFileName); // delete outfile to avoid warning from encoder.
+	DeleteFile( lpszOutFileName); // delete outfile to avoid warning from encoder.
 
 	m_strCommandLine = lpszCommandLine;
 	m_strOutFileName = lpszOutFileName;
 
-	// process comandline
-	CString tmp = '\"';
-	tmp += m_strOutFileName + '\"';
+	// process command line
+	CString tmp = _T('\"');
+	tmp += m_strOutFileName + _T('\"');
 	m_strCommandLine.Replace( _T("%d"), tmp);
 
 	if ( m_strCommandLine.Find( _T("%s")) >= 0) { // is temp mode?
 		m_bTempMode = TRUE;
 		m_strTempFileName = m_strOutFileName + _T(".wav");
 		tmp = '\"';
-		tmp += m_strTempFileName + '\"';
+		tmp += m_strTempFileName + _T('\"');
 		m_strCommandLine.Replace( _T("%s"), tmp);
 	} else {
 		m_bTempMode = FALSE;
@@ -174,19 +174,17 @@ void QCLIEncoder::Stop(void)
 		}
 
 		// check finally dst. file
-		if ( !QFile::FileExists(m_strOutFileName)) {
+		if ( !PathFileExists( m_strOutFileName)) {
 			_error_msg( _T( "Encoding failed!"));
 			success = FALSE;
 		}
 
-		if (m_bTempMode)
-			QFile::Remove(m_strTempFileName);
+		if ( m_bTempMode) DeleteFile( m_strTempFileName);
 		/*
 		// write tag
 		*/
 
-		if ( !success)
-			QFile::Remove(m_strOutFileName);
+		if ( !success) DeleteFile( m_strOutFileName);
 
 		m_bInitialized = FALSE;
 	}
@@ -249,12 +247,12 @@ int QCLIEncoder::_write_wav_header(WAVEFORMATEX * wf)
 			return 0;
 
 		if ( WaitForSingleObject( m_piProcInfo.hProcess, 0) != WAIT_TIMEOUT ) {
-			_error_msg( "Encoder process has terminated, incorrect parameters or input format!");
+			_error_msg( _T("Encoder process has terminated, incorrect parameters or input format!"));
 			return 0;
 		}
 	} else {
 		if ( !_add_data_to_file( pbtRiffWavHeader, sizeof( pbtRiffWavHeader))) {
-			_error_msg( "Error writing to temp file!" );
+			_error_msg( _T("Error writing to temp file!" ));
 			return 0;
 		}
 	}
@@ -294,7 +292,7 @@ int QCLIEncoder::_start_piped_encoder(void)
 	int ret = 1;
 
 	if ( !_create_process( &si)) {
-		_error_msg( "Unable to start the encoder!");
+		_error_msg( _T("Unable to start the encoder!"));
 		ret = 0;
 	}
 
@@ -303,7 +301,7 @@ int QCLIEncoder::_start_piped_encoder(void)
 
 	if ( ret != 0) {
 		if ( WaitForSingleObject( m_piProcInfo.hProcess, 0) != WAIT_TIMEOUT ) {
-			_error_msg( "Encoder process has terminated, incorrect parameters!");
+			_error_msg( _T("Encoder process has terminated, incorrect parameters!"));
 			ret = 0;
 		}
 	}
@@ -322,7 +320,7 @@ int QCLIEncoder::_add_data_to_pipe(LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite
 	if ( WaitForSingleObject( m_piProcInfo.hProcess, 0) != WAIT_TIMEOUT)
 		return 0;
 	if ( !WriteFile( m_hStdinWrite, lpBuffer, nNumberOfBytesToWrite, &written, 0) || written != nNumberOfBytesToWrite ) {
-		_error_msg( "Writing to encoder failed!");
+		_error_msg( _T("Writing to encoder failed!"));
 		return 0;
 	}
 
@@ -351,13 +349,13 @@ int QCLIEncoder::_stop_piped_encoder(void)
 
 int QCLIEncoder::_start_file_encoder(void)
 {
-	return m_tempFile.Open(m_strTempFileName, QFile::modeCreate | QFile::modeWrite);
+	m_tempFile = _tfopen( m_strTempFileName, _T("wb"));
+	return m_tempFile != NULL;
 }
 
 int QCLIEncoder::_add_data_to_file(LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite)
 {
-	m_tempFile.Write(lpBuffer, nNumberOfBytesToWrite);
-	return 1;
+	return nNumberOfBytesToWrite == fwrite( lpBuffer, 1, nNumberOfBytesToWrite, m_tempFile);
 }
 
 int QCLIEncoder::_stop_file_encoder(void)
@@ -365,7 +363,7 @@ int QCLIEncoder::_stop_file_encoder(void)
 	if ( !_fix_wav_file_header())
 		return 0;
 
-	m_tempFile.Close();
+	fclose( m_tempFile);
 
 	STARTUPINFO si;
 	ZeroMemory(&si, sizeof(si));
@@ -373,7 +371,7 @@ int QCLIEncoder::_stop_file_encoder(void)
 	si.dwFlags = STARTF_USESHOWWINDOW;
 	si.wShowWindow = m_bShowConsole ? SW_SHOWMINNOACTIVE : SW_HIDE;
 	if ( !_create_process(&si)) {
-		_error_msg ( "Unable to execute: %s", m_strCommandLine);
+		_error_msg ( _T("Unable to execute: %s"), m_strCommandLine);
 
 		return 0;
 	} else {
@@ -389,28 +387,24 @@ int QCLIEncoder::_fix_wav_file_header(void)
 {
 	unsigned char tmp[4];
 	unsigned long t;
-	__int64 size = m_tempFile.GetLength();
+	__int64 size = _filelengthi64( _fileno( m_tempFile));
 	if ( size <= 0 ) return 0;
 
-	if ( !m_tempFile.Seek(4))
-		return 0;
+	if ( 0 != _fseeki64( m_tempFile, 4, SEEK_SET)) return 0;
 	t = (unsigned long)(size - 8);
 	tmp[0] = (unsigned char)(t >>  0);
 	tmp[1] = (unsigned char)(t >>  8);
 	tmp[2] = (unsigned char)(t >> 16);
 	tmp[3] = (unsigned char)(t >> 24);
-	if ( !m_tempFile.Write(tmp, 4))
-		return 0;
+	if ( 4 != fwrite( tmp, 1, 4, m_tempFile)) return 0;
 
-	if ( !m_tempFile.Seek(40))
-		return 0;
+	if ( 0 != _fseeki64( m_tempFile, 40, SEEK_SET)) return 0;
 	t = (unsigned long)(size - 44);
 	tmp[0] = (unsigned char)(t >>  0);
 	tmp[1] = (unsigned char)(t >>  8);
 	tmp[2] = (unsigned char)(t >> 16);
 	tmp[3] = (unsigned char)(t >> 24);
-	if ( !m_tempFile.Write(tmp, 4))
-		return 0;
+	if ( 4 != fwrite( tmp, 1, 4, m_tempFile)) return 0;
 
 	return 1;
 }

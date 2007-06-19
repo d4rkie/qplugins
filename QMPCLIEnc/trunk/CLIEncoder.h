@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <mmreg.h>
 
-#include "QFile.h"
+#include <io.h>
 
 
 // QCLIWatcher ÃüÁîÄ¿±ê
@@ -74,7 +74,7 @@ private:
 	CString m_strOutFileName;
 
 	CString m_strTempFileName;
-	QFile m_tempFile;
+	FILE * m_tempFile;
 	BOOL m_bTempMode;
 
 	BOOL m_bNoWAVHeader;

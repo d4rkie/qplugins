@@ -50,17 +50,17 @@ public:
 		GetTT().SetMaxTipWidth( 500); // enable multi-line tooltips
 
 		// set icon and title of tool tip control
-		TTSetTitle( IDC_PARAMETER, 1, "REQUIRED");
-		TTSetTitle( IDC_DO_TAG, 1, "RECOMMENDED");
-		TTSetTitle( IDC_NO_WAV_HEADER, 1, "NOT RECOMMENDED");
-		TTSetTitle( IDC_SHOW_CONSOLE, 1, "OPTIONAL");
+		TTSetTitle( IDC_PARAMETER, 1, _T("REQUIRED"));
+		TTSetTitle( IDC_DO_TAG, 1, _T("RECOMMENDED"));
+		TTSetTitle( IDC_NO_WAV_HEADER, 1, _T("NOT RECOMMENDED"));
+		TTSetTitle( IDC_SHOW_CONSOLE, 1, _T("OPTIONAL"));
 
 		return TRUE;
 	}
 
 	void OnBrowsePath(UINT uCode, int nID, HWND hwndCtrl)
 	{
-		CFileDialog fileDlg( TRUE, _T("exe"), NULL, OFN_PATHMUSTEXIST|OFN_FILEMUSTEXIST, _T("Executables (*.exe;*.vbs)\0*.exe;*.vbs\0All (*.*)\0*.*\0"), m_hWnd);
+		CFileDialog fileDlg( TRUE, _T("exe"), NULL, OFN_PATHMUSTEXIST|OFN_FILEMUSTEXIST, _T("Executables (*.exe;*.vbs;*.js)\0*.exe;*.vbs;*.js\0All (*.*)\0*.*\0"), m_hWnd);
 
 		if ( fileDlg.DoModal() == IDOK)
 			SetDlgItemText( IDC_PATH, fileDlg.m_szFileName);

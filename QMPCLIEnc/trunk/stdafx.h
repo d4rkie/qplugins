@@ -19,10 +19,16 @@
 #endif
 
 
-#define _WTL_USE_CSTRING
+#include <assert.h>
+
+
+#define _WTL_NO_CSTRING
 #define _WTL_NEW_PAGE_NOTIFY_HANDLERS
 
 #include <atlbase.h>
+
+#include <atlstr.h> // ATL CString
+
 #include <atlapp.h>
 #include <atlwin.h>
 

@@ -87,12 +87,12 @@ public:
 
 		// load preset file
 		m_pXMLDom->async = VARIANT_FALSE;
-		if ( m_pXMLDom->load( g_szEPFile) != VARIANT_TRUE) {
+		if ( m_pXMLDom->load( variant_t(g_strEPFile)) != VARIANT_TRUE) {
 			CString str = _T("Failed load xml data from file: ");
-			str += g_szEPFile;
+			str += g_strEPFile;
 			MessageBox( str, _T("ERROR"), MB_OK | MB_ICONSTOP);
 
-			m_pXMLDom->loadXML( "<?xml version=\"1.0\" encoding=\"UTF-16\" standalone=\"yes\"?><Encoders></Encoders>");
+			m_pXMLDom->loadXML( _T("<?xml version=\"1.0\" encoding=\"UTF-16\" standalone=\"yes\"?><Encoders></Encoders>"));
 		}
 
 		// fill tree view
@@ -103,8 +103,8 @@ public:
 		GetTT().SetMaxTipWidth( 500); // enable multi-line tooltips
 
 		// set icon and title of tool tip control
-		TTSetTitle( IDC_EP_TREE, 1, "Tips");
-		TTSetTitle( IDC_PAR, 1, "REQUIRED");
+		TTSetTitle( IDC_EP_TREE, 1, _T("Tips"));
+		TTSetTitle( IDC_PAR, 1, _T("REQUIRED"));
 
 		return TRUE;
 	}
@@ -132,8 +132,8 @@ public:
 					pnl = m_pXMLDom->selectNodes( _getXPathFromItem( ti, strNew));
 				}
 
-				peNew = m_pXMLDom->createElement( "Encoder");
-				peNew->setAttribute( "name", _variant_t(strNew));
+				peNew = m_pXMLDom->createElement( _T("Encoder"));
+				peNew->setAttribute( _T("name"), _variant_t(strNew));
 
 				peParent = m_pXMLDom->selectSingleNode( _getXPathFromItem( ti))->parentNode;
 
@@ -148,11 +148,11 @@ public:
 					pnl = m_pXMLDom->selectNodes( _getXPathFromItem( ti, strNew));
 				}
 
-				peNew = m_pXMLDom->createElement( "Preset");
-				peNew->setAttribute( "name", _variant_t(strNew));
-				peNew->setAttribute( "path", "");
-				peNew->setAttribute( "parameter", "");
-				peNew->setAttribute( "extension", "");
+				peNew = m_pXMLDom->createElement( _T("Preset"));
+				peNew->setAttribute( _T("name"), _variant_t(strNew));
+				peNew->setAttribute( _T("path"), _T(""));
+				peNew->setAttribute( _T("parameter"), _T(""));
+				peNew->setAttribute( _T("extension"), _T(""));
 
 				peParent = m_pXMLDom->selectSingleNode( _getXPathFromItem( ti))->parentNode;
 
@@ -161,11 +161,11 @@ public:
 				// generate a unique preset name
 				strNew = _T("New Preset");
 
-				peNew = m_pXMLDom->createElement( "Preset");
-				peNew->setAttribute( "name", _variant_t(strNew));
-				peNew->setAttribute( "path", "");
-				peNew->setAttribute( "parameter", "");
-				peNew->setAttribute( "extension", "");
+				peNew = m_pXMLDom->createElement( _T("Preset"));
+				peNew->setAttribute( _T("name"), _variant_t(strNew));
+				peNew->setAttribute( _T("path"), _T(""));
+				peNew->setAttribute( _T("parameter"), _T(""));
+				peNew->setAttribute( _T("extension"), _T(""));
 
 				peParent = m_pXMLDom->selectSingleNode( _getXPathFromItem( ti));
 
@@ -230,16 +230,16 @@ public:
 				// fill tree view
 				_fillTree();
 
-				lstrcpy( g_szEPFile, fileDlg.m_szFileName);
+				g_strEPFile = fileDlg.m_szFileName;
 
 				// redraw dialog to avoid tree-view non-repainting
 				InvalidateRect( NULL, TRUE);
 			} else {
 				CString str = _T("Failed load xml data from file: ");
-				str += g_szEPFile;
+				str += g_strEPFile;
 				MessageBox( str, _T("ERROR"), MB_OK | MB_ICONSTOP);
 
-				m_pXMLDom->loadXML( "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Encoders></Encoders>");
+				m_pXMLDom->loadXML( _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Encoders></Encoders>"));
 
 				m_ctrlEPTree.DeleteAllItems();
 			}
@@ -262,7 +262,7 @@ public:
 
 	void OnBrowsePath(UINT uCode, int nID, HWND hwndCtrl)
 	{
-		CFileDialog fileDlg( TRUE, _T("exe"), NULL, OFN_PATHMUSTEXIST|OFN_FILEMUSTEXIST, _T("Executables (*.exe;*.vbs)\0*.exe;*.vbs\0All (*.*)\0*.*\0"), m_hWnd);
+		CFileDialog fileDlg( TRUE, _T("exe"), NULL, OFN_PATHMUSTEXIST|OFN_FILEMUSTEXIST, _T("Executables (*.exe;*.vbs;*.js)\0*.exe;*.vbs;*.js\0All (*.*)\0*.*\0"), m_hWnd);
 
 		if ( fileDlg.DoModal() == IDOK) {
 			m_strPath = fileDlg.m_szFileName;
@@ -293,9 +293,9 @@ public:
 
 		if ( !isRoot) {
 			MSXML2::IXMLDOMElementPtr pe = m_pXMLDom->selectSingleNode( _getXPathFromItem( ti));
-			m_strPath = (LPCTSTR)_bstr_t(pe->getAttribute( "path"));
-			m_strParameter = (LPCTSTR)_bstr_t(pe->getAttribute( "parameter"));
-			m_strExtension = (LPCTSTR)_bstr_t(pe->getAttribute( "extension"));
+			m_strPath = (LPCTSTR)_bstr_t(pe->getAttribute( _T("path")));
+			m_strParameter = (LPCTSTR)_bstr_t(pe->getAttribute( _T("parameter")));
+			m_strExtension = (LPCTSTR)_bstr_t(pe->getAttribute( _T("extension")));
 		} else {
 			m_strPath = _T("");
 			m_strParameter = _T("");
@@ -322,11 +322,11 @@ public:
 			CTreeItem ti = m_ctrlEPTree.GetSelectedItem();
 
 			MSXML2::IXMLDOMElementPtr pe = m_pXMLDom->selectSingleNode( _getXPathFromItem( ti));
-			if ( pe->getAttribute( "name") != _variant_t(lptvdi->item.pszText)) {
+			if ( pe->getAttribute( _T("name")) != _variant_t(lptvdi->item.pszText)) {
 				// verify unique
 				MSXML2::IXMLDOMNodeListPtr pnl = m_pXMLDom->selectNodes( _getXPathFromItem( ti, lptvdi->item.pszText));
 				if ( !pnl->length) {
-					pe->setAttribute( "name", lptvdi->item.pszText);
+					pe->setAttribute( _T("name"), lptvdi->item.pszText);
 					m_ctrlSave.EnableWindow( TRUE);
 
 					return TRUE; // update the item's label
@@ -349,8 +349,8 @@ public:
 
 			// get value of selected child item.
 			path = (LPCSTR)_bstr_t(pe->getAttribute( "path"));
-			parameter = (LPCSTR)_bstr_t(pe->getAttribute( "parameter"));
-			extension = (LPCSTR)_bstr_t(pe->getAttribute( "extension"));
+			parameter = (LPCSTR)_bstr_t(pe->getAttribute( _T("parameter")));
+			extension = (LPCSTR)_bstr_t(pe->getAttribute( _T("extension")));
 
 			// filling setting page's fields
 			::SetDlgItemText( m_hwndSettings, IDC_PATH, path);
@@ -375,11 +375,12 @@ public:
 			DoDataExchange( TRUE);
 
 			MSXML2::IXMLDOMElementPtr pe = m_pXMLDom->selectSingleNode( _getXPathFromItem( ti));
-			if ( 
-				pe->getAttribute( "path") != _variant_t( m_strPath) || 
-				pe->getAttribute( "parameter") != _variant_t( m_strParameter) || 
-				pe->getAttribute( "extension") != _variant_t( m_strExtension)
-				) m_ctrlUpdate.EnableWindow( TRUE);
+			if ( pe->getAttribute( _T("path")) != _variant_t( m_strPath)
+			  || pe->getAttribute( _T("parameter")) != _variant_t( m_strParameter)
+			  || pe->getAttribute( _T("extension")) != _variant_t( m_strExtension)
+			   ) {
+				m_ctrlUpdate.EnableWindow( TRUE);
+			}
 		}
 	}
 
@@ -404,15 +405,15 @@ private: // Internal function
 	{
 		CString xpath, tmp;
 
-		xpath = "/Encoders/Encoder[@name=\"";
+		xpath = _T("/Encoders/Encoder[@name=\"");
 
 		if ( !ti.GetParent().IsNull()) { // It is a child item
 			ti.GetParent().GetText( tmp);
-			xpath += tmp + "\"]/Preset[@name=\"";
+			xpath += tmp + _T("\"]/Preset[@name=\"");
 		}
 
 		ti.GetText( tmp);
-		xpath += (name.IsEmpty() ? tmp : name) + "\"]";
+		xpath += (name.IsEmpty() ? tmp : name) + _T("\"]");
 
 		return _bstr_t(xpath);
 	}
@@ -425,9 +426,9 @@ private: // Internal function
 
 		if ( ti.GetParent().HasChildren()) { // only for preset
 			MSXML2::IXMLDOMElementPtr pe = m_pXMLDom->selectSingleNode( _getXPathFromItem( ti));
-			pe->setAttribute( "path", _bstr_t(m_strPath));
-			pe->setAttribute( "parameter", _bstr_t(m_strParameter));
-			pe->setAttribute( "extension", _bstr_t(m_strExtension));
+			pe->setAttribute( _T("path"), _bstr_t(m_strPath));
+			pe->setAttribute( _T("parameter"), _bstr_t(m_strParameter));
+			pe->setAttribute( _T("extension"), _bstr_t(m_strExtension));
 		}
 	}
 
@@ -464,7 +465,7 @@ private: // Internal function
 		m_pXMLDom->loadXML( _bstr_t(pw->output));
 
 		// save it to file
-		m_pXMLDom->save( g_szEPFile);
+		m_pXMLDom->save( variant_t(g_strEPFile));
 
 		// release all
 		pr->Release();
@@ -477,23 +478,23 @@ private: // Internal function
 		m_ctrlEPTree.DeleteAllItems();
 
 		// create tree
-		MSXML2::IXMLDOMNodeListPtr pnl = m_pXMLDom->selectNodes( "/Encoders/Encoder[@name]");
+		MSXML2::IXMLDOMNodeListPtr pnl = m_pXMLDom->selectNodes( _T("/Encoders/Encoder[@name]"));
 		MSXML2::IXMLDOMNodeListPtr pnl_p;
 		for ( int i = 0; i < pnl->length; ++i) {
 			// get encoder name
 			for ( int j = 0; j < pnl->item[i]->attributes->length; ++j) {
-				if ( !lstrcmp( pnl->item[i]->attributes->item[j]->nodeName, "name")) {
+				if ( !lstrcmp( pnl->item[i]->attributes->item[j]->nodeName, _T("name"))) {
 					// insert encoder item
 					CTreeItem parent = m_ctrlEPTree.InsertItem( _bstr_t(pnl->item[i]->attributes->item[j]->nodeValue), TVI_ROOT, TVI_LAST);
 
 					// insert preset items
 					CString str = _T("/Encoders/Encoder[@name=\"");
-					str += _bstr_t(pnl->item[i]->attributes->item[j]->nodeValue);
-					str += "\"]/Preset";
+					str += (LPCTSTR)(_bstr_t(pnl->item[i]->attributes->item[j]->nodeValue));
+					str += _T("\"]/Preset");
 					pnl_p = m_pXMLDom->selectNodes( _bstr_t( str));
 					for ( j = 0; j < pnl_p->length; ++j) {
 						for ( int k = 0; k < pnl_p->item[j]->attributes->length; ++k) {
-							if ( !lstrcmp( pnl_p->item[j]->attributes->item[k]->nodeName, "name")) {
+							if ( !lstrcmp( pnl_p->item[j]->attributes->item[k]->nodeName, _T("name"))) {
 								parent.AddTail( _bstr_t(pnl_p->item[j]->attributes->item[k]->nodeValue), -1);
 
 								break; // finish processing preset name
