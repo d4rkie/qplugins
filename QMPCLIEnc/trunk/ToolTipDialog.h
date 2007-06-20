@@ -23,7 +23,7 @@
 #pragma once
 
 #ifndef __ATLCTRLS_H__
-	#error ToolTipDialog.h requires atlctrls.h to be included first
+#error ToolTipDialog.h requires atlctrls.h to be included first
 #endif
 
 
@@ -33,117 +33,119 @@
 
 namespace WTL
 {
-template < class T ,class TT = CToolTipCtrl >
-class CToolTipDialog
-{
-// Data declarations and members
-public:
-	TT& GetTT(){return m_TT;}
-protected:
-	TT m_TT;
-	UINT m_uTTStyle;
-	UINT m_uToolFlags;
-	CString m_strToolTip; // tool tip content
-// Construction
-	CToolTipDialog( UINT uTTSTyle= TTS_NOPREFIX | TTS_BALLOON , UINT uToolFlags = TTF_IDISHWND | TTF_SUBCLASS ) 
-		: m_TT( NULL ), m_uTTStyle( uTTSTyle ), 
-		m_uToolFlags( uToolFlags | TTF_SUBCLASS )
+	template < class T ,class TT = CToolTipCtrl >
+	class CToolTipDialog
+	{
+		// Data declarations and members
+	public:
+		TT& GetTT(){return m_TT;}
+	protected:
+		TT m_TT;
+		UINT m_uTTStyle;
+		UINT m_uToolFlags;
+		CString m_strToolTip; // tool tip content
+		// Construction
+		CToolTipDialog( UINT uTTSTyle= TTS_NOPREFIX | TTS_BALLOON , UINT uToolFlags = TTF_IDISHWND | TTF_SUBCLASS ) 
+			: m_TT( NULL ), m_uTTStyle( uTTSTyle ), 
+			m_uToolFlags( uToolFlags | TTF_SUBCLASS )
 		{}
 
-	void TTInit()
+		void TTInit()
 		{
-		T* pT= (T*)this;
-		ATLASSERT( ::IsWindow( *pT ));
-		m_TT.Create( *pT, NULL, NULL, m_uTTStyle );
-		//CToolInfo ToolInfo( pT->m_uToolFlags, *pT , 0, 0, MAKEINTRESOURCE(pT->IDD) );
-		CToolInfo ToolInfo( pT->m_uToolFlags, *pT ); // use TTN_GETDISPINFO to support long multi-line tool tip
-		m_TT.AddTool( &ToolInfo );
-		::EnumChildWindows( *pT, SetTool, (LPARAM)pT );
-		TTSize( 0 );
-		TTActivate( TRUE );
+			T* pT= (T*)this;
+			ATLASSERT( ::IsWindow( *pT ));
+			m_TT.Create( *pT, NULL, NULL, m_uTTStyle );
+			//CToolInfo ToolInfo( pT->m_uToolFlags, *pT , 0, 0, MAKEINTRESOURCE(pT->IDD) );
+			CToolInfo ToolInfo( pT->m_uToolFlags, *pT ); // use TTN_GETDISPINFO to support long multi-line tool tip
+			m_TT.AddTool( &ToolInfo );
+			::EnumChildWindows( *pT, SetTool, (LPARAM)pT );
+			TTSize( 0 );
+			TTActivate( TRUE );
 		}
-// Operations
-public:
-	void TTActivate(BOOL bActivate)
+		// Operations
+	public:
+		void TTActivate(BOOL bActivate)
 		{ m_TT.Activate( bActivate ); }
-	void TTSize( int nPixel )
+		void TTSize( int nPixel )
 		{ m_TT.SetMaxTipWidth( nPixel );}
 
-	void TTSetTxt( HWND hTool, _U_STRINGorID text )
+		void TTSetTxt( HWND hTool, _U_STRINGorID text )
 		{ m_TT.UpdateTipText( text, hTool);}
-	void TTSetTxt( UINT idTool, _U_STRINGorID text )
+		void TTSetTxt( UINT idTool, _U_STRINGorID text )
 		{ TTSetTxt( GetHWND( idTool ) , text);}
 
-	BOOL TTAdd( HWND hTool )
+		BOOL TTAdd( HWND hTool )
 		{ return SetTool( hTool, (LPARAM)(T*)this );}
-	BOOL TTAdd( UINT idTool )
+		BOOL TTAdd( UINT idTool )
 		{ return TTAdd( GetHWND( idTool ));}
 
-	void TTRemove( HWND hTool )
+		void TTRemove( HWND hTool )
 		{ m_TT.DelTool( hTool );}
-	void TTRemove( UINT idTool )
+		void TTRemove( UINT idTool )
 		{ TTRemove( GetHWND( idTool ));}
-	
-	void TTSetTitle( HWND hTool, UINT uIcon, LPCTSTR lpstrTitle)
+
+		void TTSetTitle( HWND hTool, UINT uIcon, LPCTSTR lpstrTitle)
 		{ SetProp( hTool, _T("ICON"), (HANDLE)uIcon); SetProp( hTool, _T("TITLE"), (HANDLE)lpstrTitle);}
-	void TTSetTitle( UINT idTool, UINT uIcon, LPCTSTR lpstrTitle)
+		void TTSetTitle( UINT idTool, UINT uIcon, LPCTSTR lpstrTitle)
 		{ TTSetTitle( GetHWND( idTool), uIcon, lpstrTitle);}
-// Message map and handlers
-	BEGIN_MSG_MAP(CToolTipDialog)
-		MESSAGE_RANGE_HANDLER(WM_MOUSEFIRST,WM_MOUSELAST, OnMouse)
-		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-		NOTIFY_CODE_HANDLER(TTN_GETDISPINFO, OnToolTipNotify)
-	END_MSG_MAP()
+		// Message map and handlers
+		BEGIN_MSG_MAP_EX(CToolTipDialog)
+			MSG_WM_INITDIALOG(OnInitDialog)
+			MESSAGE_RANGE_HANDLER_EX(WM_MOUSEFIRST, WM_MOUSELAST, OnMouse)
+			NOTIFY_CODE_HANDLER_EX(TTN_GETDISPINFO, OnToolTipNotify)
+		END_MSG_MAP_EX()
 
-	LRESULT OnInitDialog(UINT , WPARAM , LPARAM, BOOL& bHandled)
-	{
-		TTInit();
-		bHandled = FALSE;
-		return TRUE;
-	}
+		BOOL OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
+		{
+			TTInit();
+			SetMsgHandled( FALSE);
+			return TRUE;
+		}
 
-	LRESULT OnMouse(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
-	{
-		T* pT = (T*)this;
-		bHandled = FALSE;
-		if(m_TT.IsWindow())
-			m_TT.RelayEvent((LPMSG)pT->GetCurrentMessage());
-		return 0;
-	}
+		LRESULT OnMouse(UINT uMsg, WPARAM wParam, LPARAM lParam)
+		{
+			T* pT = (T*)this;
+			SetMsgHandled( FALSE);
+			if(m_TT.IsWindow())
+				m_TT.RelayEvent((LPMSG)pT->GetCurrentMessage());
+			return 0;
+		}
 
-	LRESULT OnToolTipNotify(int /*wParam*/, LPNMHDR lParam, BOOL& bHandled)
-	{
-		LPNMTTDISPINFO lpTTDI = (LPNMTTDISPINFO)lParam;
+		LRESULT OnToolTipNotify(LPNMHDR pnmh)
+		{
+			LPNMTTDISPINFO lpTTDI = (LPNMTTDISPINFO)pnmh;
 
-		int idTool = ::GetWindowLong( (HWND)lpTTDI->hdr.idFrom, GWL_ID );
-		m_strToolTip.LoadString( idTool );
-		lpTTDI->lpszText = (LPTSTR)(LPCTSTR)m_strToolTip;
+			int idTool = ::GetWindowLong( (HWND)lpTTDI->hdr.idFrom, GWL_ID );
+			m_strToolTip.LoadString( idTool );
+			lpTTDI->lpszText = (LPTSTR)(LPCTSTR)m_strToolTip;
 
-		LPTSTR title = (LPTSTR)GetProp( (HWND)lpTTDI->hdr.idFrom, _T("TITLE"));
-		UINT icon = (UINT)GetProp( (HWND)lpTTDI->hdr.idFrom, _T("ICON"));
-		if ( title)
-			m_TT.SetTitle( icon, title);
+			LPTSTR title = (LPTSTR)GetProp( (HWND)lpTTDI->hdr.idFrom, _T("TITLE"));
+			UINT icon = (UINT)GetProp( (HWND)lpTTDI->hdr.idFrom, _T("ICON"));
+			if ( title)
+				m_TT.SetTitle( icon, title);
 
-		return TRUE;
-	}
+			return TRUE;
+		}
 
-// Implementation
-private:
-	HWND GetHWND( UINT idTool )
+		// Implementation
+	private:
+		HWND GetHWND( UINT idTool )
 		{ return ::GetDlgItem( *(T*)this, idTool );}
 
-	static BOOL CALLBACK SetTool( HWND hTool, LPARAM pDlg)
+		static BOOL CALLBACK SetTool( HWND hTool, LPARAM pDlg)
 		{
-		T* pT = (T*)pDlg;
-		int idTool = ::GetWindowLong(hTool, GWL_ID);
-		if ( idTool != IDC_STATIC )
+			TCHAR buf[2];
+			T* pT = (T*)pDlg;
+			int idTool = ::GetWindowLong(hTool, GWL_ID);
+			if ( idTool != IDC_STATIC && LoadString( ModuleHelper::GetResourceInstance(), idTool, buf, 2))
 			{
-			//CToolInfo ToolInfo( pT->m_uToolFlags, hTool, 0, 0, (LPTSTR)idTool );
-			CToolInfo ToolInfo( pT->m_uToolFlags, hTool ); // use TTN_GETDISPINFO to support long multi-line tool tip
-			pT->m_TT.AddTool( &ToolInfo );
+				//CToolInfo ToolInfo( pT->m_uToolFlags, hTool, 0, 0, (LPTSTR)idTool );
+				CToolInfo ToolInfo( pT->m_uToolFlags, hTool ); // use TTN_GETDISPINFO to support long multi-line tool tip
+				pT->m_TT.AddTool( &ToolInfo );
 			}
-		return TRUE;
+			return TRUE;
 		}
-};
+	};
 } // namespace WTL
 #endif // __TTDLG_H__
+

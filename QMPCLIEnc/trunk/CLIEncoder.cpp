@@ -2,8 +2,7 @@
 //
 
 #include "stdafx.h"
-
-#include ".\cliencoder.h"
+#include "CLIEncoder.h"
 
 
 // QCLIWatcher

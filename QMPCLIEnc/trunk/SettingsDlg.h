@@ -22,12 +22,12 @@ public:
 	enum { IDD = IDD_SETTINGS };
 
 	// Maps
-	BEGIN_MSG_MAP(CSettingsDlg)
+	BEGIN_MSG_MAP_EX(CSettingsDlg)
 		CHAIN_MSG_MAP(CToolTipDialog< CSettingsDlg >)
 		MSG_WM_INITDIALOG(OnInitDialog)
 		COMMAND_ID_HANDLER_EX(IDC_BROWSE_PATH, OnBrowsePath)
 		MESSAGE_HANDLER_EX(WM_PN_DIALOGSAVE, OnDialogSave)
-	END_MSG_MAP()
+	END_MSG_MAP_EX()
 
 	// DDX
 	BEGIN_DDX_MAP(CSettingsDlg)
@@ -40,7 +40,7 @@ public:
 	END_DDX_MAP()
 
 	// Message handlers
-	BOOL OnInitDialog(HWND hwndFocus, LPARAM lParam)
+	BOOL OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 	{
 		// DDX controls, Hook it.
 		DoDataExchange( FALSE);

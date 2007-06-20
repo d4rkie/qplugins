@@ -23,11 +23,11 @@ public:
 	enum { IDD = IDD_PARENT };
 
 	// Maps
-	BEGIN_MSG_MAP(CParentDlg)
+	BEGIN_MSG_MAP_EX(CParentDlg)
 		MSG_WM_INITDIALOG(OnInitDialog)
 		NOTIFY_HANDLER_EX(IDC_TAB, TCN_SELCHANGE, OnTcnSelChange)
 		MESSAGE_HANDLER_EX(WM_PN_DIALOGSAVE, OnDialogSave)
-	END_MSG_MAP()
+	END_MSG_MAP_EX()
 
 	// DDX
 	BEGIN_DDX_MAP(CParentDlg)
@@ -36,7 +36,7 @@ public:
 	END_DDX_MAP()
 
 	// Message handlers
-	BOOL OnInitDialog(HWND hwndFocus, LPARAM lParam)
+	BOOL OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 	{
 		CRect rect;
 
@@ -47,17 +47,15 @@ public:
 		m_ctrlURLEncoders.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);
 		m_ctrlURLEncoders.SetHyperLink( _T("http://www.rarewares.org/"));
 
-        m_pdlgSettings = new CSettingsDlg;
-		m_pdlgSettings->Create( m_hWnd);
-		m_ctrlTab.InsertItem( 0, TCIF_PARAM | TCIF_TEXT, _T("Settings"), -1, (DWORD)m_pdlgSettings->m_hWnd);
+		m_dlgSettings.Create( m_hWnd);
+		m_ctrlTab.InsertItem( 0, TCIF_PARAM | TCIF_TEXT, _T("Settings"), -1, (DWORD)m_dlgSettings.m_hWnd);
 		m_ctrlTab.GetItemRect( 0, &rect);
-		m_pdlgSettings->SetWindowPos( NULL, 0, rect.bottom, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_SHOWWINDOW);
+		m_dlgSettings.SetWindowPos( NULL, 0, rect.bottom, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_SHOWWINDOW);
 
-		m_pdlgPresets = new CPresetsDlg;
-		m_pdlgPresets->Create( m_hWnd, (LPARAM)m_pdlgSettings->m_hWnd); // pass the settings dialog to preset dialog for switching
-		m_ctrlTab.InsertItem( 1, TCIF_PARAM | TCIF_TEXT, _T("Presets"), -1, (DWORD)m_pdlgPresets->m_hWnd);
+		m_dlgPresets.Create( m_hWnd, (LPARAM)m_dlgSettings.m_hWnd); // pass the settings dialog to preset dialog for switching
+		m_ctrlTab.InsertItem( 1, TCIF_PARAM | TCIF_TEXT, _T("Presets"), -1, (DWORD)m_dlgPresets.m_hWnd);
 		m_ctrlTab.GetItemRect( 1, &rect);
-		m_pdlgPresets->SetWindowPos( NULL, 0, rect.bottom, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_HIDEWINDOW);
+		m_dlgPresets.SetWindowPos( NULL, 0, rect.bottom, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_HIDEWINDOW);
 
         m_ctrlTab.SetCurSel( 0);
 		SetWindowLongPtr( GWLP_USERDATA, 0);
@@ -90,23 +88,11 @@ public:
 
 	LRESULT OnDialogSave(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		// destroy all child windows
-		if ( m_pdlgSettings) {
-			if ( m_pdlgSettings->IsWindow()) {
-				m_pdlgSettings->SendMessage( WM_PN_DIALOGSAVE);
-				m_pdlgSettings->DestroyWindow();
-			}
-
-			delete m_pdlgSettings; m_pdlgSettings = NULL;
-		}
-		if ( m_pdlgPresets) {
-			if ( m_pdlgPresets->IsWindow()) {
-				m_pdlgPresets->SendMessage( WM_PN_DIALOGSAVE);
-				m_pdlgPresets->DestroyWindow();
-			}
-
-			delete m_pdlgPresets; m_pdlgPresets = NULL;
-		}
+		// notify all child windows
+		if ( m_dlgSettings.IsWindow())
+			m_dlgSettings.SendMessage( WM_PN_DIALOGSAVE);
+		if ( m_dlgPresets.IsWindow())
+			m_dlgPresets.SendMessage( WM_PN_DIALOGSAVE);
 
 		return TRUE;
 	}
@@ -118,7 +104,7 @@ private: // DDX Vars
 
 
 private: // Child dialog box
-	CSettingsDlg * m_pdlgSettings;
-	CPresetsDlg * m_pdlgPresets;
+	CSettingsDlg m_dlgSettings;
+	CPresetsDlg m_dlgPresets;
 };
 

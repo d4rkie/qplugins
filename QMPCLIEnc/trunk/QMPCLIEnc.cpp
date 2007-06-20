@@ -25,9 +25,12 @@
 #include "ParentDlg.h"
 #include "AboutDlg.h"
 
-HINSTANCE		hInstance = NULL;
-HWND			hwndParent;
+HINSTANCE		g_hInstance = NULL;
+HWND			g_hwndParent;
 QCDModInitEnc	QCDCallbacks;
+
+WCHAR g_szPluginDisplayStr[1024] = {0};
+WCHAR g_szPluginDisplayText[1024] = {0};
 
 CString		g_strPath;
 CString		g_strParameter;
@@ -41,7 +44,7 @@ CString		g_strEPFile;
 int	prefPageID;
 CString g_strSrc, g_strDst, g_strExt;
 
-CParentDlg * g_pdlgParent;
+CParentDlg * g_pdlgParent = NULL;
 
 INT_PTR CALLBACK PPPDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -51,7 +54,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH) {
 		DisableThreadLibraryCalls( hInst);
-		hInstance = hInst;
+		g_hInstance = hInst;
 	}
 	return TRUE;
 }
@@ -81,10 +84,10 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 {
 	WCHAR inifile[MAX_PATH] = {0};
 
-	modInfo->moduleString = (char *)(PLUGIN_FULL_NAME L" v" PLUGIN_VERSION);
-	modInfo->moduleExtensions = (char *)(PLUGIN_NAME);
+	modInfo->moduleString = (char*)g_szPluginDisplayStr;
+	modInfo->moduleExtensions = (char*)g_szPluginDisplayText;
 
-	hwndParent = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
+	g_hwndParent = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
 
 	// load settings
 	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
@@ -101,26 +104,33 @@ BOOL Initialize(QCDModInfo *modInfo, int flags)
 	g_bNoWAVHeader = GetPrivateProfileInt( PLUGIN_NAME, _T("NoWAVHeader"), 0, inifile);
 	g_bShowConsole = GetPrivateProfileInt( PLUGIN_NAME, _T("ShowConsole"), 0, inifile);
 
-	GetModuleFileName( hInstance, value, MAX_PATH);
+	GetModuleFileName( g_hInstance, value, MAX_PATH);
 	PathRemoveExtension( value); PathAddExtension( value, _T(".xml"));
 	GetPrivateProfileString( PLUGIN_NAME, _T("EPFile"), value, value, MAX_PATH, inifile);
 	g_strEPFile = value;
+
+	// load display name
+	ResInfo resInfo = { sizeof(ResInfo), g_hInstance, MAKEINTRESOURCE(IDS_DISPLAYNAME), 0, 0 };
+	QCDCallbacks.Service( opLoadResString, (void*)g_szPluginDisplayStr, (long)sizeof(g_szPluginDisplayStr), (long)&resInfo);
+	resInfo.resID = MAKEINTRESOURCE(IDS_DISPLAYEXT);
+	QCDCallbacks.Service( opLoadResString, (void*)g_szPluginDisplayText, (long)sizeof(g_szPluginDisplayText), (long)&resInfo);
 
 
 	// init config dialog
 	PluginPrefPage prefPage;
 	prefPage.struct_size = sizeof(PluginPrefPage);
-	prefPage.hModule = hInstance;
+	prefPage.hModule = g_hInstance;
 	prefPage.lpTemplate = MAKEINTRESOURCEW(IDD_PPP);
 	prefPage.lpDialogFunc = PPPDlgProc;
-	prefPage.lpDisplayText = L"CLI Encoder";
+	prefPage.lpDisplayText = g_szPluginDisplayText;
 	prefPage.nCategory = PREFPAGE_CATEGORY_ENCODEFORMAT;
 	prefPage.hModuleParent = NULL;
 	prefPage.groupID = 0;
 	prefPage.createParam = 0;
-	prefPage.hIcon = LoadIcon( hInstance, MAKEINTRESOURCEW(IDI_CLI));
+	prefPage.hIcon = LoadIcon( g_hInstance, MAKEINTRESOURCEW(IDI_CLI));
 	prefPageID = QCDCallbacks.Service( opSetPluginPage, &prefPage, 0, 0);
-	//DestroyIcon( prefPage.hIcon);
+	DestroyIcon( prefPage.hIcon);
+
 
 	// return TRUE for successful initialization
 	return TRUE;
@@ -201,7 +211,7 @@ BOOL Open(LPCSTR outFile, LPCSTR srcFile, WAVEFORMATEX *wf, LPSTR openedFilename
 	}
 
 	// Start CLI Encoder
-	g_cliEnc.Initialize(hwndParent, g_bNoWAVHeader, g_bShowConsole);
+	g_cliEnc.Initialize(g_hwndParent, g_bNoWAVHeader, g_bShowConsole);
 	if ( !g_cliEnc.Start(cmdline, g_strDst, wf))
 		return FALSE;
 
@@ -309,7 +319,7 @@ BOOL Complete(int flags)
 
 void Configure(int flags)
 {
-	QCDCallbacks.Service( opShowPluginPage, hInstance, prefPageID, 0);
+	QCDCallbacks.Service( opShowPluginPage, g_hInstance, prefPageID, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -334,23 +344,23 @@ INT_PTR CALLBACK PPPDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 				g_pdlgParent->Create( hwndDlg);
 			}
 
-			g_pdlgParent->ShowWindow( SW_SHOW);
-		}
+			if ( g_pdlgParent && g_pdlgParent->IsWindow())
+				g_pdlgParent->ShowWindow( SW_SHOW);
+		} return TRUE;
 
-		return TRUE;
 	case WM_PN_DIALOGSAVE:
 		{
-			if ( g_pdlgParent) {
-				if ( g_pdlgParent->IsWindow()) {
-					g_pdlgParent->SendMessage( WM_PN_DIALOGSAVE);
-					g_pdlgParent->DestroyWindow();
-				}
+			if ( g_pdlgParent && g_pdlgParent->IsWindow())
+				g_pdlgParent->SendMessage( WM_PN_DIALOGSAVE);
+		} return TRUE;
 
+	case WM_DESTROY:
+		{
+			if ( g_pdlgParent && g_pdlgParent->IsWindow()) {
+				g_pdlgParent->DestroyWindow();
 				delete g_pdlgParent; g_pdlgParent = NULL;
 			}
-		}
-
-		return TRUE;
+		} return TRUE;
 	}
 
 	return FALSE;

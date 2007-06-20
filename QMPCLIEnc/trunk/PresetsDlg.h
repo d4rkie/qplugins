@@ -34,7 +34,7 @@ public:
 	enum { IDD = IDD_PRESETS };
 
 	// Maps
-	BEGIN_MSG_MAP(CPresetsDlg)
+	BEGIN_MSG_MAP_EX(CPresetsDlg)
 		CHAIN_MSG_MAP(CToolTipDialog< CPresetsDlg >)
 		MSG_WM_INITDIALOG(OnInitDialog)
 		COMMAND_ID_HANDLER_EX(IDC_NEW, OnNew)
@@ -50,7 +50,7 @@ public:
 		NOTIFY_HANDLER_EX(IDC_EP_TREE, NM_DBLCLK, OnNMDBlck)
 		COMMAND_CODE_HANDLER_EX(EN_CHANGE, OnENChange)
 		REFLECT_NOTIFICATIONS()
-	END_MSG_MAP()
+	END_MSG_MAP_EX()
 
 	// DDX
 	BEGIN_DDX_MAP(CPresetsDlg)
@@ -63,13 +63,13 @@ public:
 	END_DDX_MAP()
 
 	// Message handlers
-	BOOL OnInitDialog(HWND hwndFocus, LPARAM lParam)
+	BOOL OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 	{
 		// DDX controls, Hook it.
 		DoDataExchange( FALSE);
 
 		// save the settings dialog box
-		m_hwndSettings = (HWND)lParam;
+		m_hwndSettings = (HWND)lInitParam;
 
 		// disable update/save button default
 		m_ctrlUpdate.EnableWindow( FALSE);

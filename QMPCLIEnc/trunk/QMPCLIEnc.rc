@@ -60,6 +60,8 @@ END
 STRINGTABLE 
 BEGIN
     IDC_EP_TREE             "Clicking the label of the item that has the focus \r\nor \r\nPressing ""F2"" key to edit lable.\r\n\r\nDouble click a preset item to load it."
+    IDS_DISPLAYNAME         "QPlugins Commandline Encoder v2.0"
+    IDS_DISPLAYEXT          "CLI Encoder"
     IDC_PAR                 """-"": Stdin for most pipeline encoders.\r\n""%d"": Output file determined by player.\r\n\r\n""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
 END
 
@@ -166,13 +168,11 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,84,92,50,14
-    CTEXT           "Last modified June 2007",IDC_STATIC,61,63,78,8
+    CTEXT           "Version 2.0\r\nLast modified June 2007",IDC_STATIC,47,54,126,16
     CTEXT           "Ability to write audio data to various media formats with command line encoders.",IDC_STATIC,24,22,172,26
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,77,65,8
     LTEXT           "QPlugins",IDC_URL_VENDOR,129,77,33,8
-    LTEXT           "Version",IDC_STATIC,87,54,24,8
-    LTEXT           "",IDC_PLUGIN_VERSION,115,54,17,8
 END
 
 

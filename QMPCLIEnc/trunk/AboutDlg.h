@@ -12,18 +12,16 @@ class CAboutDlg : public CDialogImpl<CAboutDlg>
 public:
 	enum { IDD = IDD_ABOUT };
 
-	BEGIN_MSG_MAP(CAboutDlg)
-		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+	BEGIN_MSG_MAP_EX(CAboutDlg)
+		MSG_WM_INITDIALOG(OnInitDialog)
 		//MESSAGE_HANDLER(WM_CLOSE, OnCloseCmd)
-		COMMAND_ID_HANDLER(IDOK, OnCloseCmd)
-		COMMAND_ID_HANDLER(IDCANCEL, OnCloseCmd)
-	END_MSG_MAP()
+		COMMAND_ID_HANDLER_EX(IDOK, OnCloseCmd)
+		COMMAND_ID_HANDLER_EX(IDCANCEL, OnCloseCmd)
+	END_MSG_MAP_EX()
 
-	LRESULT OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+	BOOL OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 	{
 		CenterWindow( GetParent());
-
-		SetDlgItemText( IDC_PLUGIN_VERSION, PLUGIN_VERSION);
 
 		m_ctlURLVendor.SubclassWindow( GetDlgItem( IDC_URL_VENDOR));
 		m_ctlURLVendor.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);
@@ -32,10 +30,9 @@ public:
 		return TRUE;
 	}
 
-	LRESULT OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+	void OnCloseCmd(UINT uNotifyCode, int nID, CWindow wndCtl)
 	{
-		EndDialog(wID);
-		return 0;
+		EndDialog( nID);
 	}
 
 private:

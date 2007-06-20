@@ -41,5 +41,7 @@
 #include <atluser.h>
 #include <atlddx.h>
 
+#define END_MSG_MAP_EX END_MSG_MAP
+
 #include "resource.h" // resource
 
