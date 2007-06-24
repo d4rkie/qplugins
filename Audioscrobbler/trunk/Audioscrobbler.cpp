@@ -1,11 +1,4 @@
 #include "Precompiled.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-
-#include "tinyxml\tinyxml.h"
-
-#include "md5.h"
 
 #include "AudioscrobblerDLL.h"
 #include "Audioscrobbler.h"
@@ -13,9 +6,21 @@
 //-----------------------------------------------------------------------------
 
 static const LPCSTR AS_HANDSHAKE_URL = "http://post.audioscrobbler.com:80/";
-static const LPCSTR AS_CLIENT_ID     = "tst";
-static const LPCSTR AS_CLIENT_VER    = "1.0";
+static const LPCSTR AS_CLIENT_ID     = "qcd";
+static const LPCSTR AS_CLIENT_VER    = "2.0"; // old plug-in used 1.5 in latest version
+//static const LPCSTR AS_CLIENT_ID     = "tst";
+//static const LPCSTR AS_CLIENT_VER    = "1.0";
 static const LPCSTR AS_PROTOCOL_VER  = "1.2";
+
+//-----------------------------------------------------------------------------
+
+enum AS_SENDSTATE {
+	AS_HANDSHAKE,
+	AS_NOWPLAYING,
+	AS_SENDQUEUE
+};
+
+//-----------------------------------------------------------------------------
 
 BOOL      g_bCanTryConnect      = TRUE;
 BOOL      g_bHandShakeSucces    = FALSE;
@@ -26,8 +31,10 @@ BOOL      g_bIsPaused           = FALSE;
 INT       g_nHardFailureCount   = 0;
 UINT      g_nLastSubmitCount    = 0;
 UINT_PTR  g_nReconnectTimer     = 0;
-time_t    g_nSongStartTime      = 0;
 
+time_t    g_nSongStartTime      = 0;
+time_t    g_nPausedTime         = 0;
+time_t    g_nPauseTimestamp     = 0;
 
 CURL* g_curl = NULL;
 char g_szErrorBuffer[CURL_ERROR_SIZE] = {0};
@@ -36,25 +43,27 @@ std::string	g_strSessionID;
 std::string g_strSubmissionURL;
 std::string g_strNowPlayingURL;
 
+std::deque<CAudioInfo*> g_AIQueue; // AudioInfoQueue
+
 //-----------------------------------------------------------------------------
 
 BOOL AS_Initialize();
 void AS_CleanUp();
 
+void AS_AddPendingSongToQueue();
+
 void AS_LoadQueue();
 void AS_SaveQueue();
+void AS_GetCacheString(CAudioInfo* ai, std::string* str);
 
+size_t AS_DataReceived(void* ptr, size_t size, size_t nmemb, void* stream);
 void AS_Handshake();
 void AS_SendNowPlaying(CAudioInfo* ai);
 void AS_SendQueue();
 
-size_t AS_DataReceived(void* ptr, size_t size, size_t nmemb, void* stream);
-
 void AS_HandleHardFailure();
 void AS_TryReHandshake();
 void AS_SettingsChanged();
-
-void AS_GetCacheString(CAudioInfo* ai, std::string* str);
 
 //-----------------------------------------------------------------------------
 
@@ -88,20 +97,21 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 			case AS_MSG_PLAY_STARTED :
 			{
 				g_bIsPaused = FALSE;
+				g_nPausedTime = 0;
 
-				EnterCriticalSection(&g_csAIQueue);
+				EnterCriticalSection(&g_csAIPending);
 				if (g_pAIPending)
 				{
 					CAudioInfo ai(g_pAIPending);
-					LeaveCriticalSection(&g_csAIQueue);
+					LeaveCriticalSection(&g_csAIPending);
 
 					// Might take a long time to complete, so make sure to hold no objects
 					AS_SendNowPlaying(&ai);
 					
 					// Update song start time, but don't submit songs shorter than 30 sec.
-					EnterCriticalSection(&g_csAIQueue);
+					EnterCriticalSection(&g_csAIPending);
 					if (!g_pAIPending)
-						log->OutputInfo(E_FATAL, _T("g_AIPending is null in AS_MSG_PLAY_STARTED.\nPlease report to the author"));
+						log->OutputInfo(E_DEBUG, _T("g_AIPending is null in AS_MSG_PLAY_STARTED.\nPlease report to the author"));
 
 					INT nTrackLength = g_pAIPending->GetTrackLength();
 					if (nTrackLength < 30) {
@@ -111,56 +121,23 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 					}
 					else
 						time(&g_nSongStartTime);
-					LeaveCriticalSection(&g_csAIQueue);
+					LeaveCriticalSection(&g_csAIPending);
 				}
 				else
-					LeaveCriticalSection(&g_csAIQueue);
+					LeaveCriticalSection(&g_csAIPending);
 
 				break;
 			}
+
 			case AS_MSG_PLAY_DONE :
-				break;
-			
 			case AS_MSG_TRACK_CHANGED :
 			case AS_MSG_PLAY_STOPPED :
 			{
 				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED: Start"));
 
-				// Add our pending track to send queue
-				EnterCriticalSection(&g_csAIQueue);
-				if (g_pAIPending)
-				{
-					INT nTrackLength = g_pAIPending->GetTrackLength();
-					if (nTrackLength <= 0)
-						delete g_pAIPending; // Is set null below
-					else
-					{
-						// Check if song should be added to queue
-						time_t nTimePlayed = 0, nTime = 0;
-						time(&nTime);
-						nTimePlayed = nTime - g_nSongStartTime;
+				AS_AddPendingSongToQueue();
 
-						// Add song if 50% played or 240 sec. whichever comes first
-						if (nTrackLength/2 > 240)
-							nTrackLength = 240;
-
-						if (nTimePlayed >= 240 || nTimePlayed >= nTrackLength/2) {
-							log->OutputInfoA(E_DEBUG, "Added: %s / %s to queue", g_pAIPending->GetArtist(), g_pAIPending->GetTitle());
-							g_AIQueue.push_back(g_pAIPending);
-						}
-						else
-							delete g_pAIPending;
-					}		
-
-					g_pAIPending = NULL;
-
-					log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED: Finished updating queue"));
-				} // if (g_pAIPending)
-				
-				LeaveCriticalSection(&g_csAIQueue);
-
-				// Send queued items. We only do this once for each pending song,
-				// so we dont enter SendQueue more than once
+				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED: Queue size = %d"), g_AIQueue.size());
 				if (g_AIQueue.size() > 0)
 					AS_SendQueue();
 			
@@ -170,12 +147,17 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 			case AS_MSG_PLAY_PAUSED :
 				if (g_bIsPaused)
 				{
-					 g_bIsPaused = FALSE; // resumed
+					g_bIsPaused = FALSE; // resumed
+					time_t nTime = 0;
+					time(&nTime);
+					g_nPausedTime = nTime - g_nPauseTimestamp;
+					if (g_nPausedTime < 0)
+						g_nPausedTime = 0;
 				}
 				else
 				{
 					g_bIsPaused = TRUE;
-
+					time(&g_nPauseTimestamp);
 				}
 				break;
 
@@ -200,7 +182,7 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 	log->OutputInfo(E_DEBUG, _T("AS_Main : Ending"));
 	AS_CleanUp();
 
-	// Save AIQueue
+	AS_AddPendingSongToQueue();
 	AS_SaveQueue();
 
 	// Clean AIQueue
@@ -229,7 +211,6 @@ BOOL AS_Initialize()
 	curl_easy_setopt(g_curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 	curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, &AS_DataReceived);
 
-
 	g_bCanTryConnect = TRUE;
 	g_nHardFailureCount = 0;
 	
@@ -249,7 +230,6 @@ void AS_CleanUp()
 void AS_LoadQueue()
 {
 	log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : Start"));
-	EnterCriticalSection(&g_csAIQueue);
 
 	WCHAR szCacheFile[MAX_PATH] = {0};
 	QMPCallbacks.Service(opGetSettingsFolder, szCacheFile, MAX_PATH*sizeof(WCHAR), 0);
@@ -258,7 +238,7 @@ void AS_LoadQueue()
 
 	TiXmlDocument xmlDocCache(strCacheFile.GetMultiByte());
 	if (!xmlDocCache.LoadFile())
-		log->OutputInfoA(E_DEBUG, "AS_LoadQueue : Failed to read cache file\n\t%s", xmlDocCache.ErrorDesc());
+		log->OutputInfoA(E_DEBUG, "AS_LoadQueue : Failed to read cache file - %s", xmlDocCache.ErrorDesc());
 	else
 	{
 		TiXmlBase::SetCondenseWhiteSpace(false);
@@ -311,15 +291,15 @@ void AS_LoadQueue()
 		// Clean the cache file
 		log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : Erasing cache file"));
 		FILE* pFile = NULL;
-		if (_tfopen_s(&pFile, _T("Audioscrobbler.cache"), _T("w"))) {
+		if (_tfopen_s(&pFile, strCacheFile, _T("w"))) {
 			errno_t err;
 			_get_errno(&err);
 			log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : Failed to open cache file for writing. Error nr: %d"), err);
 		}
+		fclose(pFile);
 	}
 
 cleanup:
-	LeaveCriticalSection(&g_csAIQueue);
 	log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : End"));
 }
 
@@ -328,7 +308,6 @@ cleanup:
 void AS_SaveQueue()
 {
 	log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : Start"));
-	EnterCriticalSection(&g_csAIQueue);
 	
 	if (g_AIQueue.size() > 0)
 	{
@@ -341,9 +320,11 @@ void AS_SaveQueue()
 		wcscat_s(szCacheFile, MAX_PATH, L"\\Audioscrobbler.cache");
 
 		if (_tfopen_s(&pFile, szCacheFile, _T("w"))) {
-			errno_t err;
-			_get_errno(&err);
-			log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : Failed to open cache file for writing. Error nr: %d"), err);
+			int nErr = 0;
+			WCHAR strError[256];
+			_get_errno(&nErr);
+			_wcserror_s(strError, 256, nErr);
+			log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : Failed to open cache file for writing. Error nr: %d\n\t%s\n"), nErr, strError);
 			goto cleanup;
 		}
 
@@ -354,7 +335,6 @@ void AS_SaveQueue()
 		str.clear();
 
 		// Loop through the queue and add songs
-		
 		for (UINT i = 0; i < g_AIQueue.size(); i++)
 		{
 			str = "\t<Entry>\n";
@@ -375,8 +355,51 @@ void AS_SaveQueue()
 		log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : Queue size = 0"));
 
 cleanup:
-	LeaveCriticalSection(&g_csAIQueue);
 	log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : End"));
+}
+
+//-----------------------------------------------------------------------------
+
+void AS_AddPendingSongToQueue()
+{
+	EnterCriticalSection(&g_csAIPending);
+	if (g_pAIPending)
+	{
+		INT nTrackLength = g_pAIPending->GetTrackLength();
+		if (nTrackLength <= 0)
+			delete g_pAIPending; // Is set null below
+		else
+		{
+			// Check if song should be added to queue
+			time_t nTimePlayed = 0, nTime = 0;
+			time(&nTime);
+
+			if (g_bIsPaused) {
+				g_bIsPaused = FALSE;
+				g_nPausedTime = nTime - g_nPauseTimestamp;
+				if (g_nPausedTime < 0)
+					g_nPausedTime = 0;
+			}
+
+			nTimePlayed = nTime - g_nSongStartTime - g_nPausedTime;
+
+			// Add song if 50% played or 240 sec. whichever comes first
+			if (nTrackLength/2 > 240)
+				nTrackLength = 240;
+
+			if (nTimePlayed >= 240 || nTimePlayed >= nTrackLength/2) {
+				log->OutputInfoA(E_DEBUG, "Added: %s / %s to queue", g_pAIPending->GetArtist(), g_pAIPending->GetTitle());
+				g_AIQueue.push_back(g_pAIPending);
+			}
+			else
+				delete g_pAIPending;
+		}		
+		g_pAIPending = NULL;
+
+		log->OutputInfo(E_DEBUG, _T("Finished updating queue"));
+	} // if (g_pAIPending)
+	
+	LeaveCriticalSection(&g_csAIPending);
 }
 
 //-----------------------------------------------------------------------------
@@ -465,10 +488,8 @@ void AS_HandleSendQueueData(std::vector<std::string>* strLines)
 	{
 		log->OutputInfo(E_DEBUG, _T("Submission accepted by server."));
 		// Delete all the songs submitted from the queue
-		EnterCriticalSection(&g_csAIQueue);
 		for (UINT i = 0; i < g_nLastSubmitCount; i++)
 			g_AIQueue.pop_front();
-		LeaveCriticalSection(&g_csAIQueue);
 	}
 	else if (strLines->at(0).compare("BADSESSION") == 0)
 	{
@@ -531,7 +552,7 @@ size_t AS_DataReceived(void* ptr, size_t size, size_t nmemb, void* stream)
 
 	// Cleanup and return size of processed data
 	delete [] str;
-	strLines.clear();
+	// strLines.clear();
 	
 	return nmemb*size;
 }
@@ -630,7 +651,7 @@ void AS_SendNowPlaying(CAudioInfo* ai)
 	// ?s=!<sessionID>&a=!<artist>&t=!<track>b=*<album>&l=*<secs>&n=*<tracknumber>&m=*<mb-trackid>
 
 	// Create the post string
-	char strBuffer[1024] = {0};
+	char strBuffer[2048] = {0};
 	
 	char* szArtist = curl_easy_escape(g_curl, ai->GetArtist(), 0);
 	char* szTitle  = curl_easy_escape(g_curl, ai->GetTitle(), 0);
@@ -660,8 +681,10 @@ void AS_SendNowPlaying(CAudioInfo* ai)
 
 	// Perform the request
 	CURLcode nResult = curl_easy_perform(g_curl);
-	if (nResult != 0)
+	if (nResult != 0) {
 		log->OutputInfoA(E_DEBUG, "AS_SendNowPlaying: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
+		AS_HandleHardFailure();
+	}
 	else
 		log->OutputInfo(E_DEBUG, _T("AS_SendNowPlaying: Perform success\n"));
 }
@@ -689,18 +712,18 @@ void AS_SendQueue()
 
 	// Create song submit list
 	log->DirectOutputInfoA(E_DEBUG, "AS_SendQueue: Building queue information:");
+	const static int CACHE_SIZE = 2048;
 	char strI[4] = {0};
-	char* strCache = new char[4192];
+	char* strCache = new char[CACHE_SIZE];
 	std::string strSongs;
 
 	strSongs.assign("s=").append(g_strSessionID);
 	log->DirectOutputInfoA(E_DEBUG, strSongs.c_str());
 
-	EnterCriticalSection(&g_csAIQueue);
 	for (g_nLastSubmitCount = 0; g_nLastSubmitCount < g_AIQueue.size() && g_nLastSubmitCount < 50; g_nLastSubmitCount++)
 	{
 		strI[0] = NULL;
-		ZeroMemory(strCache, 2048);		
+		ZeroMemory(strCache, CACHE_SIZE);		
 		CAudioInfo* ai = g_AIQueue.at(g_nLastSubmitCount);
 		
 		_itoa_s(g_nLastSubmitCount, strI, sizeof(strI), 10);
@@ -729,7 +752,7 @@ void AS_SendQueue()
 		strSongs.append(strCache);
 		log->DirectOutputInfoA(E_DEBUG, strCache);
 	}
-	LeaveCriticalSection(&g_csAIQueue);
+
 	delete [] strCache;
 
 	
@@ -744,8 +767,10 @@ void AS_SendQueue()
 
 	// Perform the request
 	CURLcode nResult = curl_easy_perform(g_curl);
-	if (nResult != 0)
+	if (nResult != 0) {
 		log->OutputInfoA(E_DEBUG, "AS_SendQueue: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
+		AS_HandleHardFailure();
+	}
 	else {
 		log->OutputInfo(E_DEBUG, _T("AS_SendQueue: Perform success"));
 	}
@@ -761,6 +786,7 @@ void AS_HandleHardFailure()
 		log->OutputInfo(E_DEBUG, _T("3 hard failures. Client must handshake again!"));
 		
 		g_bMustHandshake = TRUE;
+		g_bCanTryConnect = TRUE;
 		g_strSessionID = "";
 		g_strSubmissionURL = "";
 		g_strNowPlayingURL = "";
@@ -789,7 +815,7 @@ void AS_TryReHandshake()
 {
 	static int nMinutes = 1;
 
-	g_nReconnectTimer = SetTimer(NULL, NULL, nMinutes * 1000, AS_cbSendQueue);
+	g_nReconnectTimer = SetTimer(NULL, NULL, nMinutes * 60 * 1000, AS_cbSendQueue);
 	
 	// Set minutes
 	if (nMinutes >= 120)

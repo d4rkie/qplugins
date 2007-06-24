@@ -1,5 +1,5 @@
-#ifndef __AUDIOSCROBBLER_H_
-#define __AUDIOSCROBBLER_H_
+#ifndef AUDIOSCROBBLER_H_
+#define AUDIOSCROBBLER_H_
 
 #if _MSC_VER > 1000
 #pragma once
@@ -16,13 +16,6 @@ enum AS_APM_COMMANDS {
 	AS_MSG_SETTINGS_CHANGED,
 };
 
-enum AS_SENDSTATE {
-	AS_HANDSHAKE,
-	AS_NOWPLAYING,
-	AS_SENDQUEUE
-};
-
-VOID CALLBACK AS_APCProc(ULONG_PTR dwParam);
 DWORD WINAPI AS_Main(LPVOID lpParameter);
 
 
@@ -67,4 +60,4 @@ public:
 //-----------------------------------------------------------------------------
 
 
-#endif // __AUDIOSCROBBLER_H_
+#endif // AUDIOSCROBBLER_H_

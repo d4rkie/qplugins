@@ -1,13 +1,9 @@
 #ifndef __AudioscrobblerDLL_H
 #define __AudioscrobblerDLL_H
 
-#include "curl\include\curl\curl.h"
 #include <QString.h>
-
-#include <QCDCtrlMsgs.h>
 #include <QCDModDefs.h>
 #include <QCDModGeneral2.h>
-
 #include "Log.h"
 #include "AudioInfo.h"
 
@@ -30,12 +26,10 @@ extern CLog*          log;
 
 extern HANDLE            g_hASThreadEndedEvent;
 extern ULONG             g_nASThreadId;
-extern CRITICAL_SECTION  g_csAIQueue;
+extern CRITICAL_SECTION  g_csAIPending;
 extern BOOL              g_bIsClosing;
 
 extern CAudioInfo* g_pAIPending;
-extern std::deque<CAudioInfo*> g_AIQueue;
-
 
 //-----------------------------------------------------------------------------
 // Calls from the Player

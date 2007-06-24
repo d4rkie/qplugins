@@ -48,7 +48,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/D &quot;CURL_STATICLIB&quot; /D &quot;TINYXML_USE_STL&quot;"
 				Optimization="0"
-				AdditionalIncludeDirectories=".\tinyxml\"
+				AdditionalIncludeDirectories=".;.\tinyxml\"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;QCDGENERAL_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -124,6 +124,7 @@
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="1"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -148,14 +149,15 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="/D &quot;CURL_STATICLIB&quot;"
-				Optimization="2"
+				AdditionalOptions="/D &quot;CURL_STATICLIB&quot; /D &quot;TINYXML_USE_STL&quot;"
+				Optimization="3"
 				InlineFunctionExpansion="1"
+				AdditionalIncludeDirectories=".;.\tinyxml\"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;QCDGENERAL_EXPORTS"
 				StringPooling="true"
 				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="2"
+				EnableFunctionLevelLinking="false"
+				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough="Precompiled.h"
 				PrecompiledHeaderFile=".\Release/Audioscrobbler.pch"
 				AssemblerListingLocation=".\Release/"
@@ -163,6 +165,7 @@
 				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
+				DebugInformationFormat="3"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -177,12 +180,14 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="winmm.lib ws2_32.lib curl/lib/Release/curllib.lib"
+				AdditionalDependencies="Ws2_32.lib Winmm.lib curl/lib/Release/curllib.lib"
 				OutputFile="$(QMPPATH)\Plugins\Audioscrobbler.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(QMPPATH)\Plugins\Audioscrobbler.pdb"
+				OptimizeForWindows98="0"
+				BaseAddress="0x30080000"
 				ImportLibrary=".\Release/Audioscrobbler.lib"
 				TargetMachine="1"
 			/>
@@ -221,10 +226,6 @@
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
-			<File
-				RelativePath=".\About.cpp"
-				>
-			</File>
 			<File
 				RelativePath=".\AudioInfo.cpp"
 				>
@@ -295,10 +296,6 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
-				RelativePath=".\About.h"
-				>
-			</File>
-			<File
 				RelativePath=".\AudioInfo.h"
 				>
 			</File>
@@ -320,18 +317,6 @@
 			</File>
 			<File
 				RelativePath=".\Precompiled.h"
-				>
-			</File>
-			<File
-				RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
-				>
-			</File>
-			<File
-				RelativePath="..\qmppdk\Include\QCDModDefs.h"
-				>
-			</File>
-			<File
-				RelativePath="..\qmppdk\Include\QCDModGeneral2.h"
 				>
 			</File>
 			<File
@@ -363,6 +348,26 @@
 				</File>
 				<File
 					RelativePath=".\tinyxml\tinyxml.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="QMP"
+				>
+				<File
+					RelativePath="..\qmppdk\Include\IQCDTagInfo.h"
+					>
+				</File>
+				<File
+					RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
+					>
+				</File>
+				<File
+					RelativePath="..\qmppdk\Include\QCDModDefs.h"
+					>
+				</File>
+				<File
+					RelativePath="..\qmppdk\Include\QCDModGeneral2.h"
 					>
 				</File>
 			</Filter>

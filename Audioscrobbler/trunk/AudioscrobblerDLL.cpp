@@ -1,24 +1,24 @@
 //-----------------------------------------------------------------------------
 //
-// File:	Audioscrobbler.cpp
+// File:	AudioscrobblerDLL.cpp
 //
 // Authors:	Toke Noer (toke@noer.it)
 //	Copyright (C) 2007
 //
 //-----------------------------------------------------------------------------
 // TODO
+//   Handle stream titles - InfoChanged
 //   Proxy connection
-//   Handle pause and next/prev track
 //-----------------------------------------------------------------------------
 
 #include "Precompiled.h"
 
-#define PLUGIN_NAME L"Audioscrobbler v0.1.3"
+#define PLUGIN_NAME L"Audioscrobbler v0.1.4"
 
 // Project includes
-#include "ThreadTools.h"
+//#include "ThreadTools.h"
 #include "PlayerControl.h"
-#include "About.h"
+//#include "About.h"
 #include "Config.h"
 #include "AudioscrobblerDLL.h"
 
@@ -37,11 +37,10 @@ CLog*           log;
 HANDLE            g_hASThread            = NULL;
 HANDLE            g_hASThreadEndedEvent  = NULL;
 ULONG             g_nASThreadId          = 0;
-CRITICAL_SECTION  g_csAIQueue;
+CRITICAL_SECTION  g_csAIPending;
 BOOL              g_bIsClosing           = FALSE;
 
 CAudioInfo* g_pAIPending = NULL;
-std::deque<CAudioInfo*> g_AIQueue; // AudioInfoQueue
 
 //-----------------------------------------------------------------------------
 
@@ -77,6 +76,13 @@ int Initialize(QCDModInfo *modInfo, int flags)
 {
 	modInfo->moduleString = (char*)PLUGIN_NAME;
 
+	// Check QMP version (b117+)
+	if (QMPCallbacks.Service(opGetPlayerVersion, NULL, 1, 0) < 117) {
+		MessageBox(0, L"The latest beta builds of Quintessential Media Player\nis needed to run this Audioscrobbler plug-in.\n\nAt least build 117 required!",
+			L"QMP:Audioscrobbler initialization error", MB_ICONSTOP);
+		return FALSE;
+	}
+
 	// Initialization
 	_tzset();
 
@@ -103,7 +109,7 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	}
 	
 	// Start curl thread
-	InitializeCriticalSection(&g_csAIQueue);
+	InitializeCriticalSection(&g_csAIPending);
 	g_hASThreadEndedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	g_hASThread = CreateThread(NULL, 0, AS_Main, NULL, 0, &g_nASThreadId);
 	if (!g_hASThread)
@@ -126,13 +132,13 @@ void ShutDown(int flags)
 	// Close curl thread
 	g_bIsClosing = TRUE;
 	PostThreadMessage(g_nASThreadId, WM_QUIT, 0, 0);
-	QMPCallbacks.Service(opSetStatusMessage, (void*)L"Shutting down Audioscrobbler...", TEXT_HOLD | TEXT_UNICODE, 0);	
 	Sleep(0);
 	if (WaitForSingleObject(g_hASThreadEndedEvent, 40000) == WAIT_TIMEOUT)
 		TerminateThread(g_hASThread, -1);
+
 	CloseHandle(g_hASThread);
 	CloseHandle(g_hASThreadEndedEvent);
-	DeleteCriticalSection(&g_csAIQueue);
+	DeleteCriticalSection(&g_csAIPending);
 	
 	SaveSettings();
 
@@ -151,7 +157,7 @@ void Configure(int flags)
 
 void About(int flags)
 {
-	CreateAboutDlg(g_hInstance, g_hwndPlayer);
+	// CreateAboutDlg(g_hInstance, g_hwndPlayer);
 }
 
 //-----------------------------------------------------------------------------
@@ -166,6 +172,7 @@ LRESULT CALLBACK QMPSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 		case WM_PN_PLAYDONE :
 			PlayDone();
+			break;
 
 		case WM_PN_PLAYSTOPPED :
 			PlayStopped();
@@ -177,6 +184,12 @@ LRESULT CALLBACK QMPSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		
 		case WM_PN_TRACKCHANGED :
 			TrackChanged();
+			break;
+
+		case WM_PN_INFOCHANGED :
+			if (lparam <= 'Z')
+				break;
+			InfoChanged((LPCSTR)lparam);
 			break;
 
 	} // Switch

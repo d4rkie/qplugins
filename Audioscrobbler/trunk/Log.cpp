@@ -30,7 +30,7 @@ CLog::~CLog()
 void CLog::OutputInfoA(MsgType type, const char* str, ...)
 {
 #ifndef _DEBUG
-	if (type == E_DEBUG && logMode == LOG_NONE)
+	if (type == E_DEBUG && m_logMode == LOG_NONE)
 		return;
 #endif
 
@@ -81,11 +81,11 @@ void CLog::OutputInfoA(MsgType type, const char* str, ...)
 void CLog::OutputInfoW(MsgType type, const wchar_t* str, ...)
 {
 #ifndef _DEBUG
-	if (type == E_DEBUG && logMode == LOG_NONE)
+	if (type == E_DEBUG && m_logMode == LOG_NONE)
 		return;
 #endif
 
-	const static size_t STR_CHARS = 512;
+	const static size_t STR_CHARS = 2048;
 	const static size_t STR_PRE = 16;
 	
 	wchar_t strLog[STR_CHARS] = {0};
@@ -137,7 +137,7 @@ void CLog::OutputInfoW(MsgType type, const wchar_t* str, ...)
 void CLog::DirectOutputInfoA(MsgType type, const char* str)
 {
 #ifndef _DEBUG
-	if (type == E_DEBUG && logMode == LOG_NONE)
+	if (type == E_DEBUG && m_logMode == LOG_NONE)
 		return;
 #endif
 	
@@ -149,10 +149,11 @@ void CLog::DirectOutputInfoA(MsgType type, const char* str)
 
 		case E_DEBUG :
 		{
+			const static size_t STR_CHARS = 2048;
 			const static size_t STR_PRE = 16;
-			char strLog[512] = {0};
-			strcpy_s(strLog+STR_PRE, 512-STR_PRE, str);
-			strcat_s(strLog+STR_PRE, 512-STR_PRE, "\n");
+			char strLog[STR_CHARS] = {0};
+			strcpy_s(strLog+STR_PRE, STR_CHARS-STR_PRE, str);
+			strcat_s(strLog+STR_PRE, STR_CHARS-STR_PRE, "\n");
 
 			if (m_logMode == LOG_FILE)
 			{

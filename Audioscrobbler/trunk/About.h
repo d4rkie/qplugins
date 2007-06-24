@@ -1,5 +1,5 @@
-#if !defined(AUDIOSCROBBLER_ABOUT_H)
-#define AUDIOSCROBBLER_ABOUT_H
+#if !defined(AUDIOSCROBBLER_ABOUT_H_)
+#define AUDIOSCROBBLER_ABOUT_H_
 
 #if _MSC_VER > 1000
 #pragma once
@@ -14,4 +14,4 @@ BOOL CALLBACK AboutDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 //////////////////////////////////////////////////////////////////////
 
-#endif // !defined(AUDIOSCROBBLER_ABOUT_H)
+#endif // !defined(AUDIOSCROBBLER_ABOUT_H_)

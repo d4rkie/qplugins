@@ -1,7 +1,8 @@
-#pragma once
+#if !defined(AUDIOINFO_H)
+#define AUDIOINFO_H
 
-#include <TCHAR.h>
-#include <Windows.h>
+//#include <TCHAR.h>
+//#include <Windows.h>
 
 class CAudioInfo
 {
@@ -25,20 +26,28 @@ public:
 	void    GetCacheString(char** pStr, DWORD* nChars);
 
 	void   SetArtist(LPCSTR str);
+	void   SetArtist(LPCWSTR str);
 	void   SetTitle(LPCSTR str);
+	void   SetTitle(LPCWSTR str);
+	void   SetAlbum(LPCSTR str);
+	void   SetAlbum(LPCWSTR str);
+	void   SetTrackNumber(INT nTrack);
+	void   SetTrackNumber(LPCSTR str);
+	void   SetTrackNumber(LPCWSTR str);
+	void   SetMusicBrainTrackId(LPCSTR str);
+	void   SetMusicBrainTrackId(LPCWSTR str);
+
 	void   SetStartTime();
 	void   SetStartTime(LPCSTR str);
 	void   SetSource(LPCSTR str);
 	void   SetRating(LPCSTR str);
 	void   SetTrackLength(INT nLength);
 	void   SetTrackLength(LPCSTR str);
-	void   SetAlbum(LPCSTR str);
-	void   SetTrackNumber(INT nTrack);
-	void   SetTrackNumber(LPCSTR str);
-	void   SetMusicBrainTrackId(LPCSTR str);
+
 
 private:
 	void SetString(char** strDest, size_t nLen, LPCSTR strSrc);
+	void SetStringW(char** strDest, size_t nLen, LPCWSTR strSrc);
 
 	bool CAudioInfo::IsLegalNumber(char *str);
 
@@ -55,3 +64,6 @@ private:
 
 	char  m_szStartTime[32]; // Unix timestamp, UTC timezone
 };
+
+
+#endif // !defined(AUDIOINFO_H)

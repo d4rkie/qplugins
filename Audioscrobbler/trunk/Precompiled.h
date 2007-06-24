@@ -1,10 +1,5 @@
-// stdafx.h : include file for standard system include files,
-//  or project specific include files that are used frequently, but
-//      are changed infrequently
-//
-
-#if !defined(AFX_STDAFX_H__A50A1F73_40DD_4C87_8A43_36392ED903A3__INCLUDED_)
-#define AFX_STDAFX_H__A50A1F73_40DD_4C87_8A43_36392ED903A3__INCLUDED_
+#if !defined(AS_PRECOMPILED_HEADER_)
+#define AS_PRECOMPILED_HEADER_
 
 #if _MSC_VER > 1000
 #pragma once
@@ -17,9 +12,25 @@
 #include <TCHAR.h>
 #include <Windows.h>
 #include <time.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+#include <vector>
 #include <deque>
+
+#define TIXML_USE_STL
+#include "tinyxml\tinyxml.h"
 
 #include <QString.h>
 #include "Log.h"
 
-#endif // !defined(AFX_STDAFX_H__A50A1F73_40DD_4C87_8A43_36392ED903A3__INCLUDED_)
+#include "md5.h"
+#include "curl\include\curl\curl.h"
+
+#include <QCDCtrlMsgs.h>
+#include <QCDModDefs.h>
+#include <QCDModGeneral2.h>
+#include <IQCDMediaInfo.h>
+#include <IQCDTagInfo.h>
+
+
+#endif // !defined(AS_PRECOMPILED_HEADER_)

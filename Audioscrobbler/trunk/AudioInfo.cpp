@@ -19,6 +19,9 @@ CAudioInfo::CAudioInfo(void)
 {
 	m_strEmpty[0] = NULL; m_strEmpty[1] = NULL;
 	m_szSource[0] = _T('U'); m_szSource[1] = NULL;
+	m_szRating[0] = NULL; m_szRating[1] = NULL;
+
+	ZeroMemory(m_szStartTime, sizeof(m_szStartTime)); 
 
 	m_strArtist = m_strEmpty;
 	m_strTitle = m_strEmpty;
@@ -30,6 +33,9 @@ CAudioInfo::CAudioInfo(CAudioInfo* ai)
 {
 	m_strEmpty[0] = NULL; m_strEmpty[1] = NULL;
 	m_szSource[0] = _T('U'); m_szSource[1] = NULL;
+	m_szRating[0] = NULL; m_szRating[1] = NULL;
+
+	ZeroMemory(m_szStartTime, sizeof(m_szStartTime)); 
 
 	m_strArtist = m_strEmpty;
 	m_strTitle = m_strEmpty;
@@ -133,6 +139,28 @@ void CAudioInfo::SetString(char** strDest, size_t nLen, LPCSTR strSrc)
 	strcpy_s(*strDest, nLen + 1, strSrc);
 }
 
+void CAudioInfo::SetStringW(char** strDest, size_t nLen, LPCWSTR strSrc)
+{
+	char szTmp[512] = {0};
+
+	// Test if szTmp is large enough. If not then we allocate enough storage
+	if ( !WideCharToMultiByte(CP_UTF8, 0, strSrc, nLen, szTmp, sizeof(szTmp), NULL, NULL) )
+	{
+		if ( GetLastError() != ERROR_INSUFFICIENT_BUFFER ) {
+			SetString(strDest, -1, "");
+			return;
+		}
+		// Allocate enough space and SetString()
+		int nSize = WideCharToMultiByte(CP_UTF8, 0, strSrc, nLen, NULL, 0, NULL, NULL);
+		char* pStr = new char[nSize];
+		WideCharToMultiByte(CP_UTF8, 0, strSrc, nLen, pStr, nSize, NULL, NULL);
+		SetString(strDest, -1, pStr);
+		delete [] pStr;
+	}
+	else
+		SetString(strDest, -1, szTmp);
+}
+
 //-----------------------------------------------------------------------------
 
 void CAudioInfo::SetArtist(LPCSTR str)
@@ -140,9 +168,19 @@ void CAudioInfo::SetArtist(LPCSTR str)
 	SetString(&m_strArtist, -1, str);
 }
 
+void CAudioInfo::SetArtist(LPCWSTR str)
+{
+	SetStringW(&m_strArtist, -1, str);
+}
+
 void CAudioInfo::SetTitle(LPCSTR str)
 {
 	SetString(&m_strTitle, -1, str);
+}
+
+void CAudioInfo::SetTitle(LPCWSTR str)
+{
+	SetStringW(&m_strTitle, -1, str);
 }
 
 void CAudioInfo::SetStartTime()
@@ -215,6 +253,11 @@ void CAudioInfo::SetAlbum(LPCSTR str)
 	SetString(&m_strAlbum, -1, str);
 }
 
+void CAudioInfo::SetAlbum(LPCWSTR str)
+{
+	SetStringW(&m_strAlbum, -1, str);
+}
+
 void CAudioInfo::SetTrackNumber(INT nTrack)
 {
 	m_nTrackNumber = nTrack;	
@@ -228,9 +271,27 @@ void CAudioInfo::SetTrackNumber(LPCSTR str)
 		m_nTrackNumber = 0;
 }
 
+void CAudioInfo::SetTrackNumber(LPCWSTR str)
+{
+	if (str)
+		m_nTrackNumber = _wtoi(str);
+	else
+		m_nTrackNumber = 0;
+}
+
 void CAudioInfo::SetMusicBrainTrackId(LPCSTR str)
 {
 	SetString(&m_strMbTrkId, -1, str);
+}
+
+void CAudioInfo::SetMusicBrainTrackId(LPCWSTR str)
+{
+	// Convert to ascii
+	char strUTF8[512];
+	if (WideCharToMultiByte(CP_UTF8, 0, str, -1, strUTF8, sizeof(strUTF8), NULL, NULL))
+		SetString(&m_strMbTrkId, -1, strUTF8);
+	else
+		SetString(&m_strMbTrkId, -1, "");
 }
 
 //-----------------------------------------------------------------------------
