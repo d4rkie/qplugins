@@ -34,8 +34,8 @@ QCDModInitFileInfo	QMPFileInfo::QCDCallbacks;
 
 BOOL QMPFileInfo::Initialize(QCDModInfo *modInfo, int flags)
 {
-	modInfo->moduleString = "WavPack FileInfo";
-	modInfo->moduleExtensions = "WV";
+	modInfo->moduleString = (char *)L"WavPack FileInfo";
+	modInfo->moduleExtensions = (char *)L"WV";
 
 	return TRUE;
 }

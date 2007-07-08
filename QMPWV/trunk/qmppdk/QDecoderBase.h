@@ -107,6 +107,7 @@ public:
 			} else {
 				pMDCallback->OnError( -1, userData);
 			}
+			Sleep(10);
 		}
 
 		// finish decoding

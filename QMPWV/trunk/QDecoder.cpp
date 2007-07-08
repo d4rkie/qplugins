@@ -14,7 +14,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.2"), _T("WV"))
+: QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.3"), _T("WV"))
 , m_wpc(NULL)
 , m_wvcreader(NULL)
 , m_bAbort(FALSE)
@@ -167,7 +167,7 @@ int QDecoder::Decode(WriteDataStruct & wd)
 		}
 	}
 
-	_pos = (int)(WavpackGetSampleIndex( m_wpc) * 1000.0 / WavpackGetSampleRate( m_wpc));
+	_pos = (unsigned int)(WavpackGetSampleIndex( m_wpc) * 1000.0 / WavpackGetSampleRate( m_wpc));
 
 	wd.data = sample_buffer;
 	wd.bytelen = tbytes;
@@ -220,7 +220,7 @@ int QDecoder::GetAudioInfo(AudioInfo & ai)
 	ai.struct_size = sizeof(AudioInfo);
 	ai.frequency = _srate;
 	ai.bitrate = _br;
-	ai.mode = (_nch == 2) ? 0 : (_nch > 2) ? 4 :	3;
+	ai.mode = (_nch == 2) ? 0 : (_nch > 2) ? 4 : 3;
 	ai.layer = 0;
 	ai.level = 0;
 	lstrcpynA( ai.text, "WavPack", sizeof(ai.text));

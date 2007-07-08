@@ -521,10 +521,10 @@ DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
 				pQDecoder->GetAudioInfo( ai);
 				if ( memcmp( &ai, &aiLast, sizeof(AudioInfo))) { // change audio info when necessary
 					if ( !(threadData->mediaReader.GetProperties() & MEDIASOURCE_PROP_INTERNETSTREAM)) {
-						LPCWSTR ch = wcsrchr( threadData->mediaReader.GetName(), '.');
-						if ( ch) {
+						int ch = threadData->mediaReader.GetName().ReverseFind( _T('.'));
+						if ( ch > 0) {
 							ZeroMemory( ai.text, sizeof(ai.text));
-							WideCharToMultiByte( CP_ACP, 0, ch+1, -1, ai.text, sizeof(ai.text), 0, 0);
+							WideCharToMultiByte( CP_ACP, 0, threadData->mediaReader.GetName().Mid(ch+1), -1, ai.text, sizeof(ai.text), 0, 0);
 							CharUpperA(ai.text);
 						}
 					}
