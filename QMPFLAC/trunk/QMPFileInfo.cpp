@@ -34,8 +34,8 @@ QCDModInitFileInfo	QMPFileInfo::QCDCallbacks;
 
 BOOL QMPFileInfo::Initialize(QCDModInfo *modInfo, int flags)
 {
-	modInfo->moduleString = "FLAC FileInfo";
-	modInfo->moduleExtensions = "FLAC:FLA";
+	modInfo->moduleString = (char *)L"FLAC FileInfo";
+	modInfo->moduleExtensions = (char *)L"FLAC:FLA";
 
 	return TRUE;
 }

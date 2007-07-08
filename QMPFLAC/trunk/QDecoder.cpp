@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.1", L"FLAC:FLA")
+: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.3", L"FLAC:FLA")
 , FLAC::Decoder::Stream()
 , m_bAbort(FALSE)
 , m_FLACBuf(NULL)
@@ -211,6 +211,7 @@ int QDecoder::Decode(WriteDataStruct & wd)
 		wd.numsamples = wd.bytelen / (wd.bps / 8) / wd.nch;
 
 		// save the audio info
+		_pos = wd.markerstart;
 		_bps = wd.bps;
 		_srate = wd.srate;
 		_nch = wd.nch;
@@ -226,15 +227,15 @@ int QDecoder::Seek(int ms)
 	if ( !FLAC::Decoder::Stream::is_valid())
 		return 0;
 
-	if ( !FLAC::Decoder::Stream::seek_absolute( (FLAC__uint64)(ms / 1000. * FLAC::Decoder::Stream::get_sample_rate() + .5))) {
+	if ( FLAC::Decoder::Stream::seek_absolute( (FLAC__uint64)(ms / 1000. * FLAC::Decoder::Stream::get_sample_rate() + .5))) {
+		_clear_reservoir();
+
+		return 1;
+	} else {
 		if ( FLAC__STREAM_DECODER_SEEK_ERROR == FLAC::Decoder::Stream::get_state())
 			FLAC::Decoder::Stream::flush();
 
 		return 0;
-	} else {
-		_clear_reservoir();
-
-		return 1;
 	}
 }
 

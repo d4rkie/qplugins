@@ -45,11 +45,9 @@ BOOL	g_bDecoderThreadKill = FALSE;
 
 HANDLE	g_hReadingLoopKillEvent = NULL; // event for killing loop of reading
 
-typedef struct
-{
+typedef struct {
 	QMediaReader mediaReader;
 	int playFrom;
-
 } DecodeThreadData_t;
 
 // playback states
@@ -225,6 +223,7 @@ int QMPInput::Stop(const char* medianame, int flags)
 		WaitForSingleObject( g_hDecoderThread, INFINITE);
 
 		assert(g_hDecoderThread == NULL);
+		assert(g_hReadingLoopKillEvent == NULL);
 	}
 
 	g_strCurrentMedia.Empty();
@@ -497,10 +496,10 @@ DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
 				pQDecoder->GetAudioInfo( ai);
 				if ( memcmp( &ai, &aiLast, sizeof(AudioInfo))) { // change audio info when necessary
 					if ( !(threadData->mediaReader.GetProperties() & MEDIASOURCE_PROP_INTERNETSTREAM)) {
-						LPCWSTR ch = wcsrchr( threadData->mediaReader.GetName(), '.');
-						if ( ch) {
+						int ch = threadData->mediaReader.GetName().ReverseFind( _T('.'));
+						if ( ch > 0) {
 							ZeroMemory( ai.text, sizeof(ai.text));
-							WideCharToMultiByte( CP_ACP, 0, ch+1, -1, ai.text, sizeof(ai.text), 0, 0);
+							WideCharToMultiByte( CP_ACP, 0, threadData->mediaReader.GetName().Mid(ch+1), -1, ai.text, sizeof(ai.text), 0, 0);
 							CharUpperA(ai.text);
 						}
 					}
