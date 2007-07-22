@@ -6,12 +6,13 @@
 //-----------------------------------------------------------------------------
 
 static const LPCSTR AS_HANDSHAKE_URL = "http://post.audioscrobbler.com:80/";
-static const LPCSTR AS_CLIENT_ID     = "qcd";
-static const LPCSTR AS_CLIENT_VER    = "2.0"; // old plug-in used 1.5 in latest version
-//static const LPCSTR AS_CLIENT_ID     = "tst";
-//static const LPCSTR AS_CLIENT_VER    = "1.0";
 static const LPCSTR AS_PROTOCOL_VER  = "1.2";
 
+static const LPCSTR AS_CLIENT_ID     = "qcd";
+static const LPCSTR AS_CLIENT_VER    = "2.0.1"; // old plug-in used 1.5 in latest version
+
+//static const LPCSTR AS_CLIENT_ID     = "tst";
+//static const LPCSTR AS_CLIENT_VER    = "1.0";
 //-----------------------------------------------------------------------------
 
 enum AS_SENDSTATE {
@@ -26,10 +27,14 @@ BOOL      g_bCanTryConnect      = TRUE;
 BOOL      g_bHandShakeSucces    = FALSE;
 BOOL      g_bMustHandshake      = TRUE;
 
+BOOL      g_bOfflineMode        = FALSE;
 BOOL      g_bIsPaused           = FALSE;
 
 INT       g_nHardFailureCount   = 0;
 UINT      g_nLastSubmitCount    = 0;
+INT       g_nReHandshakeMinutes = 1;
+
+UINT_PTR  g_nNowPlayingTimer    = 0;
 UINT_PTR  g_nReconnectTimer     = 0;
 
 time_t    g_nSongStartTime      = 0;
@@ -65,8 +70,13 @@ void AS_HandleHardFailure();
 void AS_TryReHandshake();
 void AS_SettingsChanged();
 
-//-----------------------------------------------------------------------------
+void CALLBACK AS_cbSendNowPlaying(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime);
+void CALLBACK AS_cbSendQueue(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime);
 
+
+//-----------------------------------------------------------------------------
+// Main entry point
+//-----------------------------------------------------------------------------
 DWORD WINAPI AS_Main(LPVOID lpParameter)
 {
 	MSG  msg;
@@ -99,33 +109,29 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 				g_bIsPaused = FALSE;
 				g_nPausedTime = 0;
 
+				if (g_nNowPlayingTimer)
+					KillTimer(NULL, g_nNowPlayingTimer);
+
 				EnterCriticalSection(&g_csAIPending);
-				if (g_pAIPending)
-				{
-					CAudioInfo ai(g_pAIPending);
+				if (!g_pAIPending) {
 					LeaveCriticalSection(&g_csAIPending);
+					break;
+				}
 
-					// Might take a long time to complete, so make sure to hold no objects
-					AS_SendNowPlaying(&ai);
-					
-					// Update song start time, but don't submit songs shorter than 30 sec.
-					EnterCriticalSection(&g_csAIPending);
-					if (!g_pAIPending)
-						log->OutputInfo(E_DEBUG, _T("g_AIPending is null in AS_MSG_PLAY_STARTED.\nPlease report to the author"));
+				// We will delay sending this info a bit, so we don't spam the server
+				// going fast through a playlist
+				g_nNowPlayingTimer = SetTimer(NULL, NULL, 3000, AS_cbSendNowPlaying);
 
-					INT nTrackLength = g_pAIPending->GetTrackLength();
-					if (nTrackLength < 30) {
-						delete g_pAIPending;
-						g_pAIPending = NULL;
-						g_nSongStartTime = 0;
-					}
-					else
-						time(&g_nSongStartTime);
-					LeaveCriticalSection(&g_csAIPending);
+				// Update song start time, but don't submit songs shorter than 30 sec.
+				if (g_pAIPending->GetTrackLength() < 30) {
+					delete g_pAIPending;
+					g_pAIPending = NULL;
+					g_nSongStartTime = 0;
 				}
 				else
-					LeaveCriticalSection(&g_csAIPending);
-
+					time(&g_nSongStartTime);
+				
+				LeaveCriticalSection(&g_csAIPending);
 				break;
 			}
 
@@ -169,20 +175,37 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 				break;
 			}
 
-			default :
+			case AS_MSG_OFFLINE_MODE :
 			{
-				log->OutputInfo(E_DEBUG, _T("AS_Main : Unknown message"));
+				g_bMustHandshake = TRUE;
+				g_bOfflineMode = !g_bOfflineMode;
 				break;
 			}
 
+
+			case WM_TIMER :
+				// We need to take care of WM_TIMER event callback our self. See documentation for DispatchMessage
+				if (msg.lParam != NULL) {
+					TIMERPROC tp = (TIMERPROC)msg.lParam;
+					tp(msg.hwnd, WM_TIMER, msg.wParam, msg.time);
+				}
+				break;
+
+			default :
+			{
+				log->OutputInfo(E_DEBUG, _T("AS_Main : Unknown message : %d"), msg.message);
+				break;
+			}
+			
 			} // switch (msg.message)
+			log->Flush();
 		}
 	} // while
 
 	log->OutputInfo(E_DEBUG, _T("AS_Main : Ending"));
 	AS_CleanUp();
 
-	AS_AddPendingSongToQueue();
+	// AS_AddPendingSongToQueue();
 	AS_SaveQueue();
 
 	// Clean AIQueue
@@ -207,7 +230,6 @@ BOOL AS_Initialize()
 	}
 	curl_easy_setopt(g_curl, CURLOPT_ERRORBUFFER, &g_szErrorBuffer);
 	curl_easy_setopt(g_curl, CURLOPT_DNS_CACHE_TIMEOUT, -1);
-	curl_easy_setopt(g_curl, CURLOPT_CONNECTTIMEOUT, 30);
 	curl_easy_setopt(g_curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 	curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, &AS_DataReceived);
 
@@ -221,6 +243,11 @@ BOOL AS_Initialize()
 
 void AS_CleanUp()
 {
+	if (g_nNowPlayingTimer)
+		KillTimer(NULL, g_nNowPlayingTimer);
+	if (g_nReconnectTimer)
+		KillTimer(NULL, g_nReconnectTimer);
+
 	curl_easy_cleanup(g_curl);
 	curl_global_cleanup();
 }
@@ -366,7 +393,7 @@ void AS_AddPendingSongToQueue()
 	if (g_pAIPending)
 	{
 		INT nTrackLength = g_pAIPending->GetTrackLength();
-		if (nTrackLength <= 0)
+		if (nTrackLength <= 0 || g_nSongStartTime == 0)
 			delete g_pAIPending; // Is set null below
 		else
 		{
@@ -419,7 +446,10 @@ void AS_HandleHandshakeData(std::vector<std::string>* strLines)
 		g_bHandShakeSucces  = TRUE;
 		g_bMustHandshake    = FALSE;
 		g_bCanTryConnect    = TRUE;
+		g_nReHandshakeMinutes = 1;
 		log->OutputInfoA(E_DEBUG, "Handshake OK\nSessionID: %s\nSubmission URL: %s\nNow playing URL: %s", g_strSessionID.c_str(), g_strSubmissionURL.c_str(), g_strNowPlayingURL.c_str());
+		
+		QMPCallbacks.Service(opSetStatusMessage, L"AS : Handshaked with success", TEXT_DEFAULT | TEXT_UNICODE, 0);
 	}
 	else if (strLines->at(0).compare("BANNED") == 0)
 	{
@@ -461,11 +491,12 @@ void AS_HandleNowPlayingData(std::vector<std::string>* strLines)
 	// Process data
 	if (strLines->at(0).compare("OK") == 0)
 	{
-		log->OutputInfo(E_DEBUG, _T("Now-Playing info set successfully"));
+		log->OutputInfo(E_DEBUG, _T("Now-Playing : Info set successfully"));
+		QMPCallbacks.Service(opSetStatusMessage, L"AS : Now-Playing sent", TEXT_DEFAULT | TEXT_UNICODE, 0);
 	}
 	else if (strLines->at(0).compare("BADSESSION") == 0)
 	{
-		log->OutputInfo(E_DEBUG, _T("Now-Playing returned BADSESSION"));
+		log->OutputInfo(E_DEBUG, _T("Now-Playing : BADSESSION"));
 		g_bHandShakeSucces = FALSE;
 		g_bMustHandshake = TRUE;
 	}
@@ -475,7 +506,7 @@ void AS_HandleNowPlayingData(std::vector<std::string>* strLines)
 	}
 	else
 	{
-		log->OutputInfo(E_DEBUG, _T("Now-Playing -> Unknown server response"));
+		log->OutputInfo(E_DEBUG, _T("Now-Playing : Unknown server response"));
 	}
 }
 
@@ -486,14 +517,16 @@ void AS_HandleSendQueueData(std::vector<std::string>* strLines)
 	// Process data
 	if (strLines->at(0).compare("OK") == 0)
 	{
-		log->OutputInfo(E_DEBUG, _T("Submission accepted by server."));
+		log->OutputInfo(E_DEBUG, _T("Submission : OK"));
 		// Delete all the songs submitted from the queue
 		for (UINT i = 0; i < g_nLastSubmitCount; i++)
 			g_AIQueue.pop_front();
+		
+		QMPCallbacks.Service(opSetStatusMessage, L"AS : Song(s) scrobbled", TEXT_DEFAULT | TEXT_UNICODE, 0);
 	}
 	else if (strLines->at(0).compare("BADSESSION") == 0)
 	{
-		log->OutputInfo(E_DEBUG, _T("Submission returned BADSESSION"));
+		log->OutputInfo(E_DEBUG, _T("Submission : BADSESSION"));
 		g_bHandShakeSucces = FALSE;
 		g_bMustHandshake = TRUE;
 	}
@@ -572,7 +605,14 @@ void AS_Handshake()
 	}
 	if (g_bIsClosing)
 		return;
+	if (g_bOfflineMode) {
+		log->OutputInfo(E_DEBUG, _T("AS_Handshake : Running in offline mode. Exiting"));
+		return;
+	}
 
+
+	CURLcode nResult = CURLE_OK;
+	BOOL bFirstTry = TRUE;
 	char strTime[16] = {0};
 	char strTmp[64] = {0};
 	char strLongAuth[64] = {0};
@@ -594,9 +634,11 @@ void AS_Handshake()
 	strLongAuth[32] = 0;
 	
 	// Create the post string
+	char* szUsername  = curl_easy_escape(g_curl, Settings.strUsername.GetMultiByte(), 0);
+
 	int nChars = _snprintf_s(strBuffer, sizeof(strBuffer), sizeof(strBuffer)-1,
 		"%s?hs=true&p=%s&c=%s&v=%s&u=%s&t=%s&a=%s",
-		AS_HANDSHAKE_URL, AS_PROTOCOL_VER, AS_CLIENT_ID, AS_CLIENT_VER, Settings.strUsername.GetMultiByte(), strTime, strLongAuth);
+		AS_HANDSHAKE_URL, AS_PROTOCOL_VER, AS_CLIENT_ID, AS_CLIENT_VER, szUsername, strTime, strLongAuth);
 
 	if (nChars < 10) {
 		log->OutputInfo(E_DEBUG, _T("Failed to make handshake string"));
@@ -604,25 +646,55 @@ void AS_Handshake()
 	}
 
 	log->OutputInfoA(E_DEBUG, strBuffer);
+	
+	curl_free(szUsername);
 
-	// Set curl options
+	// Set curl options and perform
 	int nOperation = AS_HANDSHAKE;
 	curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &nOperation);
 	curl_easy_setopt(g_curl, CURLOPT_HTTPGET, 1);
+	curl_easy_setopt(g_curl, CURLOPT_TIMEOUT, 120);
 	curl_easy_setopt(g_curl, CURLOPT_URL, strBuffer);
 
-	CURLcode nResult = curl_easy_perform(g_curl);
-	
-	if (nResult == 6) {
-		// Could not resolve host - Happens first time, so we retry
-		log->OutputInfo(E_DEBUG, _T("AS_Handshake: Retrying to handshake once"));
-		nResult = curl_easy_perform(g_curl);
-	}
-	
-	if (nResult != 0)
-		log->OutputInfoA(E_DEBUG, "AS_Handshake: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
-	else
-		log->OutputInfo(E_DEBUG, _T("AS_Handshake: Perform success"));
+	curlperform :
+	nResult = curl_easy_perform(g_curl);
+
+	// Perform error handling
+	switch (nResult)
+	{
+		case CURLE_OK :
+			log->OutputInfo(E_DEBUG, _T("AS_Handshake: Perform success"));
+			break;
+
+		case CURLE_COULDNT_RESOLVE_HOST :
+			if (bFirstTry) {
+				bFirstTry = FALSE;
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Could not resolve host. Retrying to handshake once"));
+				goto curlperform;
+			}
+			else
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Could not resolve host!"));
+			break;
+
+		case CURLE_GOT_NOTHING : 
+			if (bFirstTry) {
+				bFirstTry = FALSE;
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Server returned empty reply. Trying to connect again"));
+				goto curlperform;
+			}
+			else
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Server returned empty reply!"));
+			break;
+
+		case CURLE_COULDNT_CONNECT :
+			log->OutputInfo(E_DEBUG, _T("AS_Handshake: Could not connect. Will try handshaking later."));
+			AS_TryReHandshake();
+			break;
+
+		default :
+			log->OutputInfoA(E_DEBUG, "AS_Handshake: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);	
+			break;
+	} // switch (nResult)
 }
 
 //-----------------------------------------------------------------------------
@@ -675,13 +747,14 @@ void AS_SendNowPlaying(CAudioInfo* ai)
 	curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &nOperation);
 	curl_easy_setopt(g_curl, CURLOPT_POST, 1);
 	curl_easy_setopt(g_curl, CURLOPT_POSTFIELDS, strBuffer);
-	curl_easy_setopt(g_curl, CURLOPT_POSTFIELDSIZE, nPostFieldSize); 
+	curl_easy_setopt(g_curl, CURLOPT_POSTFIELDSIZE, nPostFieldSize);
+	curl_easy_setopt(g_curl, CURLOPT_TIMEOUT, 30);
 	curl_easy_setopt(g_curl, CURLOPT_URL, g_strNowPlayingURL.c_str());
 	
 
 	// Perform the request
 	CURLcode nResult = curl_easy_perform(g_curl);
-	if (nResult != 0) {
+	if (nResult != CURLE_OK) {
 		log->OutputInfoA(E_DEBUG, "AS_SendNowPlaying: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
 		AS_HandleHardFailure();
 	}
@@ -737,7 +810,8 @@ void AS_SendQueue()
 			strI, szArtist, // a
 			strI, szTitle,  // t
 			strI, ai->GetStartTime(), // i
-			strI, "U",      // o
+			//strI, "U",      // o
+			strI, "P",      // o
 			strI,           // r
 			strI, ai->GetTrackLength(), 
 			strI, szAlbum, 
@@ -761,13 +835,14 @@ void AS_SendQueue()
 	curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &nOperation);
 	curl_easy_setopt(g_curl, CURLOPT_POST, 1);
 	curl_easy_setopt(g_curl, CURLOPT_POSTFIELDS, strSongs.c_str());
-	curl_easy_setopt(g_curl, CURLOPT_POSTFIELDSIZE, strSongs.size()); 
+	curl_easy_setopt(g_curl, CURLOPT_POSTFIELDSIZE, strSongs.size());
+	curl_easy_setopt(g_curl, CURLOPT_TIMEOUT, 30);
 	curl_easy_setopt(g_curl, CURLOPT_URL, g_strSubmissionURL.c_str());
 
 
 	// Perform the request
 	CURLcode nResult = curl_easy_perform(g_curl);
-	if (nResult != 0) {
+	if (nResult != CURLE_OK) {
 		log->OutputInfoA(E_DEBUG, "AS_SendQueue: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
 		AS_HandleHardFailure();
 	}
@@ -795,6 +870,30 @@ void AS_HandleHardFailure()
 
 //-----------------------------------------------------------------------------
 
+void CALLBACK AS_cbSendNowPlaying(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime)
+{
+	if (g_nNowPlayingTimer) {
+		KillTimer(NULL, g_nNowPlayingTimer);
+		g_nNowPlayingTimer = 0;
+	}
+
+	log->OutputInfo(E_DEBUG, _T("AS_cbSendNowPlaying : Entered"));
+
+	EnterCriticalSection(&g_csAIPending);
+	if (g_pAIPending)
+	{
+		CAudioInfo ai(g_pAIPending);
+		LeaveCriticalSection(&g_csAIPending);
+
+		// Might take a long time to complete, so make sure to hold no objects
+		AS_SendNowPlaying(&ai);
+	}
+	else
+		LeaveCriticalSection(&g_csAIPending);
+}
+
+//-----------------------------------------------------------------------------
+
 void CALLBACK AS_cbSendQueue(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime)
 {
 	if (g_nReconnectTimer) {
@@ -813,15 +912,13 @@ void CALLBACK AS_cbSendQueue(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime)
 
 void AS_TryReHandshake()
 {
-	static int nMinutes = 1;
-
-	g_nReconnectTimer = SetTimer(NULL, NULL, nMinutes * 60 * 1000, AS_cbSendQueue);
+	g_nReconnectTimer = SetTimer(NULL, NULL, g_nReHandshakeMinutes * 60 * 1000, AS_cbSendQueue);
 	
 	// Set minutes
-	if (nMinutes >= 120)
-		nMinutes = 120;
+	if (g_nReHandshakeMinutes >= 120)
+		g_nReHandshakeMinutes = 120;
 	else
-		nMinutes = nMinutes * 2;
+		g_nReHandshakeMinutes = g_nReHandshakeMinutes * 2;
 }
 
 //-----------------------------------------------------------------------------

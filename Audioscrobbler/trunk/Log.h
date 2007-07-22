@@ -42,6 +42,8 @@ public:
 	void OutputInfoA(MsgType type, const char* str, ...);
 	void OutputInfoW(MsgType type, const wchar_t* str, ...);
 	void DirectOutputInfoA(MsgType type, const char* str);
+
+	void Flush() { if (m_logMode == LOG_FILE && m_pFile) fflush(m_pFile); };
 };
 
 #endif // __LOG_H

@@ -11,7 +11,9 @@
 
 struct _Settings
 {
+	BOOL bFirstRun;
 	LogMode logMode;
+	
 	QString strUsername;
 	char strPassword[33];
 };

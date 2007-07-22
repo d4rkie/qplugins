@@ -25,7 +25,8 @@ void LoadSettings()
 	QMPCallbacks.Service(opGetPluginSettingsFile, szBuffer, MAX_PATH*sizeof(TCHAR), 0);
 	strIni = szBuffer;
 
-	Settings.logMode = (LogMode)GetPrivateProfileInt(INI_SECTION, _T("LogMode"), LOG_NONE, strIni);
+	Settings.logMode   = (LogMode)GetPrivateProfileInt(INI_SECTION, _T("LogMode"), LOG_NONE, strIni);
+	Settings.bFirstRun = GetPrivateProfileInt(INI_SECTION, _T("FirstRun"), 1, strIni);
 	
 	GetPrivateProfileString(INI_SECTION, _T("Username"), NULL, szBuffer, NUMOFTCHARS(szBuffer), strIni);
 	Settings.strUsername = szBuffer;
@@ -48,6 +49,9 @@ void SaveSettings()
 
 	_stprintf_s(szBuffer, NUMOFTCHARS(szBuffer), _T("%d"), Settings.logMode);
 	WritePrivateProfileString(INI_SECTION, _T("LogMode"), szBuffer, strIni);
+
+	_stprintf_s(szBuffer, NUMOFTCHARS(szBuffer), _T("%d"), Settings.bFirstRun);
+	WritePrivateProfileString(INI_SECTION, _T("FirstRun"), szBuffer, strIni);	
 
 	WritePrivateProfileString(INI_SECTION, _T("Username"), Settings.strUsername, strIni);
 

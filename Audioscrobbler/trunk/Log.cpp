@@ -14,7 +14,7 @@ CLog::CLog(HWND hwndOwner, LogMode mode, LPCTSTR strFilePath)
 	  m_logMode(mode), m_pFile(NULL)
 {
 	if (m_logMode & LOG_FILE) {
-		if (_tfopen_s(&m_pFile, strFilePath, _T("w")))
+		if ( !(m_pFile = _tfsopen(strFilePath, _T("w"), _SH_DENYWR)) )
 			MessageBox(m_hwndOwner, _T("Failed to open log file for writing"), _T("CLog"), MB_OK | MB_ICONEXCLAMATION);
 	}
 }

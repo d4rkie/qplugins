@@ -20,6 +20,10 @@ bool g_bTrackIsDone = TRUE;
 void PlayStarted();
 void PlayStopped();
 void PlayDone();
+void PlayPaused();
+void TrackChanged();
+void InfoChanged(LPCSTR szMedianame);
+
 
 CAudioInfo* GetAudioInfo(LPCWSTR strFile);
 void GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai);
@@ -50,6 +54,8 @@ void PlayStarted()
 	long nMediaType = QMPCallbacks.Service(opGetMediaType, NULL, -1, 0);
 	if (nMediaType == DIGITAL_AUDIOFILE_MEDIA)
 		g_pAIPending = GetAudioInfo(strFileUCS2);
+	else
+		log->OutputInfo(E_DEBUG, _T("PlayStarted : File not a digital audio file - File is not scrobbled"));
 	/*else if (nMediaType == DIGITAL_AUDIOSTREAM_MEDIA)
 	{
 		CAudioInfo ai;
@@ -67,8 +73,9 @@ void PlayStarted()
 
 	if (g_pAIPending)
 	{
-		if (!*(g_pAIPending->GetArtist()) || !*(g_pAIPending->GetTitle()) )
+		if (*(g_pAIPending->GetArtist()) == NULL || *(g_pAIPending->GetTitle()) == NULL )
 		{
+			log->OutputInfo(E_DEBUG, _T("PlayStarted : Required song info not set - File is not scrobbled"));
 			delete g_pAIPending;
 			g_pAIPending = NULL;
 		}
@@ -126,6 +133,7 @@ void TrackChanged()
 __inline
 void InfoChanged(LPCSTR szMedianame)
 {
+	// Is commented out in the subclassing proc
 	// if (IsStream() && wcscmp(szMedianame, g_szPlayingfile) == 0)
 	//		PlayDone();
 	//    PlayStarted();

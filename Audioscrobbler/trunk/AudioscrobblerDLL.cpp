@@ -7,32 +7,42 @@
 //
 //-----------------------------------------------------------------------------
 // TODO
+//   Is handshaking too often when connection is bad.
+//
 //   Handle stream titles - InfoChanged
 //   Proxy connection
+//   Win9x support
 //-----------------------------------------------------------------------------
 
 #include "Precompiled.h"
 
-#define PLUGIN_NAME L"Audioscrobbler v0.1.4"
+#define PLUGIN_NAME L"Audioscrobbler v0.1.6"
 
 // Project includes
 //#include "ThreadTools.h"
 #include "PlayerControl.h"
-//#include "About.h"
+#include "About.h"
 #include "Config.h"
 #include "AudioscrobblerDLL.h"
 
 
 //-----------------------------------------------------------------------------
+// Constants
+//-----------------------------------------------------------------------------
+#define IDM_CONFIG        1
+#define IDM_HEAD          2
+#define IDM_OFFLINE_MODE  3
+
+//-----------------------------------------------------------------------------
 // Global variables
 //-----------------------------------------------------------------------------
-HINSTANCE       g_hInstance   = 0;
-HWND            g_hwndPlayer  = NULL;
-WNDPROC         g_QMPProc     = 0;
+QCDModInitGen2    QMPCallbacks;
+_Settings         Settings;
+CLog*             log                    = NULL;
 
-QCDModInitGen2  QMPCallbacks;
-_Settings       Settings;
-CLog*           log;
+HINSTANCE         g_hInstance            = 0;
+HWND              g_hwndPlayer           = NULL;
+WNDPROC           g_QMPProc              = 0;
 
 HANDLE            g_hASThread            = NULL;
 HANDLE            g_hASThreadEndedEvent  = NULL;
@@ -40,7 +50,7 @@ ULONG             g_nASThreadId          = 0;
 CRITICAL_SECTION  g_csAIPending;
 BOOL              g_bIsClosing           = FALSE;
 
-CAudioInfo* g_pAIPending = NULL;
+CAudioInfo*       g_pAIPending           = NULL;
 
 //-----------------------------------------------------------------------------
 
@@ -99,15 +109,12 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	log = new CLog(g_hwndPlayer, Settings.logMode, strPath);
 
 	// Setup menu item in plugins menu
-	// const _TCHAR* strMenu = _T("Audioscrobbler");
-	// QMPCallbacks->Service(opSetPluginMenuItem, hInstance, IDM_ABREPEAT, (LONG)strMenu);
+	const _TCHAR* strMenu2 = _T("Audioscrobbler2");
+	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_HEAD,         (LONG)_T("Audioscrobbler"));
+	QMPCallbacks.Service(opSetPluginMenuState, g_hInstance, IDM_HEAD,         MF_POPUP);
+	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_CONFIG,       (LONG)_T("Configuration"));
+	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_OFFLINE_MODE, (LONG)_T("Work Offline"));
 
-	// Subclass the player and listen for WM_PN_?
-	if ((g_QMPProc = (WNDPROC)SetWindowLong(g_hwndPlayer, GWL_WNDPROC, (LONG)QMPSubProc)) == 0) {
-		log->OutputInfo(E_FATAL, _T("Failed to subclass player!"));
-		return FALSE;
-	}
-	
 	// Start curl thread
 	InitializeCriticalSection(&g_csAIPending);
 	g_hASThreadEndedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -117,6 +124,19 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	// SetThreadName(g_nASThreadId, "QMP_Audioscrobbler");
 
 	Sleep(0);
+
+	// Subclass the player and listen for WM_PN_?
+	if ((g_QMPProc = (WNDPROC)SetWindowLong(g_hwndPlayer, GWL_WNDPROC, (LONG)QMPSubProc)) == 0) {
+		log->OutputInfo(E_FATAL, _T("Failed to subclass player!"));
+		return FALSE;
+	}
+
+	if (Settings.bFirstRun) {
+		MessageBox(g_hwndPlayer, _T("This is the first time you run the Audioscrobbler plug-in.\n\nPlease provide your Audioscrobbler username and password in the following configuration screen."),
+			_T("Audioscrobbler"), MB_ICONINFORMATION);
+		Configure(0);
+		Settings.bFirstRun = FALSE;
+	}
 
 	// return TRUE for successful initialization
 	log->OutputInfo(E_DEBUG, _T("Initialize(): return true"));
@@ -150,14 +170,37 @@ void ShutDown(int flags)
 
 void Configure(int flags)
 {
-	CreateConfigDlg(g_hInstance, g_hwndPlayer);
+	switch (flags)
+	{
+		case IDM_HEAD :
+			break;
+		case IDM_OFFLINE_MODE :
+			if (g_bOfflineMode) {
+				log->OutputInfo(E_DEBUG, _T("Swiching to online mode"));
+				QMPCallbacks.Service(opSetPluginMenuState,  g_hInstance, IDM_OFFLINE_MODE, MF_UNCHECKED);
+			}
+			else {
+				log->OutputInfo(E_DEBUG, _T("Swiching to offline mode"));
+				MessageBox(g_hwndPlayer, _T("Audioscrobbler is now running in offline mode\nand it will not send song information."), 
+					_T("Audioscrobbler"), MB_ICONEXCLAMATION);
+				QMPCallbacks.Service(opSetPluginMenuState,  g_hInstance, IDM_OFFLINE_MODE, MF_CHECKED);
+			}
+			PostThreadMessage(g_nASThreadId, AS_MSG_OFFLINE_MODE, 0, 0);
+
+			break;
+
+		case IDM_CONFIG :
+		default :
+			CreateConfigDlg(g_hInstance, g_hwndPlayer);
+			break;
+	}
 }
 
 //-----------------------------------------------------------------------------
 
 void About(int flags)
 {
-	// CreateAboutDlg(g_hInstance, g_hwndPlayer);
+	CreateAboutDlg(g_hInstance, g_hwndPlayer);
 }
 
 //-----------------------------------------------------------------------------
@@ -186,11 +229,11 @@ LRESULT CALLBACK QMPSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			TrackChanged();
 			break;
 
-		case WM_PN_INFOCHANGED :
+		/*case WM_PN_INFOCHANGED :
 			if (lparam <= 'Z')
 				break;
 			InfoChanged((LPCSTR)lparam);
-			break;
+			break;*/
 
 	} // Switch
 
@@ -198,3 +241,4 @@ LRESULT CALLBACK QMPSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 }
 
 //-----------------------------------------------------------------------------
+

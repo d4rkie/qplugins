@@ -150,7 +150,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/D &quot;CURL_STATICLIB&quot; /D &quot;TINYXML_USE_STL&quot;"
-				Optimization="3"
+				Optimization="2"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories=".;.\tinyxml\"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;QCDGENERAL_EXPORTS"
@@ -165,7 +165,7 @@
 				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
-				DebugInformationFormat="3"
+				DebugInformationFormat="0"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -184,7 +184,7 @@
 				OutputFile="$(QMPPATH)\Plugins\Audioscrobbler.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				GenerateDebugInformation="true"
+				GenerateDebugInformation="false"
 				ProgramDatabaseFile="$(QMPPATH)\Plugins\Audioscrobbler.pdb"
 				OptimizeForWindows98="0"
 				BaseAddress="0x30080000"
@@ -226,6 +226,10 @@
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
+			<File
+				RelativePath=".\About.cpp"
+				>
+			</File>
 			<File
 				RelativePath=".\AudioInfo.cpp"
 				>
@@ -295,6 +299,10 @@
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl"
 			>
+			<File
+				RelativePath=".\About.h"
+				>
+			</File>
 			<File
 				RelativePath=".\AudioInfo.h"
 				>
@@ -389,6 +397,10 @@
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath=".\resource"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
