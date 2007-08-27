@@ -76,7 +76,7 @@ private:
 
 private:
 	static HWND hwndPlayer;
-	static DWORD WINAPI DecodeThread(LPVOID lpParameter);
+	static UINT WINAPI __stdcall DecodeThread(void * b);
 };
 
 #endif //QMPInput_H

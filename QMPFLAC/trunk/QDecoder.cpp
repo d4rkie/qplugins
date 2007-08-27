@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.3", L"FLAC:FLA")
+: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.4", L"FLAC:FLA")
 , FLAC::Decoder::Stream()
 , m_bAbort(FALSE)
 , m_FLACBuf(NULL)
@@ -78,8 +78,8 @@ int QDecoder::Open(QMediaReader & mediaReader)
 	::FLAC__StreamDecoderInitStatus status;
 
 	// prepare the decoder
-	FLAC::Decoder::Stream::set_md5_checking( false);
-	FLAC::Decoder::Stream::set_metadata_ignore_all();
+	//FLAC::Decoder::Stream::set_md5_checking( false);
+	//FLAC::Decoder::Stream::set_metadata_ignore_all();
 
 	// initialize the decoder
 	status = FLAC::Decoder::Stream::init();
@@ -89,7 +89,7 @@ int QDecoder::Open(QMediaReader & mediaReader)
 		_pmr = &mediaReader; // save the opened media reader
 		ret = 1;
 
-		FLAC::Decoder::Stream::process_until_end_of_metadata();
+		//FLAC::Decoder::Stream::process_until_end_of_metadata();
 
 		_seekable = _pmr->CanSeek();
 	} else if ( status == FLAC__STREAM_DECODER_INIT_STATUS_UNSUPPORTED_CONTAINER) {
@@ -227,7 +227,12 @@ int QDecoder::Seek(int ms)
 	if ( !FLAC::Decoder::Stream::is_valid())
 		return 0;
 
-	if ( FLAC::Decoder::Stream::seek_absolute( (FLAC__uint64)(ms / 1000. * FLAC::Decoder::Stream::get_sample_rate() + .5))) {
+	unsigned sr = FLAC::Decoder::Stream::get_sample_rate();
+	FLAC__uint64 seek_pos =(FLAC__uint64)(ms / 1000. * sr + .5);
+
+	if ( FLAC::Decoder::Stream::seek_absolute( seek_pos)) {
+		FLAC__uint64 pos;
+		FLAC::Decoder::Stream::get_decode_position( &pos);
 		_clear_reservoir();
 
 		return 1;

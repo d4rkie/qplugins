@@ -85,8 +85,8 @@ public:
 		if ( !pMDCallback || !_pmrDec)
 			return FALSE;
 
-		WAVEFORMATEX wfex;
-		WriteDataStruct wd;
+		WAVEFORMATEX wfex; ZeroMemory( &wfex, sizeof(WAVEFORMATEX));
+		WriteDataStruct wd; ZeroMemory( &wd, sizeof(WriteDataStruct));
 
 		// open media reader
 		if ( !_pmrDec->Open(0))
@@ -107,7 +107,7 @@ public:
 			} else {
 				pMDCallback->OnError( -1, userData);
 			}
-			Sleep(10);
+			Sleep(0);
 		}
 
 		// finish decoding

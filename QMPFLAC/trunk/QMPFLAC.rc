@@ -54,7 +54,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_DISPLAYNAME         "QPlugins FLAC Audio Decoder v3.3"
+    IDS_DISPLAYNAME         "QPlugins FLAC Audio Decoder v3.4"
 END
 
 #endif    // 中文(中华人民共和国) resources
@@ -108,14 +108,14 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",1,84,92,50,14
-    CTEXT           "Version 3.3\nLast modified July 2007",IDC_STATIC,23,51,172,18
+    CTEXT           "Version 3.4\nLast modified August 2007",IDC_STATIC,23,51,172,18
     CTEXT           "Free Lossless Audio Codec (FLAC) audio file support",IDC_STATIC,23,22,172,8
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,76,65,8
     LTEXT           "QPlugins",IDC_URL_QPLUGINS,129,76,33,8
     LTEXT           "Using",IDC_STATIC,77,31,21,8
-    LTEXT           "FLAC",IDC_URL_FLAC,99,31,18,8
-    LTEXT           "",IDC_FLAC_VERNUM,120,31,21,8
+    LTEXT           "FLAC",IDC_LIB_URL,99,31,18,8
+    LTEXT           "",IDC_LIB_VER,120,31,21,8
 END
 
 IDD_ABOUT_TAGS DIALOGEX 0, 0, 219, 119
@@ -130,8 +130,8 @@ BEGIN
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,76,65,8
     LTEXT           "QPlugins",IDC_URL_QPLUGINS,129,76,33,8
     LTEXT           "Using",IDC_STATIC,77,31,21,8
-    LTEXT           "FLAC",IDC_URL_FLAC,99,31,18,8
-    LTEXT           "",IDC_FLAC_VERNUM,120,31,21,8
+    LTEXT           "FLAC",IDC_LIB_URL,99,31,18,8
+    LTEXT           "",IDC_LIB_VER,120,31,21,8
 END
 
 #endif    // 英语(美国) resources
