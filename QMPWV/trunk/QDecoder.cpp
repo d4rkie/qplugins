@@ -50,7 +50,6 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 {
 	WavpackContext *wpc;
 	char error [128] = {'\0'};
-	double len;
 
 	char infilename[1024];
 	ZeroMemory( infilename, sizeof(infilename));

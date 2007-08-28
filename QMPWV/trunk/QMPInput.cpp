@@ -44,14 +44,11 @@ CStringW g_strPluginExtensions;
 HANDLE	g_hDecoderThread = NULL;
 BOOL	g_bDecoderThreadKill = FALSE;
 
-HANDLE	g_hReadingLoopKillEvent = NULL; // event for killing loop of reading
-
-typedef struct
-{
+typedef struct {
 	QMediaReader mediaReader;
-	int playFrom;
-
+	DWORD playFrom;
 } DecodeThreadData_t;
+DecodeThreadData_t * g_pThreadData = NULL;
 
 // playback states
 BOOL	g_bIsPaused = FALSE;
@@ -176,9 +173,9 @@ int QMPInput::Play(const char* medianame, int playfrom, int playto, int flags)
 
 			if ( playfrom >= 0) {
 				g_dwSeekPos = (DWORD)playfrom;
+
 				g_bSeekNeeded = TRUE;
-				if ( g_hReadingLoopKillEvent) // kill the reading loop
-					SetEvent( g_hReadingLoopKillEvent);
+				if ( g_pThreadData) g_pThreadData->mediaReader.Reset();
 			}
 
 			ret = TRUE;
@@ -186,28 +183,25 @@ int QMPInput::Play(const char* medianame, int playfrom, int playto, int flags)
 			if ( playfrom >= 0) {
 				g_dwSeekPos = (DWORD)playfrom;
 				g_bSeekNeeded = TRUE;
-				if ( g_hReadingLoopKillEvent) // kill the reading loop
-					SetEvent( g_hReadingLoopKillEvent);
-
+				if ( g_pThreadData) g_pThreadData->mediaReader.Reset();
 			}
 
 			ret = TRUE;
 		}
 	} else { // not currently playing, start play
 		// create decoding thread
-		DecodeThreadData_t * threadData = new DecodeThreadData_t;
-		if ( threadData) {
-			threadData->playFrom = playfrom;
+		g_pThreadData = new DecodeThreadData_t;
+		if ( g_pThreadData) {
+			g_pThreadData->playFrom = playfrom; // start of playback
 			IQCDMediaSource * pms = (IQCDMediaSource *)QCDCallbacks.Service( opGetIQCDMediaSource, (void*)medianame, 0, 0);
-			g_hReadingLoopKillEvent = CreateEvent( NULL, FALSE, FALSE, NULL);
-			if ( pms && g_hReadingLoopKillEvent) {
-				DWORD dwTId;
+			if ( pms) {
+				UINT dwTId;
 
 				// attach mediasource interface to mediareader wrapper with a reading loop killing signal
-				threadData->mediaReader.Attach( pms, g_hReadingLoopKillEvent);
+				g_pThreadData->mediaReader.Attach( pms);
 
 				g_bDecoderThreadKill = FALSE;
-				g_hDecoderThread = CreateThread( NULL, 0, (LPTHREAD_START_ROUTINE)DecodeThread, (void *)threadData, CREATE_SUSPENDED, &dwTId);
+				g_hDecoderThread = (HANDLE)_beginthreadex(NULL, 0, DecodeThread, (void*)(&g_pThreadData), CREATE_SUSPENDED, &dwTId);
 				if ( g_hDecoderThread) {
 					// like to run the decoder with good responsiveness
 					SetThreadPriority( g_hDecoderThread, THREAD_PRIORITY_HIGHEST);
@@ -219,7 +213,10 @@ int QMPInput::Play(const char* medianame, int playfrom, int playto, int flags)
 				}
 			}
 
-			if ( !g_hDecoderThread) delete threadData;
+			if ( !g_hDecoderThread) {
+				delete g_pThreadData;
+				g_pThreadData = NULL;
+			}
 		}
 	}
 
@@ -237,14 +234,16 @@ int QMPInput::Stop(const char* medianame, int flags)
 	QCDCallbacks.toPlayer.OutputStop(flags);
 
 	if ( g_hDecoderThread) {
+		if ( g_pThreadData) g_pThreadData->mediaReader.Reset();
 		g_bDecoderThreadKill = TRUE;
-		if ( g_hReadingLoopKillEvent) // kill the reading loop
-			SetEvent( g_hReadingLoopKillEvent);
 
 		WaitForSingleObject( g_hDecoderThread, INFINITE);
+		if ( g_hDecoderThread) {
+			CloseHandle( g_hDecoderThread);
+			g_hDecoderThread = NULL;
+		}
 
 		assert(g_hDecoderThread == NULL);
-		assert(g_hReadingLoopKillEvent == NULL);
 	}
 
 	g_strCurrentMedia.Empty();
@@ -430,9 +429,10 @@ public:
 
 //-----------------------------------------------------------------------------
 
-DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
+UINT WINAPI __stdcall QMPInput::DecodeThread(void * b)
 {
-	DecodeThreadData_t * threadData = (DecodeThreadData_t *)lpParameter;
+	DecodeThreadData_t ** ppthreadData = (DecodeThreadData_t **)b;
+	DecodeThreadData_t * threadData = *ppthreadData;
 	assert(threadData);
 
 	bool bOutputOpened = false;
@@ -470,8 +470,7 @@ DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
 
 		QCDCallbacks.toPlayer.PlayStopped( (LPCSTR)(LPCWSTR)threadData->mediaReader.GetName(), 0);
 		g_bDecoderThreadKill = TRUE;
-		if ( g_hReadingLoopKillEvent) // kill the reading loop
-			SetEvent( g_hReadingLoopKillEvent);
+		threadData->mediaReader.Reset();
 	} else {
 		// Is media seekable?
 		QCDCallbacks.Service( opSetTrackSeekable, (void*)(LPCWSTR)threadData->mediaReader.GetName(), pQDecoder->IsSeekable(), 0);
@@ -482,7 +481,7 @@ DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
 
 	while ( !g_bDecoderThreadKill && !bDecodeDone) {
 		//
-		// Perform Seek
+		// Perform Seeking
 		// 
 		if ( !bDecodeDone && g_bSeekNeeded) {
 			QCDCallbacks.toPlayer.OutputFlush(0);
@@ -497,18 +496,27 @@ DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
 		if ( !pQDecoder->IsActive()) {
 			bDecodeDone = TRUE;
 		} else {
-			WriteDataStruct wd;
-			memset( &wd, 0, sizeof(wd));
+			WriteDataStruct wd; ZeroMemory( &wd, sizeof(WriteDataStruct));
 
-			if ( pQDecoder->Decode( wd)){
+			if ( pQDecoder->Decode( wd)) {
+				// Should we seek first?
+				if ( threadData->playFrom > 0) {
+					if ( !pQDecoder->Seek( threadData->playFrom))
+						break;
+
+					threadData->playFrom = 0;
+
+					continue; // decoding from new position
+				}
+
 				//
-				// open output
+				// open output after decoding to real start of playback
 				//
 				if ( !bOutputOpened) {
 					pQDecoder->GetWaveFormFormat( wfex);
 					if ( !QCDCallbacks.toPlayer.OutputOpen( (LPCSTR)(LPCWSTR)threadData->mediaReader.GetName(), &wfex))
 						break;
-					else
+
 						bOutputOpened = true;
 				}
 
@@ -565,21 +573,16 @@ DWORD WINAPI QMPInput::DecodeThread(LPVOID lpParameter)
 	}
 
 	// close up
-	if ( g_hDecoderThread) {
-		CloseHandle( g_hDecoderThread);
-		g_hDecoderThread = NULL;
-	}
-	if ( g_hReadingLoopKillEvent) {
-		CloseHandle( g_hReadingLoopKillEvent);
-		g_hReadingLoopKillEvent = NULL;
-	}
-
 	if ( pQDecoder) delete pQDecoder;
 
-	if ( threadData) delete threadData;
+	if ( threadData) {
+		delete threadData;
+		*ppthreadData = NULL;
+	}
 
 	if ( pReaderStatus) delete pReaderStatus;
 
+	_endthreadex(0);
 	return 0;
 }
 

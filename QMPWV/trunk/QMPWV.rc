@@ -46,17 +46,6 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
-
-STRINGTABLE 
-BEGIN
-    IDS_DISPLAYNAME         "QPlugins WavPack Decoder v4.3"
-END
-
 #endif    // 中文(中华人民共和国) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -91,14 +80,14 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",1,84,92,50,14
-    CTEXT           "Version 4.3\nLast modified July 2007",IDC_STATIC,23,51,172,18
+    CTEXT           "Version 4.3\nLast modified August 2007",IDC_STATIC,23,51,172,18
     CTEXT           "WavPack audio file support",IDC_STATIC,23,22,172,8
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,76,65,8
     LTEXT           "QPlugins",IDC_URL_QPLUGINS,129,76,33,8
     LTEXT           "Using",IDC_STATIC,71,31,21,8
-    LTEXT           "WavPack",IDC_URL_WAVPACK,93,31,32,8
-    LTEXT           "",IDC_WAVPACK_VERNUM,128,31,21,8
+    LTEXT           "WavPack",IDC_LIB_URL,93,31,32,8
+    LTEXT           "",IDC_LIB_VER,128,31,21,8
 END
 
 
@@ -127,6 +116,17 @@ BEGIN
     END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_DISPLAYNAME         "QPlugins WavPack Decoder v4.3"
+END
 
 #endif    // 英语(美国) resources
 /////////////////////////////////////////////////////////////////////////////

@@ -23,11 +23,11 @@ public:
 	{
 		CenterWindow();
 
-		m_ctlURLWavPack.SubclassWindow( GetDlgItem( IDC_URL_WAVPACK));
+		m_ctlURLWavPack.SubclassWindow( GetDlgItem( IDC_LIB_URL));
 		m_ctlURLWavPack.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);
 		m_ctlURLWavPack.SetHyperLink( _T("http://www.wavpack.com"));
 
-		SetDlgItemTextA( m_hWnd, IDC_WAVPACK_VERNUM, WavpackGetLibraryVersionString());
+		SetDlgItemTextA( m_hWnd, IDC_LIB_VER, WavpackGetLibraryVersionString());
 
 		m_ctlURLQPlugins.SubclassWindow( GetDlgItem( IDC_URL_QPLUGINS));
 		m_ctlURLQPlugins.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);
