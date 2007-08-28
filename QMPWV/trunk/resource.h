@@ -5,18 +5,11 @@
 #define IDD_CONFIG                      101
 #define IDD_ABOUT                       102
 #define IDS_DISPLAYNAME                 104
-#define IDS_STRING108                   108
 #define IDC_URL_QPLUGINS                1001
-#define IDC_URL_WAVPACK                 1002
 #define IDC_LIB_URL                     1002
 #define IDC_CLOSE                       1003
-#define IDC_WAVPACK_VERNUM              1004
 #define IDC_LIB_VER                     1004
 #define IDC_USEWVC                      1018
-#define IDC_REPLAYGAIN_TEXT             1019
-#define IDC_REPLAYGAIN                  1020
-#define IDC_CLIPPING_TEXT               1021
-#define IDC_CLIPPING                    1022
 
 // Next default values for new objects
 // 
