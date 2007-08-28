@@ -2,7 +2,6 @@
 // Microsoft Visual C++ generated include file.
 // Used by QMPTAK.rc
 //
-#define IDD_ABOUT                       101
 #define IDD_ABOUT_INPUT                 101
 #define IDS_DISPLAYNAME                 102
 #define IDS_DISPLAYNAME_NOTFOUND        103
