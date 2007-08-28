@@ -58,7 +58,6 @@ Section "Main"
   File "/oname=QMPTAK.dll" "Release\QMPTAK.dll"
 
   ; Put dlls
-  SetOutPath $INSTDIR
   File "/oname=tak_deco_lib.dll" "tak\dll\tak_deco_lib.dll"
 
   MessageBox MB_OK "Install Finished! $\r$\nNote: TAK support APE v2 tag format. $\r$\nPlease add $\"TAK$\" to APE v2 tag plug-in's type-list manully."

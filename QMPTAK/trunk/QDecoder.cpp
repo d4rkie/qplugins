@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(L"QPlugins TAK Audio Decoder", L"1.0", L"TAK")
+: QDecoderBase(L"QPlugins TAK Audio Decoder", L"1.01", L"TAK")
 , m_Decoder(NULL)
 , m_TAKBuf(NULL)
 , m_bAbort(FALSE)

@@ -5,6 +5,7 @@
 #define IDD_ABOUT                       101
 #define IDD_ABOUT_INPUT                 101
 #define IDS_DISPLAYNAME                 102
+#define IDS_DISPLAYNAME_NOTFOUND        103
 #define IDC_URL_QPLUGINS                1001
 #define IDC_LIB_URL                     1002
 #define IDC_LIB_VER                     1004

@@ -63,6 +63,33 @@ int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 	ModInfo->moduleString = (char*)g_szPluginDisplayStr;
 	ModInfo->moduleExtensions = (char*)L"TAK";//(char*)(LPCWSTR)g_strPluginExtensions;
 
+	// where am i? 
+	WCHAR modulePath[MAX_PATH] = {0};
+	GetModuleFileName( g_hInstance, modulePath, MAX_PATH);
+
+	WCHAR pluginFolder[MAX_PATH] = {0};
+	QCDCallbacks.Service( opGetPluginFolder, (void*)pluginFolder, sizeof(pluginFolder), (long)modulePath);
+
+	// load tak engine dll (was set to be delay loaded)
+	WCHAR takPlugin[MAX_PATH+20] = {0}; lstrcpy( takPlugin, pluginFolder);
+	PathAppend( takPlugin, L"tak_deco_lib.dll");
+
+	HINSTANCE hInst = LoadLibrary( takPlugin);
+	if ( !hInst) hInst = LoadLibrary( L"tak_deco_lib.dll");
+	if ( !hInst) {
+		// Could not find TAK engine
+		// return TRUE, so plugin stays loaded, but remove plugin calls so 
+		// player cant utilize. Also change plugin display string.
+
+		memset(&QCDCallbacks.toModule, 0, sizeof(QCDCallbacks.toModule));
+		QCDCallbacks.toModule.Initialize	= Initialize;
+		QCDCallbacks.toModule.ShutDown		= ShutDown;
+
+		ResInfo resInfo = { sizeof(ResInfo), g_hInstance, MAKEINTRESOURCE(IDS_DISPLAYNAME_NOTFOUND), 0, 0 };
+		QCDCallbacks.Service(opLoadResString, (void*)g_szPluginDisplayStr, (long)sizeof(g_szPluginDisplayStr), (long)&resInfo);
+		return TRUE;
+	}
+
 	// load display name
 	ResInfo resInfo = { sizeof(ResInfo), g_hInstance, MAKEINTRESOURCE(IDS_DISPLAYNAME), 0, 0 };
 	QCDCallbacks.Service(opLoadResString, (void*)g_szPluginDisplayStr, (long)sizeof(g_szPluginDisplayStr), (long)&resInfo);
