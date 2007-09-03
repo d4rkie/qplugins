@@ -100,6 +100,6 @@ BOOL QMPFileInfo::ReadInfo(const WCHAR* medianame, void* infoHandle, int flags)
 	} while (0);
 
 	// return true for successful read, false for failure
-	return TRUE;
+	return ret;
 }
 

@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.4", L"FLAC:FLA")
+: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.5", L"FLAC:FLA")
 , FLAC::Decoder::Stream()
 , m_bAbort(FALSE)
 , m_FLACBuf(NULL)
@@ -38,10 +38,10 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 	};
 
 	if ( !chain.read( &mediaReader, iocb, false))
-		return E_FAIL; //return ZERO duration
+		return FALSE;
 
 	if ( !iterator.is_valid())
-		return E_FAIL; // return ZERO duration
+		return FALSE;
 
 	iterator.init( chain);
 
@@ -55,7 +55,7 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 	} while ( iterator.next());
 
 	if ( !sidata)
-		return E_FAIL; // return ZERO duration
+		return FALSE;
 	else {
 		double total_samples = (double)sidata->get_total_samples();
 		double sample_rate = (double)sidata->get_sample_rate();
@@ -68,7 +68,7 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 		te.end = (unsigned int)(FLAC__uint64)(total_samples / sample_rate * 1000.0 + .5);
 		te.unitpersec = 1000;
 
-		return NOERROR;
+		return TRUE;
 	}
 }
 
