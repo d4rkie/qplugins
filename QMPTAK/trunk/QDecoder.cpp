@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(L"QPlugins TAK Audio Decoder", L"1.01", L"TAK")
+: QDecoderBase(L"QPlugins TAK Audio Decoder", L"1.02", L"TAK")
 , m_Decoder(NULL)
 , m_TAKBuf(NULL)
 , m_bAbort(FALSE)
@@ -27,12 +27,12 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 
 	if ( tak_True != tak_SSD_Valid( ssd)) {
 		TtakResult ret = tak_SSD_State( ssd);
-		return E_FAIL; // return ZERO duration
+		return FALSE;
 	}
 
 	if ( tak_res_Ok != tak_SSD_GetStreamInfo( ssd, &si)) {
 		tak_SSD_Destroy( m_Decoder);
-		return E_FAIL;
+		return FALSE;
 	}
 
 	te.track = 1;
@@ -43,7 +43,7 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 
 	tak_SSD_Destroy( ssd);
 
-	return NOERROR;
+	return TRUE;
 }
 
 int QDecoder::Open(QMediaReader & mediaReader)

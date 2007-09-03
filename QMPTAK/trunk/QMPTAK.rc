@@ -70,7 +70,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",1,85,93,50,14
-    CTEXT           "Version 1.01\nLast modified August 2007",IDC_STATIC,23,51,172,18
+    CTEXT           "Version 1.02\nLast modified September 2007",IDC_STATIC,23,51,172,18
     CTEXT           "Tom's lossless Audio Kompressor (TAK) audio file support",IDC_STATIC,19,22,182,8
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,77,65,8
@@ -107,9 +107,9 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_DISPLAYNAME         "QPlugins TAK Audio Decoder v1.01"
+    IDS_DISPLAYNAME         "QPlugins TAK Audio Decoder v1.02"
     IDS_DISPLAYNAME_NOTFOUND 
-                            "[TAK NOT FOUND] QPlugins TAK Audio Decoder v1.01"
+                            "[TAK NOT FOUND] QPlugins TAK Audio Decoder v1.02"
 END
 
 #endif    // Ó¢Óï(ÃÀ¹ú) resources

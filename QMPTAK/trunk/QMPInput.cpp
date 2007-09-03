@@ -156,7 +156,7 @@ int QMPInput::GetTrackExtents(const char* medianame, TrackExtents *ext, int flag
 	QMediaReader mr((IQCDMediaSource *)QCDCallbacks.Service( opGetIQCDMediaSource, (void*)medianame, 0, 0));
 
 	if ( !mr.Open()) return FALSE;
-	ret = (NOERROR == dec.GetTrackExtents( mr, *ext));
+	ret = dec.GetTrackExtents( mr, *ext);
 	mr.Close();
 
 	return ret;
