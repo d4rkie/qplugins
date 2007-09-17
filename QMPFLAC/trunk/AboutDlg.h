@@ -26,7 +26,7 @@ public:
 		m_ctlURLFLAC.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);
 		m_ctlURLFLAC.SetHyperLink( _T("http://flac.sourceforge.net"));
 
-		SetDlgItemText( IDC_LIB_VER, _T("v1.2.0"));
+		SetDlgItemText( IDC_LIB_VER, _T("v1.2.1"));
 
 		m_ctlURLQPlugins.SubclassWindow( GetDlgItem( IDC_URL_QPLUGINS));
 		m_ctlURLQPlugins.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);
@@ -66,7 +66,7 @@ public:
 		m_ctlURLFLAC.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);
 		m_ctlURLFLAC.SetHyperLink( _T("http://flac.sourceforge.net"));
 
-		SetDlgItemText( IDC_LIB_VER, _T("v1.2.0"));
+		SetDlgItemText( IDC_LIB_VER, _T("v1.2.1"));
 
 		m_ctlURLQPlugins.SubclassWindow( GetDlgItem( IDC_URL_QPLUGINS));
 		m_ctlURLQPlugins.SetHyperLinkExtendedStyle( HLINK_UNDERLINEHOVER);

@@ -142,7 +142,13 @@ public:
 	{
 		if ( m_pms) {
 			m_LastError = MSERROR_SUCCESS;
-			return !(m_pms->GetSourcePosition(0) < m_pms->GetSourceSize(0));
+			long props = m_pms->GetMediaProperties();
+			if ( props & MEDIASOURCE_PROP_CANSEEK)
+				return !(m_pms->GetSourcePosition(0) < m_pms->GetSourceSize(0));
+			else if ( props & MEDIASOURCE_PROP_INTERNETSTREAM)
+				return FALSE; // for non-seekable internet stream -- endless
+			else
+				return TRUE; // Oops!!
 		} else {
 			m_LastError = MSERROR_FAILED;
 			return FALSE;

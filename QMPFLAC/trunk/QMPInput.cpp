@@ -426,7 +426,7 @@ UINT WINAPI __stdcall QMPInput::DecodeThread(void * b)
 		if ( !pQDecoder)
 			break;
 
-		if ( !pQDecoder->Open( threadData->mediaReader))
+		if ( 0 >= pQDecoder->Open( threadData->mediaReader))
 			break;
 
 		bSuccess = true;
@@ -505,7 +505,7 @@ UINT WINAPI __stdcall QMPInput::DecodeThread(void * b)
 				ai.struct_size = sizeof(AudioInfo);
 				pQDecoder->GetAudioInfo( ai);
 				if ( memcmp( &ai, &aiLast, sizeof(AudioInfo))) { // change audio info when necessary
-					if ( !(threadData->mediaReader.GetProperties() & MEDIASOURCE_PROP_INTERNETSTREAM)) {
+					if ( ( 0 == lstrlenA( ai.text) ) && !(threadData->mediaReader.GetProperties() & MEDIASOURCE_PROP_INTERNETSTREAM)) {
 						int ch = threadData->mediaReader.GetName().ReverseFind( _T('.'));
 						if ( ch > 0) {
 							ZeroMemory( ai.text, sizeof(ai.text));

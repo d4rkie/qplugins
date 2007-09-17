@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.5", L"FLAC:FLA")
+: QDecoderBase(L"QPlugins FLAC Audio Decoder", L"3.5.1", L"FLAC:FLA")
 , FLAC::Decoder::Stream()
 , m_bAbort(FALSE)
 , m_FLACBuf(NULL)
