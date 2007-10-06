@@ -185,7 +185,7 @@ BOOL QCUESheet::ReadFromCUEFile(const CPath & pathCUESheetFile)
 			if ( cur_track < 0)
 				album_tags[QCDTag_AlbumArtist] = pars[0];
 			else
-				track_tags[QCDTag_AlbumArtist] = pars[0];
+				track_tags[QCDTag_Artist] = pars[0];
 		} else if ( cmd == _T("TITLE")) {
 			if ( cur_track < 0)
                 album_tags[QCDTag_Album] = pars[0];
