@@ -61,6 +61,10 @@ public:
 		map< CString, CString>::const_iterator cit = tags.find( name);
 		return (cit != tags.end()) ? (cit->second) : _T("");
 	}
+	void SetTrackTagByName(UINT track, LPCTSTR name, LPCTSTR value)
+	{
+		m_mapTrackTable[track].tags[name] = value;
+	}
 
 	double GetTrackStartIndex(UINT track)
 	{

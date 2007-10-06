@@ -63,8 +63,13 @@ BOOL QMPTags::Initialize(QCDModInfo *modInfo, int flags)
 
 void QMPTags::ShutDown(int flags)
 {
-	// TODO:
-	// prepare plugin to be unloaded. All allocations should be freed.
+	// Save settings
+	TCHAR inifile[MAX_PATH];
+	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, sizeof(TCHAR)*MAX_PATH, 0);
+
+	TCHAR buf[10];
+	wsprintf( buf, _T("%d"), g_bOWIMGTags);
+	WritePrivateProfileString( _T("CUE Sheet"), _T("OWIMGTags"), buf, inifile);
 }
 
 //-----------------------------------------------------------------------------
@@ -106,20 +111,24 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 			piTag->GetTagDataByIndex( index-1, wn.GetBuffer( wnl), &wnl, &type, bv, &bvl);
 			wn.ReleaseBuffer();
 
-			// fix some fields basing on the value of cue sheet file
-			LPCWSTR pv = cueSheet.GetTrackTagByName( vtNum, wn);
-			if ( (NULL != pv) && (0 != lstrlen( pv))) {
-				if ( g_bOWIMGTags) QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_STRINGUNICODE, (BYTE*)pv, sizeof(WCHAR)*(lstrlenW( pv)+1), &startIndex);
-				tags_read.insert( wn); // Marking the tag field which we have read from cue file
+			LPCWSTR pv = NULL;
+			if ( g_bOWIMGTags && (pv = cueSheet.GetTrackTagByName( vtNum, wn)) && (0 != lstrlen( pv))) {
+				// need overwrite and find the tag
+				QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_STRINGUNICODE, (BYTE*)pv, sizeof(WCHAR)*(lstrlenW( pv)+1), &startIndex);
 			} else {
 				// pass the original value to virtual track.
 				QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, type, bv, bvl, &startIndex);
 			}
 
+			tags_read.insert( wn); // Marking the tag field which we have processed it.
+
 			// clear all
 			if (bv) delete [] bv;
 		}
 	}
+
+	// release the tag info interface
+	if ( piTag) piTag->Release();
 
 	// overwrite the tag fields by cue info
 	map< CString, CString > & tags = cueSheet.GetTrackTags( vtNum);
@@ -133,9 +142,6 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 			QCDCallbacks.toPlayer.SetTagData( tagHandle, cit->first, QTD_TYPE_STRINGUNICODE, (BYTE*)pv, sizeof(WCHAR)*(lstrlenW( pv)+1), &startIndex);
 		}
 	}
-
-	// release the tag info interface
-	if ( piTag) piTag->Release();
 
 	return TRUE;
 }

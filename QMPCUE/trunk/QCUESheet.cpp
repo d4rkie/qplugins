@@ -99,13 +99,7 @@ BOOL QCUESheet::ReadFromCUEFile(const CPath & pathCUESheetFile)
 	// tags types
 	map< CString, CString > album_tags, track_tags;
 
-	//CString rg_track_gain, rg_track_peak;
-	//CString rg_album_gain, rg_album_peak;
-	//CString track_title, track_performer;
-	//CString album_title, album_performer;
-	//CString genre;
-	//CString year;
-
+	// one cue track entry
 	cue_entry * entry = NULL;
 
 	CString line;
@@ -131,9 +125,6 @@ BOOL QCUESheet::ReadFromCUEFile(const CPath & pathCUESheetFile)
 		} else if ( cmd == _T("TRACK")) {
 			cur_track = _ttoi( pars[0].GetBuffer());
 			track_type = pars[1].MakeUpper();
-
-			CString buf; buf.Format( _T("%d"), cur_track);
-			track_tags[QCDTag_TrackNumber] = buf;
 		} else if ( cmd == _T("INDEX")) {
 			int index_no = _ttoi( pars[0].GetBuffer());
 			int index_temp = _get_frame_time( pars[1].GetBuffer());
@@ -217,6 +208,18 @@ BOOL QCUESheet::ReadFromCUEFile(const CPath & pathCUESheetFile)
 	}
 
 	fclose( _pf);
+
+	// Finally, we should fix some tags
+	UINT i;
+	for ( i = 1; i <= m_mapTrackTable.size(); ++i) {
+		// Fix the "TrackNumber" tags in the form of "trackN/totalN"
+		LPCWSTR pv = GetTrackTagByName( i, QCDTag_TrackNumber);
+		if ( !pv || (0 == lstrlen(pv))) {
+			CString buf;
+			buf.Format( _T("%d/%d"), i, m_mapTrackTable.size());
+			SetTrackTagByName( i, QCDTag_TrackNumber, buf);
+		}
+	}
 
 	return m_mapTrackTable.size() > 0;
 }
