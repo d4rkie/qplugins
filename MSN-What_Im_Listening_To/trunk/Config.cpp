@@ -5,7 +5,9 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <TCHAR.h>
+#include "QMPHelperGeneral.h"
 #include "QCDGeneralDLL.h"
+#include "WMP_Reg.h"
 #include "Config.h"
 
 #define IDC_CONFIG_FAKEBUTTON 1001
@@ -16,10 +18,7 @@
 
 CConfig::CConfig(HINSTANCE hInstance, HWND hAppHwnd)
 {
-	if (nMSNBuild >= 566)
-		DialogBox(hInstance, MAKEINTRESOURCE(IDD_CONFIG8), hAppHwnd, DlgProc8);
-	else
-		DialogBox(hInstance, MAKEINTRESOURCE(IDD_CONFIG7), hAppHwnd, DlgProc7);
+	DialogBox(hInstance, MAKEINTRESOURCE(IDD_CONFIG_NEW), hAppHwnd, DlgProc);
 }
 
 CConfig::~CConfig()
@@ -29,108 +28,12 @@ CConfig::~CConfig()
 
 //////////////////////////////////////////////////////////////////////
 
-BOOL CALLBACK CConfig::DlgProc7(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	BOOL bReturn = FALSE;
-
-	switch (uMsg)
-	{
-	case WM_INITDIALOG :
-	{
-		CheckDlgButton(hwndDlg, IDC_CONFIG_ARTIST,   settings.bArtist);
-		CheckDlgButton(hwndDlg, IDC_CONFIG_ALBUM,    settings.bAlbum);
-		CheckDlgButton(hwndDlg, IDC_CONFIG_SHOWVID,  settings.bVideo);
-
-		SendDlgItemMessage(hwndDlg, IDC_CONFIG_DELAY_SPIN, UDM_SETRANGE, 0, MAKELONG(30, 0));
-		SetDlgItemInt(hwndDlg, IDC_CONFIG_DELAY, settings.nDelay / 1000, FALSE);
-
-		// Show Fake WMP button?
-		EnableWMPFaking(hwndDlg);
-
-		bReturn = TRUE;
-		break;
-	}
-	case WM_CLOSE :
-	{
-		EndDialog(hwndDlg, TRUE);
-		bReturn = TRUE;
-		break;
-	}
-	case WM_COMMAND :
-	{
-		switch (wParam)
-		{
-		case IDOK :
-			_TCHAR strBuff[32];
-
-			// Validate and save
-			settings.bArtist   = IsDlgButtonChecked(hwndDlg, IDC_CONFIG_ARTIST);
-			settings.bAlbum    = IsDlgButtonChecked(hwndDlg, IDC_CONFIG_ALBUM);
-			settings.bVideo    = IsDlgButtonChecked(hwndDlg, IDC_CONFIG_SHOWVID);
-
-			if (GetDlgItemText(hwndDlg, IDC_CONFIG_DELAY, strBuff, sizeof(strBuff)/sizeof(_TCHAR)))
-				settings.nDelay = _ttoi(strBuff) * 1000;
-
-			if (PlayerStatus(PS_PLAYING))
-				UpdateSong();
-
-			PostMessage(hwndDlg, WM_CLOSE, 0, 0);
-			bReturn = TRUE;
-			break;
-
-		case IDCANCEL :
-			PostMessage(hwndDlg, WM_CLOSE, 0, 0);
-			bReturn = TRUE;
-			break;
-
-		case IDC_CONFIG_FIXWMP :
-			if (RegDB_GetWMPVersion() < 9) {
-				if (IDOK == MessageBox(hwndPlayer, L"Are you sure you want to add regdb entries\nfor Windows Media Player recognition?", L"QMP \"What Im Listening To\"", MB_OKCANCEL | MB_ICONQUESTION)) {
-					RegDB_Fix(TRUE);
-					SetDlgItemText(hwndDlg, IDC_CONFIG_FIXWMP, L"Remove WMP faking");
-				}
-			}
-			else {
-				if (IDOK == MessageBox(hwndPlayer, L"Are you sure you want to remove the regdb entries\nfor Windows Media Player recognition?", L"QMP \"What Im Listening To\"", MB_OKCANCEL | MB_ICONQUESTION)) {
-					RegDB_Fix(FALSE);
-					SetDlgItemText(hwndDlg, IDC_CONFIG_FIXWMP, L"Fake WMP install");
-				}
-			}
-			break;
-		} // switch (wParam)
-
-		break;
-	}
-	case WM_NOTIFY :
-	{
-		if (wParam == IDC_CONFIG_DELAY_SPIN) {
-			_TCHAR strTemp[64];
-			NMUPDOWN* nm = (NMUPDOWN*)lParam;
-
-			GetDlgItemText(hwndDlg, IDC_CONFIG_DELAY, strTemp, sizeof(strTemp)/sizeof(_TCHAR));
-			settings.nDelay  = _ttoi(strTemp) * 1000;
-			settings.nDelay += nm->iDelta * 1000;
-			if (settings.nDelay > 45000 && nm->iDelta > 0)
-				settings.nDelay = 45000;
-			else if (settings.nDelay > 45000 && nm->iDelta < 0)
-				settings.nDelay = 0;
-			_itot_s(settings.nDelay / 1000, strTemp, sizeof(strTemp)/sizeof(_TCHAR), 10);
-			SetDlgItemText(hwndDlg, IDC_CONFIG_DELAY, strTemp);
-
-			bReturn = TRUE;
-		}
-			
-		break;
-	}
-	} // switch (uMsg)
-
-	return bReturn;
-}
 
 //////////////////////////////////////////////////////////////////////
 // Dialog prog for build 566+
 //////////////////////////////////////////////////////////////////////
-BOOL CALLBACK CConfig::DlgProc8(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+
+BOOL CALLBACK CConfig::DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	BOOL bReturn = FALSE;
 
@@ -167,8 +70,8 @@ BOOL CALLBACK CConfig::DlgProc8(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 			if (GetDlgItemText(hwndDlg, IDC_CONFIG_DELAY, strBuff, sizeof(strBuff)/sizeof(_TCHAR)))
 				settings.nDelay = _ttoi(strBuff) * 1000;
 
-			if (PlayerStatus(PS_PLAYING))
-				UpdateSong();
+			if (IsPlayerStatus(QMP_PLAYING))
+				UpdateSong(TRUE);
 
 			PostMessage(hwndDlg, WM_CLOSE, 0, 0);
 			bReturn = TRUE;
@@ -183,15 +86,17 @@ BOOL CALLBACK CConfig::DlgProc8(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 			if (RegDB_GetWMPVersion() < 9) {
 				if (IDOK == MessageBox(hwndPlayer, L"Are you sure you want to add regdb entries\nfor Windows Media Player recognition?", L"QMP \"What Im Listening To\"", MB_OKCANCEL | MB_ICONQUESTION)) {
 					RegDB_Fix(TRUE);
-					SetDlgItemText(hwndDlg, IDC_CONFIG_FIXWMP, L"Remove WMP faking");
+					SetDlgItemText(hwndDlg, IDC_CONFIG_FAKEBUTTON, L"Remove WMP faking");
 				}
 			}
 			else {
 				if (IDOK == MessageBox(hwndPlayer, L"Are you sure you want to remove the regdb entries\nfor Windows Media Player recognition?", L"QMP \"What Im Listening To\"", MB_OKCANCEL | MB_ICONQUESTION)) {
 					RegDB_Fix(FALSE);
-					SetDlgItemText(hwndDlg, IDC_CONFIG_FIXWMP, L"Fake WMP install");
+					SetDlgItemText(hwndDlg, IDC_CONFIG_FAKEBUTTON, L"Fake WMP install");
 				}
 			}
+
+			bReturn = TRUE;
 			break;
 		} // switch (wParam)
 
@@ -223,13 +128,14 @@ BOOL CALLBACK CConfig::DlgProc8(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	return bReturn;
 }
 
+//////////////////////////////////////////////////////////////////////
 
 void CConfig::EnableWMPFaking(HWND hwndDlg)
 {
 	if (!hwndDlg)
 		return;
 
-	if (RegDB_GetWMPVersion() < 9)
+	if (RegDB_GetWMPVersion() < 9 || settings.bWMPIsFaked)
 	{
 		// Create the Fake button and container
 		WCHAR* strButton = NULL;

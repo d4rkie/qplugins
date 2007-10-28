@@ -3,18 +3,15 @@
 // Used by Resources.rc
 //
 #define IDD_CONFIG                      101
-#define IDD_CONFIG7                     101
 #define IDD_ABOUT                       102
 #define IDD_CONFIG1                     103
-#define IDD_CONFIG8                     103
+#define IDD_CONFIG_NEW                  104
 #define IDC_CONFIG_DELAY                1007
 #define IDC_CONFIG_DELAY_SPIN           1008
 #define IDC_TITLE                       1009
 #define IDC_CONFIG_TITLE                1009
 #define IDC_ALBUM                       1010
-#define IDC_CONFIG_ALBUM                1010
 #define IDC_ARTIST                      1011
-#define IDC_CONFIG_ARTIST               1011
 #define IDC_CONFIG_ALBUM2               1012
 #define IDC_CONFIG_SHOWVID              1012
 #define IDC_CONFIG_FIXWMP               1013

@@ -25,27 +25,52 @@
 //   http://www.codeproject.com/debug/debug_macros.asp
 //
 // Todo:
-//	
+//    - Find a reliable way to detect encoding. (Through right click on playlist)
+//
+// Known bugs:
+// 
+// Fixes since last release:
+//    + Miranda IM support
+//    + Uses the new QMP entry and interfaces when running under QMP
+//    * Small efficiency improvements
+//    * Small fix for playing CDs
+//    * Removed support for old MSN beta version. (build 572 or simething)
 //
 //-----------------------------------------------------------------------------
 
+#define UNICODE 1
+#define _UNICODE 1
+
 #include <Windows.h>
-#include <stdio.h>
-#include <TCHAR.h>
+// #include <stdio.h>
+#include <TCHAR.H>
+#include <strsafe.h>
 #include <debug.h>
+
+//-----------------------------------------------------------------------------
+
+#include "QMPHelperGeneral.h"
+
 #include "QCDGeneralDLL.h"
+#include "QBlog.h"
+#include "WMP_Reg.h"
 #include "Config.h"
 #include "About.h"
 
 #pragma warning(disable:4002)		// Disable "too many actual parameters for macro INFO"
 
+
 // Constants
-static       CHAR*   PLUGIN_NAME   =  "MSN \"What I'm Listening To\" v2.6";
-static       WCHAR*  PLUGIN_NAME_W = L"MSN \"What I'm Listening To\" v2.6";
+const static CHAR*   PLUGIN_NAME   =  "MSN \"What I'm Listening To\" v2.6.0";
+const static WCHAR*  PLUGIN_NAME_W = L"MSN \"What I'm Listening To\" v2.6.0";
+
+const static LPCTSTR MSN_WINDOWCLASS       = _T("MsnMsgrUIManager");
+
+const static LPCTSTR MIRANDA_WINDOWCLASS   = _T("Miranda.ListeningTo");
+const static long    MIRANDA_DW_PROTECTION = 0x8754;
 
 static const WCHAR   INI_SECTION[] = L"MSN-WILT";
-static const WCHAR*  REGKEY_MSN    = L"Software\\Microsoft\\MSNMessenger";
-static const WCHAR*  REGKEY_WMP    = L"Software\\Microsoft\\Active Setup\\Installed Components\\{6BF52A52-394A-11d3-B153-00C04F79FAA6}";
+
 static const WORD    TITLE_LEN     = 100;
 static const WORD    ALBUM_LEN     = 100;
 static const WORD    ARTIST_LEN    = 100;
@@ -63,10 +88,8 @@ QCDModInitGen2*    ModInitGen2      = NULL;
 BOOL               g_IsNewApi       = false;
 
 WNDPROC            g_lpOldQMPProc   = NULL;
-BOOL               bIsEncoding      = FALSE;
-INT                nMSNBuild        = 0;
-UINT_PTR           nDelayTimerID    = 0;
-WCHAR*             strTrackPlaying  = NULL;
+UINT_PTR           g_nDelayTimerID  = 0;
+QString            g_strTrackPlaying;
 Settings           settings;
 
 //-----------------------------------------------------------------------------
@@ -75,6 +98,11 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
+		#ifdef _DEBUG
+			_CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+			// _CrtSetBreakAlloc(59);
+		#endif
+
 		DisableThreadLibraryCalls(hInst);
 		hInstance = hInst;
 	}
@@ -129,19 +157,16 @@ int Initialize(QCDModInfo *modInfo, int flags)
 		QCDCallbacks->Service = ModInitGen2->Service;
 	else
 		QCDCallbacks->Service = ModInitGen1->Service;
+	modInfo->moduleString = const_cast<char*>(PLUGIN_NAME);
 
-	modInfo->moduleString = PLUGIN_NAME;
-
+	InitializeHelper(QCDCallbacks->Service);
 
 	// TODO: all your plugin initialization here
-	hwndPlayer = (HWND)QCDCallbacks->Service(opGetParentWnd, 0, 0, 0);
+	g_nDelayTimerID = 0;
+	hwndPlayer    = (HWND)QCDCallbacks->Service(opGetParentWnd, 0, 0, 0);
+	g_strTrackPlaying.SetUnicode(L"");
 
-	nDelayTimerID = 0;
-	bIsEncoding = FALSE;
-
-	strTrackPlaying = new WCHAR[MAX_PATH];
-	if (!strTrackPlaying)
-		return FALSE;
+	//nMSNBuild     = RegDB_GetMSNBuild();
 
 	// Subclass the player and listen for WM_PN_?
 	if ((g_lpOldQMPProc = (WNDPROC)SetWindowLongPtr(hwndPlayer, GWLP_WNDPROC, (LONG_PTR)QCDSubProc)) == 0){
@@ -149,17 +174,15 @@ int Initialize(QCDModInfo *modInfo, int flags)
 		return FALSE;
 	}
 
-	nMSNBuild = RegDB_GetMSNBuild();
 	LoadSettings();
-
-	if (PlayerStatus(PS_PLAYING))
+	if (IsPlayerStatus(QMP_PLAYING) && !IsEncoding())
 	{
-		MSNMessages msn;
-		ZeroMemory(&msn, sizeof(msn));
-		CurrentSong(&msn);
-		msn.msncommand = 1;
+		PlayingSongInfo songInfo;
+		// ZeroMemory(&songInfo, sizeof(PlayingSongInfo));
+		CurrentSong(&songInfo);
+		songInfo.nCommand = 1;
 
-		SendToMSN(&msn);
+		SendSongInfo(&songInfo);
 	}
 
 	return TRUE; // return TRUE for successful initialization
@@ -173,14 +196,15 @@ void ShutDown(int flags)
 	if (!SetWindowLongPtr(hwndPlayer, GWLP_WNDPROC, (LONG_PTR)g_lpOldQMPProc))
 		MessageBox(hwndPlayer, L"Failed to remove window hook. Restart the player!", PLUGIN_NAME_W, 0);
 
-	if (nDelayTimerID)
-		KillTimer(NULL, nDelayTimerID);
+	if (g_nDelayTimerID)
+		KillTimer(NULL, g_nDelayTimerID);
+
 	ClearSong();
 	QBlog_CleanUpRegDB();
+
 	SaveSettings();
 
-	delete [] strTrackPlaying;
-
+	delete QCDCallbacks;
 	if (g_IsNewApi)
 		delete ModInitGen2;
 }
@@ -190,9 +214,8 @@ void ShutDown(int flags)
 void Configure(int flags)
 {
 	HWND hwnd = (HWND)QCDCallbacks->Service(opGetPropertiesWnd, NULL, 0, 0);
-	if (!hwnd)
-		hwnd = hwndPlayer;
-	CConfig dlg(hInstance, hwnd);
+
+	CConfig dlg(hInstance, hwnd != NULL ? hwnd : hwndPlayer);
 }
 
 //-----------------------------------------------------------------------------
@@ -200,9 +223,8 @@ void Configure(int flags)
 void About(int flags)
 {
 	HWND hwnd = (HWND)QCDCallbacks->Service(opGetPropertiesWnd, NULL, 0, 0);
-	if (!hwnd)
-		hwnd = hwndPlayer;
-	CAbout dlg(hInstance, hwnd);
+
+	CAbout dlg(hInstance, hwnd != NULL ? hwnd : hwndPlayer);
 }
 
 //-----------------------------------------------------------------------------
@@ -217,28 +239,32 @@ void LoadSettings()
 	QCDCallbacks->Service(opGetPluginSettingsFile, strTmp, MAX_PATH*sizeof(WCHAR), 0); // Returns UTF8
 	QCDCallbacks->Service(opUTF8toUCS2, strTmp, (long)strIni, MAX_PATH);
 
-	settings.bTitle      = TRUE; // GetPrivateProfileInt(INI_SECTION, L"bTitle", 1, strIni);
+	settings.bTitle      = TRUE;
 	settings.bArtist     = GetPrivateProfileInt(INI_SECTION, L"bArtist", 1, strIni);
 	settings.bAlbum      = GetPrivateProfileInt(INI_SECTION, L"bAlbum",  0, strIni);
 	settings.bVideo      = GetPrivateProfileInt(INI_SECTION, L"bVideo",  0, strIni);
 	settings.bWMPIsFaked = GetPrivateProfileInt(INI_SECTION, L"bWMPIsFaked", 0, strIni);
 	settings.nDelay      = GetPrivateProfileInt(INI_SECTION, L"nDelay",  0, strIni);
 
+	settings.bDebug      = GetPrivateProfileInt(INI_SECTION, L"bDebug",  0, strIni);
+
 	bFirstRun = GetPrivateProfileInt(INI_SECTION, L"bFirstRun", 1, strIni);
-	if (bFirstRun) {
-		if (RegDB_GetWMPVersion() < 9) {
+	if (bFirstRun)
+	{
+		if (RegDB_GetWMPVersion() < 9)
+		{
 			if (IDYES == MessageBox(hwndPlayer, 
 					L"The \"MSN - What Im Listening To\" QMP plug-in has detected that WMP (Windows Media Player)\n" \
-					L"isn't installed on your computer or you are running an old version which isn't supported.\n\n" \
+					L"is not installed on your computer or you are running an old version which is not supported.\n\n" \
 					L"In order to turn on the \"What Im Listening To\" feature in MSN you have to either:\n" \
 					L"  1) Install Windows Media Player\n"\
 					L"  2) Let this plug-in fix it without need of WMP\n\n" \
 					L"Do you want to let the plug-in fix the problem now?\n" \
-					L"(This can be undone from the configuration dialog of this plug-in.)", 
+					L"(This can be undone from the configuration dialog of this plug-in.)\n\n" \
+					L"Note: Users of non official clients, for example Miranda, might not need this fix!", 
 					L"QMP \"What Im Listening To\"", MB_YESNO | MB_ICONQUESTION))
 			{
 				RegDB_Fix(TRUE);
-				
 			}
 		}
 		WritePrivateProfileString(INI_SECTION, L"bFirstRun", L"0", strIni);
@@ -255,470 +281,447 @@ void SaveSettings()
 	QCDCallbacks->Service(opGetPluginSettingsFile, strTmp, MAX_PATH*sizeof(WCHAR), 0); // Returns UTF8
 	QCDCallbacks->Service(opUTF8toUCS2, strTmp, (long)strIni, MAX_PATH);
 	
-	// wsprintf(buf, L"%d", settings.bTitle);	WritePrivateProfileString(INI_SECTION, L"bTitle",  buf, strIni);
-	wsprintf(buf, L"%d", settings.bArtist);	WritePrivateProfileString(INI_SECTION, L"bArtist", buf, strIni);
-	wsprintf(buf, L"%d", settings.bAlbum);	WritePrivateProfileString(INI_SECTION, L"bAlbum",  buf, strIni);
-	wsprintf(buf, L"%d", settings.bVideo);	WritePrivateProfileString(INI_SECTION, L"bVideo",  buf, strIni);
-	wsprintf(buf, L"%d", settings.bWMPIsFaked);	WritePrivateProfileString(INI_SECTION, L"bWMPIsFaked",  buf, strIni);
-	wsprintf(buf, L"%u", settings.nDelay);	WritePrivateProfileString(INI_SECTION, L"nDelay",  buf, strIni);
+	StringCchPrintf(buf, 32, L"%d", settings.bDebug);      WritePrivateProfileString(INI_SECTION, L"bDebug",  buf, strIni);
+	StringCchPrintf(buf, 32, L"%d", settings.bArtist);     WritePrivateProfileString(INI_SECTION, L"bArtist", buf, strIni);
+	StringCchPrintf(buf, 32, L"%d", settings.bAlbum);      WritePrivateProfileString(INI_SECTION, L"bAlbum",  buf, strIni);
+	StringCchPrintf(buf, 32, L"%d", settings.bVideo);      WritePrivateProfileString(INI_SECTION, L"bVideo",  buf, strIni);
+	StringCchPrintf(buf, 32, L"%d", settings.bWMPIsFaked); WritePrivateProfileString(INI_SECTION, L"bWMPIsFaked",  buf, strIni);
+	StringCchPrintf(buf, 32, L"%u", settings.nDelay);      WritePrivateProfileString(INI_SECTION, L"nDelay",  buf, strIni);
 }
 
 //-----------------------------------------------------------------------------
-// RegDB functions for faking WMP 10
+// Song related functions
 //-----------------------------------------------------------------------------
-void RegDB_Fix(BOOL bFix)
+void SendSongInfo(PlayingSongInfo* pSongInfo)
 {
-	static BOOL bIsFixed = FALSE;
-
-	if (bFix) {
-		if (RegDB_GetWMPVersion() < 9) {
-			RegDB_Insert();
-			settings.bWMPIsFaked = true;
-		}
-	}
-	else {
-			RegDB_Clean();
-			settings.bWMPIsFaked = false;
-	}
-}
-
-//-----------------------------------------------------------------------------
-
-void RegDB_Insert()
-{
-	HKEY hKey = NULL;
-	DWORD dwDis = NULL;
-	LPTSTR lpClass = _T("");
-	
-	SECURITY_ATTRIBUTES lpSecurityAtt;
-	lpSecurityAtt.nLength = sizeof(LPSECURITY_ATTRIBUTES);
-	lpSecurityAtt.lpSecurityDescriptor = NULL;
-	lpSecurityAtt.bInheritHandle = TRUE;
-
-	if (ERROR_SUCCESS == RegCreateKeyEx(HKEY_LOCAL_MACHINE, REGKEY_WMP, 0, lpClass, REG_OPTION_NON_VOLATILE, KEY_WRITE, &lpSecurityAtt, &hKey, &dwDis))
-	{
-		DWORD nValue;
-
-		RegSetValueEx(hKey, _T(""),            0, REG_SZ,    (CONST BYTE*)_T("Microsoft Windows Media Player"), 31*sizeof(_TCHAR));
-		RegSetValueEx(hKey, _T("ComponentID"), 0, REG_SZ,    (CONST BYTE*)_T("Microsoft Windows Media Player"), 31*sizeof(_TCHAR));
-		RegSetValueEx(hKey, _T("Locale"),      0, REG_SZ,    (CONST BYTE*)_T("EN"), 3*sizeof(_TCHAR));
-		RegSetValueEx(hKey, _T("StubPath"),    0, REG_SZ,    (CONST BYTE*)_T(""), 1*sizeof(_TCHAR));
-		RegSetValueEx(hKey, _T("Version"),     0, REG_SZ,    (CONST BYTE*)_T("10,0,0,3646"), 12*sizeof(_TCHAR));
-
-		nValue = 2; RegSetValueEx(hKey, _T("DontAsk"),     0, REG_DWORD, (CONST BYTE*)&nValue, 4);
-		nValue = 1; RegSetValueEx(hKey, _T("IsInstalled"), 0, REG_DWORD, (CONST BYTE*)&nValue, 4);
-
-		RegCloseKey(hKey);
-	}
-}
-
-//-----------------------------------------------------------------------------
-
-void RegDB_Clean()
-{
-	RegDeleteKey(HKEY_LOCAL_MACHINE, REGKEY_WMP);
-}
-
-//-----------------------------------------------------------------------------
-
-INT RegDB_GetWMPVersion()
-{
-	UINT nVersion = 0;
-	HKEY hKey = NULL;
-
-	if(ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, REGKEY_WMP, 0,  KEY_READ, &hKey)) {
-		BYTE strBuff[64];
-		DWORD nBuffSize = 64;
-		DWORD nType = 0;
-		_TCHAR* pPos = NULL;
-
-		RegQueryValueEx(hKey, L"Version", NULL, &nType, strBuff, &nBuffSize);		
-		RegCloseKey(hKey);
-
-		if (nBuffSize == 64) // Might not be 0 terminated
-			strBuff[63] = 0;
-
-		if (nBuffSize > 0) {
-			pPos = wcsstr((WCHAR*)strBuff, L",");
-			
-			if (pPos) {
-				*pPos = 0;
-				nVersion = _ttoi((WCHAR*)strBuff);
-			}
-		}
-	}
-	return nVersion;
-}
-
-//-----------------------------------------------------------------------------
-// Returns MSNMessenger build version
-//-----------------------------------------------------------------------------
-INT RegDB_GetMSNBuild()
-{
-	UINT nBuild = 0;
-	HKEY hKey = NULL;
-
-	if(ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER, REGKEY_MSN, 0,  KEY_READ, &hKey)) {
-		WCHAR strBuff[64];
-		DWORD nBuffSize = 64;
-		DWORD nType = 0;
-		WCHAR* pPos = NULL;
-
-		RegQueryValueEx(hKey, L"AppCompatCanary", NULL, &nType, (LPBYTE)strBuff, &nBuffSize);
-		RegCloseKey(hKey);
-
-		if (nBuffSize == 64) // Might not be 0 terminated
-			strBuff[63] = L'\0';
-
-		if (nBuffSize > 0) {
-			pPos = wcsrchr(strBuff, L'.');
-			
-			if (pPos) {
-				pPos++;
-				nBuild = _wtoi(pPos);
-			}
-		}
-	}
-	return nBuild;
-}
-
-//-----------------------------------------------------------------------------
-// MSN and song related functions
-//-----------------------------------------------------------------------------
-void SendToMSN(MSNMessages *msn)
-{
-	INFO("SendToMSN()");
+	INFO("SendSongInfo()");
 
 	// Send empty if not showing video info
-	if (settings.bVideo == FALSE) {
-		long nReturn = QCDCallbacks->Service(opGetMediaType, 0, -1, 0);
-		if (g_IsNewApi) {
-			if(nReturn == DIGITAL_VIDEO_MEDIA)
-				ZeroMemory(msn, sizeof(MSNMessages));
-		}
-		else {
-			if(nReturn == LEGACY_DIGITAL_VIDEOFILE_MEDIA || nReturn == LEGACY_DIGITAL_VIDEOSTREAM_MEDIA)
-				ZeroMemory(msn, sizeof(MSNMessages));
-		}
-	}
+	if (settings.bVideo == FALSE && IsVideo())
+		pSongInfo->nCommand = 0;
 
-	// Get the right string patterns
-	WCHAR strMSNFormat[64] = {0};
-	static const WCHAR* MSNMusicStr566 = L"\\0Music\\0%d\\0%s\\0%s\\0%s\\0%s\\0";		// MSN 8 build 566+
-	static const WCHAR* MSNMusicStr    = L"\\0Music\\0%d\\0%s\\0%s\\0%s\\0%s\\0%s\\0";	// MSN 7.5
-	const WCHAR* MSNMusicString = NULL;
+	if (!SendToMiranda(pSongInfo))
+		SendToMSN(pSongInfo);
+}
 
-	if (nMSNBuild == 566)
-		MSNMusicString = MSNMusicStr566;
-	else
-		MSNMusicString = MSNMusicStr;
-	
-	// Format string
-	if (settings.bArtist && wcslen(msn->artist) > 0)
-		lstrcatW(strMSNFormat, L"{1} - ");
-	if (settings.bAlbum && wcslen(msn->album) > 0)
-		lstrcatW(strMSNFormat, L"{2} - ");
-	lstrcatW(strMSNFormat, L"{0}");
-	
-	HWND msnui = NULL;
-	COPYDATASTRUCT msndata;
-	WCHAR strBuffer[TITLE_LEN + ALBUM_LEN + ARTIST_LEN + CONTENTID_LEN + 4 + 32];
+//-----------------------------------------------------------------------------
+
+BOOL SendToMiranda(PlayingSongInfo* pSongInfo)
+{
+	BOOL bReturn = FALSE;
+	HWND hwnd = NULL;
+
+	hwnd = FindWindowEx(NULL, NULL, MIRANDA_WINDOWCLASS, NULL);
+	if (hwnd == NULL)
+		return FALSE;
+
+   // Sent to Miranda: 1\0QMP\0Music\0\0\0\0-858993460\0\0\00\0\0\0
+	// Original string: L"<Status>\\0<Player>\\0<Type>\\0<Title>\\0<Artist>\\0<Album>\\0<Track>\\0<Year>\\0<Genre>\\0<Length (secs)>\\0<Radio Station>\\0\\0"
+	static const WCHAR* MirandaMusicStr = L"%d\\0QMP\\0%s\\0%s\\0%s\\0%s\\0%d\\0%s\\0%s\\0%d\\0%s\\0\\0";
+
+	WCHAR strBuffer[4092];
 	ZeroMemory(&strBuffer, sizeof(strBuffer));
 
-	if (nMSNBuild == 566)
-		swprintf_s(strBuffer, sizeof(strBuffer)/sizeof(WCHAR), MSNMusicString, msn->msncommand, msn->title, msn->artist, msn->album, msn->wmcontentid);
+	if (pSongInfo->nCommand == 1)
+	{
+		StringCbPrintf(strBuffer, sizeof(strBuffer), MirandaMusicStr, 
+			pSongInfo->nCommand, pSongInfo->strType.GetUnicode(), pSongInfo->strTitle.GetUnicode(), 
+			pSongInfo->strArtist.GetUnicode(), pSongInfo->strAlbum.GetUnicode(), pSongInfo->nTrackNumber,
+			pSongInfo->strYear.GetUnicode(), pSongInfo->strGenre.GetUnicode(), pSongInfo->nLength, pSongInfo->strRadioStationName.GetUnicode()
+		);
+	}
 	else
-		swprintf_s(strBuffer, sizeof(strBuffer)/sizeof(WCHAR), MSNMusicString, msn->msncommand, strMSNFormat, msn->title, msn->artist, msn->album, msn->wmcontentid);
+		StringCbCopy(strBuffer, sizeof(strBuffer), L"0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0");
 
+	// Create copy struct message
+	COPYDATASTRUCT data;
+	data.dwData = MIRANDA_DW_PROTECTION;
+	data.lpData = &strBuffer;
+	StringCbLength(strBuffer, sizeof(strBuffer), (size_t*)&(data.cbData));
+	data.cbData += 2; // Size in bytes incl. last wide NULL
+
+	do
+	{
+		SendMessage(hwnd, WM_COPYDATA, NULL, (LPARAM)&data);
+		bReturn = TRUE;
+
+		#ifndef _DEBUG
+			if (settings.bDebug) {
+		#endif
+			OutputDebugStringW(L"Sent to Miranda: ");
+			OutputDebugStringW(strBuffer);
+			OutputDebugStringW(L"\n");
+		#ifndef _DEBUG
+			}
+		#endif
+	} while (hwnd = FindWindowEx(NULL, hwnd, MIRANDA_WINDOWCLASS, NULL));
+
+	return bReturn;
+}
+
+//-----------------------------------------------------------------------------
+
+BOOL SendToMSN(PlayingSongInfo* pSongInfo)
+{
+	BOOL bReturn = FALSE;
+	HWND hwnd = NULL;
+
+	hwnd = FindWindowEx(NULL, NULL, MSN_WINDOWCLASS, NULL);
+	if (hwnd == NULL)
+		return FALSE;
+
+
+	// Original string: "WMP\0Music\0[status]\0{0} - {1}\0[Title]\0[Artist]\0[Album]\0[contentid]\0"
+	static const WCHAR* MSNMusicStr = L"QMP\\0Music\\0%d\\0%s\\0%s\\0%s\\0%s\\0%s\\0";
+	static const size_t STR_CCH = TITLE_LEN + ALBUM_LEN + ARTIST_LEN + CONTENTID_LEN + 4 + 32;
+	
+	WCHAR strMSNFormat[32] = L"{0}";
+	WCHAR strBuffer[STR_CCH];
+	ZeroMemory(&strBuffer, sizeof(strBuffer));
+
+	if (pSongInfo->nCommand == 1)
+	{
+		// Format string
+		if (settings.bArtist && pSongInfo->strArtist.Length() > 0)
+			StringCchCat(strMSNFormat, 64, L" - {1}");
+		if (settings.bAlbum && pSongInfo->strAlbum.Length() > 0)
+			StringCchCat(strMSNFormat, 64, L" - {2}");
+
+		StringCchPrintf(strBuffer, STR_CCH, MSNMusicStr, pSongInfo->nCommand, strMSNFormat, pSongInfo->strTitle.GetUnicode(), pSongInfo->strArtist.GetUnicode(), pSongInfo->strAlbum.GetUnicode(), pSongInfo->strWmContentId.GetUnicode());
+	}
+	else
+		StringCchCopy(strBuffer, STR_CCH, L"QMP\\0Music\\00\\0{0}\\0\\0\\0\\0\\0");
+
+	// Create copy struct message
+	COPYDATASTRUCT msndata;
 	msndata.dwData = 0x547;
 	msndata.lpData = &strBuffer;
-	msndata.cbData = (lstrlenW(strBuffer) + 1) * 2;	// Size in bytes
+	StringCbLength(strBuffer, STR_CCH*sizeof(WCHAR), (size_t*)&(msndata.cbData));
+	msndata.cbData += 2; // Size in bytes incl. last wide NULL
 
-	while (msnui = FindWindowEx(NULL, msnui, L"MsnMsgrUIManager", NULL))
+	// We already have the first hwnd to send to and have exited on hwnd == null
+	do
 	{
-		SendMessage(msnui, WM_COPYDATA, NULL, (LPARAM)&msndata);
+		SendMessage(hwnd, WM_COPYDATA, NULL, (LPARAM)&msndata);
+		bReturn = TRUE;
+
+		#ifndef _DEBUG
+			if (settings.bDebug) {
+		#endif
+			OutputDebugStringW(L"Sent to MSN: ");
+			OutputDebugStringW(strBuffer);
+			OutputDebugStringW(L"\n");
+		#ifndef _DEBUG
+			}
+		#endif
+	} while (hwnd = FindWindowEx(NULL, hwnd, MSN_WINDOWCLASS, NULL));
+
+	return bReturn;
+}
+
+//-----------------------------------------------------------------------------
+// Fill song information
+//		Notice: This functions sets all variables of the song struct !
+void CurrentSong(PlayingSongInfo* pSongInfo)
+{
+	INFO("CurrentSong()");
+
+	pSongInfo->nCommand = 0;
+
+	const static int BUF_SIZE = 1024;
+	long nDataSize = 0;
+	char strUTF8[256] = {0};
+	WCHAR strUCS2[BUF_SIZE] = {0};
+
+	///////////////////////////////////////////////////////////////////////////
+	// Fill information shared between the two retrieval methods
+	///////////////////////////////////////////////////////////////////////////
+	
+	if (g_IsNewApi)
+	{
+		long nReturn = QCDCallbacks->Service(opGetMediaType, 0, -1, 0);
+		if (nReturn == DIGITAL_AUDIOFILE_MEDIA || nReturn == CD_AUDIO_MEDIA)
+			pSongInfo->strType.SetUnicode(L"Music");
+		else if (nReturn == DIGITAL_AUDIOSTREAM_MEDIA)
+			pSongInfo->strType.SetUnicode(L"Radio");
+		else if (nReturn == DIGITAL_VIDEO_MEDIA)
+			pSongInfo->strType.SetUnicode(L"Video");
+		else
+			pSongInfo->strType.SetUnicode(L"Unknown");
+	}
+	else
+		pSongInfo->strType.SetUnicode(L"Music");
+
+	pSongInfo->nLength = QCDCallbacks->Service(opGetTrackLength, NULL, -1, 0);
+	
+	// Initialize variables we are not sure to be set - Only important for scalar values
+	pSongInfo->nTrackNumber = 0;
+	//pSongInfo->strRadioStationName.SetUnicode(L"");
+	//pSongInfo->strWmContentId.SetUnicode(L"");
+
+
+	///////////////////////////////////////////////////////////////////////////
+	// Use new interface method for QMP and old version for QCD
+	///////////////////////////////////////////////////////////////////////////
+
+	if (g_IsNewApi)
+	{
+		IQCDMediaInfo* info = (IQCDMediaInfo*)QCDCallbacks->Service(opGetIQCDMediaInfo, (void*)g_strTrackPlaying.GetUTF8(), 0, 0);
+		if (info)
+		{
+			info->LoadFullData();
+
+			// Artist
+			nDataSize = BUF_SIZE;
+			info->GetInfoByName(QCDInfo_ArtistTrack, strUCS2, &nDataSize);
+			pSongInfo->strArtist.SetUnicode(strUCS2);
+
+			// Title
+			nDataSize = BUF_SIZE;
+			info->GetInfoByName(QCDInfo_TitleTrack, strUCS2, &nDataSize);
+			pSongInfo->strTitle.SetUnicode(strUCS2);
+
+			// Album
+			nDataSize = BUF_SIZE;
+			info->GetInfoByName(QCDInfo_TitleAlbum, strUCS2, &nDataSize);
+			pSongInfo->strAlbum.SetUnicode(strUCS2);
+
+			// Tracknumber
+			WCHAR szTrackNr[64] = {0};
+			nDataSize = BUF_SIZE;
+			if ( info->GetInfoByName(QCDInfo_TrackNumber, strUCS2, &nDataSize) ) {
+				WCHAR* pData = strUCS2;
+				int i = 0;
+				for ( ; *pData && *pData != '/'; i++)
+					strUCS2[i] = *pData++;
+				strUCS2[i] = NULL;
+
+				pSongInfo->nTrackNumber = _wtoi(strUCS2);
+			}
+
+			// Year
+			nDataSize = BUF_SIZE;
+			info->GetInfoByName(QCDInfo_YearAlbum, strUCS2, &nDataSize);
+			pSongInfo->strYear.SetUnicode(strUCS2);
+
+			// Genre
+			nDataSize = BUF_SIZE;
+			info->GetInfoByName(QCDInfo_GenreTrack, strUCS2, &nDataSize);
+			pSongInfo->strGenre.SetUnicode(strUCS2);
+
+			if (IsStream()) 
+			{
+				nDataSize = BUF_SIZE;
+				info->GetInfoByName(QCDInfo_TitleAlbum, strUCS2, &nDataSize);
+				pSongInfo->strRadioStationName.SetUnicode(strUCS2);
+			}
+
+			/////////////////////////////////////////////////////////////////////
+			info->Release();
+		}
+	}
+	else
+	{
+		// Title, artist and album
+		QCDCallbacks->Service(opGetTrackName, strUTF8, sizeof(strUTF8), -1);
+		pSongInfo->strTitle.SetUTF8(strUTF8);
+
+		QCDCallbacks->Service(opGetArtistName, strUTF8, sizeof(strUTF8), -1);
+		pSongInfo->strArtist.SetUTF8(strUTF8);
+
+		QCDCallbacks->Service(opGetAlbumName, strUTF8, sizeof(strUTF8), -1);
+		pSongInfo->strAlbum.SetUTF8(strUTF8);
+
+		pSongInfo->nTrackNumber = QCDCallbacks->Service(opGetTrackNum, NULL, -1, 0);
 	}
 }
 
 //-----------------------------------------------------------------------------
 
-void CurrentSong(MSNMessages *msn)
-{
-	INFO("CurrentSong()");
-	static const long STRSIZE = 100;
-	WCHAR strTemp[STRSIZE];
-	WCHAR strTitle[STRSIZE];
-	WCHAR strArtist[STRSIZE];
-	WCHAR strAlbum[STRSIZE];
-
-	ZeroMemory(strTitle,  STRSIZE*sizeof(WCHAR));
-	ZeroMemory(strArtist, STRSIZE*sizeof(WCHAR));
-	ZeroMemory(strAlbum,  STRSIZE*sizeof(WCHAR));
-
-	QCDCallbacks->Service(opGetTrackName, strTemp, STRSIZE*sizeof(WCHAR), -1);
-	QCDCallbacks->Service(opUTF8toUCS2, strTemp, (long)strTitle, STRSIZE);
-
-	QCDCallbacks->Service(opGetArtistName, strTemp, STRSIZE*sizeof(WCHAR), -1);
-	QCDCallbacks->Service(opUTF8toUCS2, strTemp, (long)strArtist, STRSIZE);
-
-	QCDCallbacks->Service(opGetDiscName, strTemp, STRSIZE*sizeof(WCHAR), -1);
-	QCDCallbacks->Service(opUTF8toUCS2, strTemp, (long)strAlbum, STRSIZE);
-
-	lstrcpyW(msn->artist, strArtist);
-	lstrcpyW(msn->title, strTitle);
-	lstrcpyW(msn->album, strAlbum);
-	lstrcpyW(msn->wmcontentid, L"");
-}
-
-//-----------------------------------------------------------------------------
-
-void UpdateSong()
+void UpdateSong(BOOL bSendBlogInfo)
 {
 	INFO("UpdateSong()");
-	WCHAR strTemp[MAX_PATH];
-	ZeroMemory(strTrackPlaying, MAX_PATH*sizeof(WCHAR));
-	QCDCallbacks->Service(opGetTrackFile, strTemp, MAX_PATH*sizeof(WCHAR), -1);
-	QCDCallbacks->Service(opUTF8toUCS2, strTemp, (long)strTrackPlaying, MAX_PATH);
 
-	MSNMessages msn;
-	ZeroMemory(&msn, sizeof(msn));
-	CurrentSong(&msn);
-	msn.msncommand = 1;
-	SendToMSN(&msn);
+	if (IsEncoding())
+		return;
 
-	QBlog_InsertInRegDB();
+	char strTemp[MAX_PATH*2] = {0};
+	QCDCallbacks->Service(opGetTrackFile, strTemp, sizeof(strTemp), -1);
+	g_strTrackPlaying.SetUTF8(strTemp);
+
+	PlayingSongInfo songInfo;
+
+	CurrentSong(&songInfo);
+	songInfo.nCommand = 1;
+
+	if (bSendBlogInfo)
+		QBlog_InsertInRegDB(&songInfo);
+
+	SendSongInfo(&songInfo);
 }
 
 //-----------------------------------------------------------------------------
 
 void ClearSong()
 {
-	MSNMessages msn;
-	ZeroMemory(&msn, sizeof(msn));
-	SendToMSN(&msn);
+	INFO("ClearSong()");
+
+	g_strTrackPlaying.SetUnicode(L"");
+
+	PlayingSongInfo songInfo;
+	songInfo.nCommand = 0;
+
+	SendSongInfo(&songInfo);
 
 	QBlog_CleanUpRegDB();
 }
 
 //-----------------------------------------------------------------------------
 
-void StartTimer(UINT nForced)
+void PlayPaused()
 {
-	if (nDelayTimerID) {
-		KillTimer(NULL, nDelayTimerID);
-		nDelayTimerID = 0;
+	INFO("PlayPaused()");
+
+	if (IsEncoding())
+		return;
+
+	PlayingSongInfo songInfo;
+
+	CurrentSong(&songInfo);
+	songInfo.nCommand = 1;
+
+	// Append paused, if paused
+	if (IsPlayerStatus(QMP_PAUSED))
+	{ 
+		if (songInfo.strTitle.Length() > TITLE_LEN - 13)
+		{
+			std::wstring strTmp = songInfo.strTitle.GetUnicode();
+
+			songInfo.strTitle.SetUnicode(strTmp.substr(0, TITLE_LEN - 13).c_str());
+			songInfo.strTitle.AppendUnicode(L"...");
+		}
+
+		songInfo.strTitle.AppendUnicode(L" (paused)");
+	}
+
+	SendSongInfo(&songInfo);
+}
+
+void StartTimer(UINT nForced /* = 0 */)
+{
+	if (g_nDelayTimerID) {
+		KillTimer(NULL, g_nDelayTimerID);
+		g_nDelayTimerID = 0;
+	}
+
+	// Don't wait before setting QBlog information, unless it is a CD
+	if (nForced == 0 && !IsEncoding())
+	{
+		char strTemp[MAX_PATH*2] = {0};
+		QCDCallbacks->Service(opGetTrackFile, strTemp, sizeof(strTemp), -1);
+		g_strTrackPlaying.SetUTF8(strTemp);
+
+		PlayingSongInfo songInfo;
+		CurrentSong(&songInfo);
+		songInfo.nCommand = 1;
+		QBlog_InsertInRegDB(&songInfo);
 	}
 
 	if (settings.nDelay > 0 || nForced > 0)
-		nDelayTimerID = SetTimer(NULL, 0, (settings.nDelay >= nForced) ? settings.nDelay : nForced, DelayTimerProc);
+		g_nDelayTimerID = SetTimer(NULL, 0, (settings.nDelay >= nForced) ? settings.nDelay : nForced, DelayTimerProc);
 	else
-		UpdateSong();
+		UpdateSong(FALSE);
 }
-
-//-----------------------------------------------------------------------------
-
-BOOL PlayerStatus(UINT status)
-{
-	BOOL bReturn = FALSE;
-
-	const long nState = QCDCallbacks->Service(opGetPlayerState, 0, 0, 0);
-	switch (status)
-	{
-		case PS_PLAYING :
-			if (nState == 2)
-				bReturn = TRUE;
-			break;
-		case PS_STOPPED :
-			if (nState == 1)
-				bReturn = TRUE;
-			break;
-		case PS_PAUSED :
-			if (nState == 3)
-				bReturn = TRUE;
-			break;
-	}
-
-	return bReturn;
-}
-//-----------------------------------------------------------------------------
-// QBlog functions
-//
-// When you play a song, the plugin records the following information into the registry.
-// "Title" - The title of the song. If not defined, then it will be set to the current file name.
-// "DurationString" - The running time of this track in the format %02d:%02d (ie minutes:seconds, both padded to two digits).
-// "Author" - The author the track, if defined. Otherwise this does not exist.
-// "Album" - The album of the track, if defined. Otherwise this does not exist.
-// When you stop playing, that information is deleted. 
-//-----------------------------------------------------------------------------
-void QBlog_InsertInRegDB()
-{
-	HKEY hKey = NULL;
-	DWORD dwDis = NULL;
-	LPTSTR lpClass = _T("");
-	
-	SECURITY_ATTRIBUTES lpSecurityAtt;
-	lpSecurityAtt.nLength = sizeof(LPSECURITY_ATTRIBUTES);
-	lpSecurityAtt.lpSecurityDescriptor = NULL;
-	lpSecurityAtt.bInheritHandle = TRUE;
-
-	if (PlayerStatus(PS_PLAYING))
-	{
-		if (ERROR_SUCCESS == RegCreateKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\MediaPlayer\\CurrentMetadata"), 
-			0, lpClass, REG_OPTION_NON_VOLATILE, KEY_WRITE,	&lpSecurityAtt, &hKey, &dwDis)) {
-			
-			char  strUTF8[MAX_PATH];
-			WCHAR strUCS2[MAX_PATH];
-			DWORD cbSize = 0;
-
-			// == Author
-			if (1 == QCDCallbacks->Service(opGetArtistName, &strUTF8, MAX_PATH, -1)) {
-				QCDCallbacks->Service(opUTF8toUCS2, strUTF8, (long)strUCS2, MAX_PATH);
-				cbSize = wcslen(strUCS2) * sizeof(WCHAR);
-				RegSetValueExW(hKey, _T("Author"), 0, REG_SZ, (LPBYTE)strUCS2, cbSize);
-			}
-			// == Album
-			if (1 == QCDCallbacks->Service(opGetDiscName, &strUTF8, MAX_PATH, -1)) {
-				QCDCallbacks->Service(opUTF8toUCS2, strUTF8, (long)strUCS2, MAX_PATH);
-				cbSize = wcslen(strUCS2) * sizeof(WCHAR);
-				RegSetValueExW(hKey, _T("Album"), 0, REG_SZ, (LPBYTE)strUCS2, cbSize);
-			}
-			// == Title
-			if (1 == QCDCallbacks->Service(opGetTrackName, &strUTF8, MAX_PATH, -1)) {
-				QCDCallbacks->Service(opUTF8toUCS2, strUTF8, (long)strUCS2, MAX_PATH);
-				cbSize = wcslen(strUCS2) * sizeof(WCHAR);
-				RegSetValueExW(hKey, _T("Title"), 0, REG_SZ, (LPBYTE)strUCS2, cbSize);
-			}
-
-			// == Duration
-			long iTime = QCDCallbacks->Service(opGetTrackLength, NULL, -1, 0);
-			long iMinutes = iTime/60;
-			long iSeconds = iTime%60;
-
-			if (iMinutes < 10 && iSeconds < 10)
-				_stprintf_s((LPTSTR)strUCS2, MAX_PATH, _T("0%d:0%d"), iMinutes, iSeconds);
-			else if (iMinutes > 9 && iSeconds < 10)
-				_stprintf_s((LPTSTR)strUCS2, MAX_PATH, _T("%d:0%d"), iMinutes, iSeconds);
-			else if (iMinutes < 10 && iSeconds > 9)
-				_stprintf_s((LPTSTR)strUCS2, MAX_PATH, _T("0%d:%d"), iMinutes, iSeconds);
-			else
-				_stprintf_s((LPTSTR)strUCS2, MAX_PATH, _T("%d:%d"), iMinutes, iSeconds);
-		
-			cbSize = wcslen(strUCS2) * sizeof(WCHAR);
-			RegSetValueExW(hKey, _T("DurationString"), 0, REG_SZ, (LPBYTE)strUCS2, cbSize);
-
-			// == Clode RegDB
-			RegCloseKey(hKey);
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------
-
-void QBlog_CleanUpRegDB()
-{
-	HKEY hKey = NULL;
-
-	if(ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\MediaPlayer\\CurrentMetadata"), 0,  KEY_WRITE, &hKey)) {
-		RegDeleteValue(hKey, _T("Author"));
-		RegDeleteValue(hKey, _T("Album"));
-		RegDeleteValue(hKey, _T("Title"));
-		RegDeleteValue(hKey, _T("DurationString"));
-	}			
-}
-
-//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 
 void CALLBACK DelayTimerProc(HWND hwnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 {
-	KillTimer(NULL, nDelayTimerID);
-	UpdateSong();
+	KillTimer(NULL, g_nDelayTimerID);
+
+	UpdateSong(TRUE);
 }
 
 //-----------------------------------------------------------------------------
 
 LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) 
-{ 
+{
 	switch (msg)
 	{
-		// Dont show on encoding
-		/*case WM_PN_ENCODEPROGRESS :
+		/*
 		case WM_PN_ENCODESTARTED :
-		case WM_PN_ENCODEPAUSED :
-			bIsEncoding = TRUE;
-			MessageBox(0, "Test", "", 0);
+			INFO("-WM_PN_ENCODESTARTED: wparam: %X, lparam: %X", wparam, lparam);
 			break;
-
-		case WM_PN_ENCODESTOPPED :
-		case WM_PN_ENCODEDONE :
-			bIsEncoding = FALSE;
+		case WM_PN_ENCODEPROGRESS :
+			INFO("-WM_PN_ENCODEPROGRESS: wparam: %X, lparam: %X", wparam, lparam);
 			break;
 		*/
+
 		// Set info
-		case WM_PN_INFOCHANGED : {
+		case WM_PN_INFOCHANGED :
+		{
 			INFO("-WM_PN_INFOCHANGED: wparam: %X, lparam: %X", wparam, lparam);
 
 			// Check that it's not a cd/dvd that was inserted
-			if (lparam <= 'Z')
+			if (lparam <= 255)
 				break;
-			if (PlayerStatus(PS_STOPPED))
+			if (IsPlayerStatus(QMP_STOPPED))
 				break;
 			// Only fall through if info has changed for the current playing track
-			if (lstrcmpW((LPCWSTR)lparam, strTrackPlaying) != 0)
+			if (CompareStringA(LOCALE_USER_DEFAULT, 0, (LPCSTR)lparam, -1, g_strTrackPlaying.GetUTF8(), -1) != CSTR_EQUAL)
 				break;
 		}
-			// Fall through
+		// Fall through
 		case WM_PN_TRACKCHANGED :
 			INFO("-WM_PN_TRACKCHANGED: wparam: %X, lparam: %X", wparam, lparam);
-			if (!bIsEncoding)
-				StartTimer(100);	// Workaround for CD track change
+
+			StartTimer(100);	// Workaround for CD track change
+			break;
+		
+		case WM_PN_PLAYSTARTED :
+			INFO("-WM_PN_PLAYSTARTED: wparam: %X, lparam: %X", wparam, lparam);
+
+			StartTimer();
 			break;
 
-		case WM_PN_PLAYSTARTED :
-		{
-			INFO("-WM_PN_PLAYSTARTED: wparam: %X, lparam: %X", wparam, lparam);
-			if (!bIsEncoding)
-				StartTimer();
-			break;
-		}
 		case WM_PN_PLAYSTOPPED :
 			INFO("-WM_PN_PLAYSTOPPED: wparam: %X, lparam: %X", wparam, lparam);
 			// Fallthrough
 		case WM_PN_PLAYDONE :
 			INFO("-WM_PN_PLAYDONE: wparam: %X, lparam: %X", wparam, lparam);
-			ZeroMemory(strTrackPlaying, MAX_PATH);
+			
 			ClearSong();
 			break;
 
 		case WM_PN_PLAYPAUSED :
-		{
 			INFO("-WM_PN_PLAYPAUSED: wparam: %X, lparam: %X", wparam, lparam);
-			MSNMessages msn;
-			ZeroMemory(&msn, sizeof(msn));
-			msn.msncommand = 1;
-			CurrentSong(&msn);
-
-			// Paused
-			if (PlayerStatus(PS_PAUSED))
-			{
-				// Append (paused)
-				if (wcslen(msn.title) > TITLE_LEN - 13)
-				{
-					msn.title[TITLE_LEN - 13] = 0;
-					wcscat_s(msn.title, sizeof(msn.title)/sizeof(WCHAR), L"...");
-				}
-
-				wcscat_s(msn.title, sizeof(msn.title)/sizeof(WCHAR), L" (paused)");
-			}
-
-			SendToMSN(&msn);
-
+			
+			PlayPaused();
 			break;
-		}
-	}
+
+	} // switch
 	
 	return CallWindowProc(g_lpOldQMPProc, hwnd, msg, wparam, lparam);
 }
 
 //-----------------------------------------------------------------------------
+
+
+/*
+				int i = 0;
+				long nNameLen = 1024;
+				long nValueLen = 1024;
+				WCHAR szName[1024];
+				WCHAR szValue[1024];
+				while ( info->GetInfoByIndex(i++, szName, &nNameLen, szValue, &nValueLen) )
+				{
+					OutputDebugString(L" : ");
+					OutputDebugString(szName);
+					OutputDebugString(L"=");
+					OutputDebugString(szValue);
+					OutputDebugString(L"\n");
+
+					nNameLen = 1024;
+					nValueLen = 1024;
+				}
+*/

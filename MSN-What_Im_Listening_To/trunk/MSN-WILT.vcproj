@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8,00"
-	Name="MSN"
+	Name="MSN-WILT"
 	ProjectGUID="{15C31806-A734-4AE3-8474-033A76F4BE94}"
-	RootNamespace="QCDGeneral"
+	RootNamespace="MSN-WILT"
 	>
 	<Platforms>
 		<Platform
@@ -23,6 +23,7 @@
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="1"
+			WholeProgramOptimization="0"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -42,17 +43,18 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Debug/QCDGeneral.tlb"
+				TypeLibraryName=".\Debug/MSN-WILT.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;QCDGENERAL_EXPORTS"
+				AdditionalIncludeDirectories="..\qmppdk\Include;..\QMP_Includes"
+				PreprocessorDefinitions="UNICODE;_UNICODE;WIN32;_DEBUG;_WINDOWS;_USRDLL;QCDGENERAL_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				PrecompiledHeaderFile=".\Debug/QCDGeneral.pch"
+				PrecompiledHeaderFile=".\Debug/MSN-WILT.pch"
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
@@ -77,14 +79,15 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="UnicoWS.lib Kernel32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Comdlg32.lib Version.lib Mpr.lib Rasapi32.lib Winmm.lib Winspool.lib Vfw32.lib Secur32.lib Oleacc.lib Oledlg.lib Sensapi.lib"
-				AdditionalDependencies="$(NOINHERIT)"
-				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\MSN-wilt.dll"
+				AdditionalDependencies="unicows.lib kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib "
+				OutputFile="$(QMPPATH)\Plugins\MSN-wilt.dll"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				IgnoreAllDefaultLibraries="false"
-				IgnoreDefaultLibraryNames="Kernel32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Comdlg32.lib Version.lib Mpr.lib Rasapi32.lib Winmm.lib Winspool.lib Vfw32.lib Secur32.lib Oleacc.lib Oledlg.lib Sensapi.lib"
+				IgnoreDefaultLibraryNames=" kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib "
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/MSN-wilt.pdb"
+				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\MSN-wilt.pdb"
+				BaseAddress="0x30020000"
 				ImportLibrary=".\Debug/MSN-wilt.lib"
 				TargetMachine="1"
 			/>
@@ -100,7 +103,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Debug/QCDGeneral.bsc"
+				OutputFile=".\Debug/MSN-WILT.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -124,6 +127,7 @@
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="1"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -143,25 +147,29 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Release/QCDGeneral.tlb"
+				TypeLibraryName=".\Release/MSN-WILT.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="3"
+				Optimization="1"
 				InlineFunctionExpansion="1"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;QCDGENERAL_EXPORTS"
+				FavorSizeOrSpeed="2"
+				WholeProgramOptimization="true"
+				AdditionalIncludeDirectories="..\qmppdk\Include;..\QMP_Includes"
+				PreprocessorDefinitions="UNICODE;_UNICODE;WIN32;NDEBUG;_WINDOWS;_USRDLL;QCDGENERAL_EXPORTS"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile=".\Release/QCDGeneral.pch"
+				PrecompiledHeaderFile=".\Release/MSN-WILT.pch"
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
-				BrowseInformation="1"
+				BrowseInformation="0"
 				BrowseInformationFile=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
+				DebugInformationFormat="0"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -177,12 +185,19 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="UnicoWS.lib Kernel32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Comdlg32.lib Version.lib Mpr.lib Rasapi32.lib Winmm.lib Winspool.lib Vfw32.lib Secur32.lib Oleacc.lib Oledlg.lib Sensapi.lib"
-				AdditionalDependencies="$(NOINHERIT)"
-				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\MSN-wilt.dll"
+				AdditionalDependencies="unicows.lib kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib "
+				ShowProgress="0"
+				OutputFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\MSN-wilt.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				IgnoreDefaultLibraryNames="Kernel32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Comdlg32.lib Version.lib Mpr.lib Rasapi32.lib Winmm.lib Winspool.lib Vfw32.lib Secur32.lib Oleacc.lib Oledlg.lib Sensapi.lib"
-				ProgramDatabaseFile=".\Release/MSN-wilt.pdb"
+				IgnoreAllDefaultLibraries="false"
+				IgnoreDefaultLibraryNames="kernel32.lib advapi32.lib user32.lib gdi32.lib shell32.lib comdlg32.lib "
+				GenerateDebugInformation="false"
+				ProgramDatabaseFile="D:\Programmer\Media\Quintessential Media Player\Plugins\3rdParty\MSN-wilt.pdb"
+				StripPrivateSymbols=""
+				OptimizeForWindows98="0"
+				LinkTimeCodeGeneration="1"
+				BaseAddress="0x30020000"
 				ImportLibrary=".\Release/MSN-wilt.lib"
 				TargetMachine="1"
 			/>
@@ -198,7 +213,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release/QCDGeneral.bsc"
+				OutputFile=".\Release/MSN-WILT.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -282,6 +297,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\QBlog.cpp"
+				>
+			</File>
+			<File
 				RelativePath="QCDGeneralDLL.cpp"
 				>
 				<FileConfiguration
@@ -301,6 +320,18 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath=".\QMPHelperGeneral.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\QMP_Includes\QString.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\WMP_Reg.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -319,7 +350,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
+				RelativePath=".\QBlog.h"
 				>
 			</File>
 			<File
@@ -327,17 +358,41 @@
 				>
 			</File>
 			<File
-				RelativePath="..\qmppdk\Include\QCDModDefs.h"
+				RelativePath=".\QMPHelperGeneral.h"
 				>
 			</File>
 			<File
-				RelativePath="..\qmppdk\Include\QCDModGeneral2.h"
+				RelativePath="..\QMP_Includes\QString.h"
 				>
 			</File>
 			<File
 				RelativePath=".\resource.h"
 				>
 			</File>
+			<File
+				RelativePath=".\WMP_Reg.h"
+				>
+			</File>
+			<Filter
+				Name="QCD"
+				>
+				<File
+					RelativePath="..\qmppdk\Include\IQCDMediaInfo.h"
+					>
+				</File>
+				<File
+					RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
+					>
+				</File>
+				<File
+					RelativePath="..\qmppdk\Include\QCDModDefs.h"
+					>
+				</File>
+				<File
+					RelativePath="..\qmppdk\Include\QCDModGeneral2.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Resource Files"

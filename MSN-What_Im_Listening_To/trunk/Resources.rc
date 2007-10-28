@@ -52,23 +52,23 @@ END
 // Dialog
 //
 
-IDD_ABOUT DIALOGEX 0, 0, 191, 199
+IDD_ABOUT DIALOGEX 0, 0, 277, 202
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,71,178,50,14
-    LTEXT           "https://sourceforge.net/projects/qplugins/",IDC_ABOUT_SFLINK,29,67,135,8
-    LTEXT           "MSN - ""What Im Listening To""",IDC_STATIC,47,7,97,8
-    LTEXT           "This plug-in adds support for the Microsoft Messenger ""What Im Listening To"" service in Quntessential Media Player.",IDC_STATIC,7,17,177,27
-    LTEXT           "The sourcecode can be downloaded from the QPlug-ins page on sourceforge.net.",IDC_STATIC,7,47,177,17
-    CTEXT           "Plug-in written by:",IDC_STATIC,7,115,177,9
-    LTEXT           "If you have problems, feedback etc. you can contact me by email (see below) or send me a PM on the QMP forum. (Username: Tokelil)",IDC_STATIC,7,83,177,29
-    CTEXT           "toke@noer.it",IDC_STATIC,7,134,177,8
-    CTEXT           "Toke Noer",IDC_STATIC,7,125,177,8
-    GROUPBOX        "",IDC_STATIC,4,1,183,174
-    CTEXT           "Patches received from:",IDC_STATIC,7,152,177,9
-    CTEXT           "Andy Patterson",IDC_STATIC,7,162,177,8
+    DEFPUSHBUTTON   "OK",IDOK,114,181,50,14
+    LTEXT           "https://sourceforge.net/projects/qplugins/",IDC_ABOUT_SFLINK,21,70,249,8
+    CTEXT           "MSN - ""What Im Listening To""",IDC_STATIC,7,10,263,8
+    LTEXT           "This plug-in adds support for the Microsoft Messenger ""What Im Listening To"" service in Quntessential Media Player.\nIt also writes song infomation to the Windows registry, to allow blogging tools among others to read it.",IDC_STATIC,11,21,255,34
+    LTEXT           "The sourcecode can be downloaded from the QPlug-ins page on:",IDC_STATIC,10,60,256,10
+    CTEXT           "Plug-in written by:",IDC_STATIC,7,115,263,9
+    LTEXT           "If you have problems, feedback etc. you can contact me by email (see below) or send me a PM on the QMP forum. (Username: Tokelil)",IDC_STATIC,10,87,256,21
+    CTEXT           "toke@noer.it",IDC_STATIC,7,134,263,8
+    CTEXT           "Toke Noer",IDC_STATIC,7,125,263,8
+    GROUPBOX        "",IDC_STATIC,7,3,263,174
+    CTEXT           "Patches received from:",IDC_STATIC,7,152,263,9
+    CTEXT           "Andy Patterson",IDC_STATIC,7,162,263,8
 END
 
 
@@ -83,9 +83,9 @@ BEGIN
     IDD_ABOUT, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 184
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 192
+        RIGHTMARGIN, 270
+        TOPMARGIN, 3
+        BOTTOMMARGIN, 195
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -108,24 +108,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_CONFIG7 DIALOGEX 0, 0, 118, 114
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Configuration"
-FONT 8, "MS Sans Serif", 0, 0, 0x1
-BEGIN
-    GROUPBOX        "Send following info",IDC_STATIC,7,7,104,47
-    GROUPBOX        "Delay before update",IDC_STATIC,7,54,104,33
-    EDITTEXT        IDC_CONFIG_DELAY,19,66,34,14,ES_AUTOHSCROLL
-    CONTROL         "Spin1",IDC_CONFIG_DELAY_SPIN,"msctls_updown32",UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,84,66,10,14
-    DEFPUSHBUTTON   "OK",IDOK,7,93,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,61,93,50,14
-    CONTROL         "Album",IDC_CONFIG_ALBUM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,19,28,35,10
-    CONTROL         "Artist",IDC_CONFIG_ARTIST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,19,17,31,10
-    LTEXT           "sec.",IDC_STATIC,54,69,14,8
-    CONTROL         "Display video info",IDC_CONFIG_SHOWVID,"Button",BS_AUTOCHECKBOX | BS_LEFT | WS_TABSTOP,19,39,71,10
-END
-
-IDD_CONFIG8 DIALOGEX 0, 0, 118, 86
+IDD_CONFIG_NEW DIALOGEX 0, 0, 118, 86
 STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_CONTROLPARENT
 CAPTION "Configuration"
@@ -150,15 +133,7 @@ END
 #ifdef APSTUDIO_INVOKED
 GUIDELINES DESIGNINFO 
 BEGIN
-    IDD_CONFIG7, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 111
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 107
-    END
-
-    IDD_CONFIG8, DIALOG
+    IDD_CONFIG_NEW, DIALOG
     BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 111
@@ -195,7 +170,7 @@ BEGIN
             VALUE "FileDescription", "MSN - What Im Listening To"
             VALUE "FileVersion", "2, 6, 0, 1"
             VALUE "InternalName", "MSN-wilt"
-            VALUE "LegalCopyright", "Copyright © 2005"
+            VALUE "LegalCopyright", "Copyright © 2007"
             VALUE "OriginalFilename", "MSN-wilt.dll"
             VALUE "ProductName", "  MSN-wilt"
             VALUE "ProductVersion", "2, 6, 0, 0"

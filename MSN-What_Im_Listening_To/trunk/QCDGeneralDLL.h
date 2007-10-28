@@ -25,7 +25,23 @@
 
 #include <QCDModGeneral2.h>
 #include <QCDCtrlMsgs.h>
+#include <IQCDMediaInfo.h>
 #include "resource.h"
+
+#include <QString.h>
+
+//-----------------------------------------------------------------------------
+
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
+#ifdef _DEBUG
+	#define DEBUG_NEW new(_NORMAL_BLOCK ,__FILE__, __LINE__)
+	#define new DEBUG_NEW
+#endif
+
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // Old QCD entry point structure
@@ -50,23 +66,39 @@
 			void *Reserved[2];
 		} toModule;
 	} QCDModInitGen;
+
 //-----------------------------------------------------------------------------
+
 typedef struct
 {
 	PluginServiceFunc	Service;		// player supplied services callback
 } QCDService;
 
 
-struct MSNMessages
+struct PlayingSongInfo
 {
-	int msncommand;
-	WCHAR title[100];
-	WCHAR artist[100];
-	WCHAR album[100];
-	WCHAR wmcontentid[40];
+	int nCommand;     // 0-stopped, 1-playing
+	
+	int nLength;      // Song length
+	int nTrackNumber;
+
+	QString strType;  // Music, Video, Radio
+	
+	QString strTitle;
+	QString strArtist;
+	QString strAlbum;
+	
+	QString strYear;	
+	QString strGenre;
+	
+	QString strRadioStationName;
+
+	QString strWmContentId; // MSN specific
 };
+
 struct Settings
 {
+	BOOL bDebug;
 	BOOL bTitle;
 	BOOL bArtist;
 	BOOL bAlbum;
@@ -76,16 +108,12 @@ struct Settings
 };
 
 
-static const UINT PS_STOPPED = 1;
-static const UINT PS_PLAYING = 2;
-static const UINT PS_PAUSED  = 3;
+extern HINSTANCE    hInstance;
+extern HWND         hwndPlayer;
+extern QCDService*  QCDCallbacks;
+extern Settings     settings;
+extern BOOL         g_IsNewApi;
 
-
-extern HINSTANCE		hInstance;
-extern HWND				hwndPlayer;
-extern QCDService*      QCDCallbacks;
-extern Settings			settings;
-extern INT				nMSNBuild;
 
 // Calls from the Player
 int  Initialize(QCDModInfo *modInfo, int flags);
@@ -93,33 +121,29 @@ void Configure(int flags);
 void About(int flags);
 void ShutDown(int flags);
 
+
 // Other
 void LoadSettings();
 void SaveSettings();
-void CurrentSong(MSNMessages* msn);
-void UpdateSong();
+
+void CurrentSong(PlayingSongInfo* pSongInfo);
+void UpdateSong(BOOL bSendBlogInfo);
 void ClearSong();
-BOOL PlayerStatus(UINT status);
+void PlayPaused();
 
-// Microsoft Messenger functins
-void SendToMSN(MSNMessages* msn);
+void SendSongInfo(PlayingSongInfo* pSongInfo);
+BOOL SendToMSN(PlayingSongInfo* pSongInfo);
+BOOL SendToMiranda(PlayingSongInfo* pSongInfo);
+
 void StartTimer(UINT nForced = 0);
-
-void RegDB_Fix(BOOL bFix);
-void RegDB_Insert();
-void RegDB_Clean();
-INT  RegDB_GetWMPVersion();
-INT  RegDB_GetMSNBuild();
-
-// QBlog
-void QBlog_InsertInRegDB();
-void QBlog_CleanUpRegDB();
 
 // Callbacks
 void CALLBACK DelayTimerProc(HWND hwnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 
+
 // Subclassing
 LRESULT CALLBACK QCDSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
 
 // Config functions
 BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

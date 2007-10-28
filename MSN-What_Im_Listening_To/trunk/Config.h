@@ -16,8 +16,7 @@ public:
 	virtual ~CConfig();
 
 private:
-	static BOOL CALLBACK DlgProc7(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	static BOOL CALLBACK DlgProc8(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static BOOL CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static void EnableWMPFaking(HWND hwndDlg);
 };
 

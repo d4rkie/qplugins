@@ -1,12 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QCDGeneral", "QCDGeneral.vcproj", "{15C31806-A734-4AE3-8474-033A76F4BE94}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSN-WILT", "MSN-WILT.vcproj", "{15C31806-A734-4AE3-8474-033A76F4BE94}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Release|Win32 = Release|Win32
+		Description = MSN What I'm listening to plug-in for QMP
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{15C31806-A734-4AE3-8474-033A76F4BE94}.Debug|Win32.ActiveCfg = Debug|Win32
