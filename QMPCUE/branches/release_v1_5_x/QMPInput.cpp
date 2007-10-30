@@ -23,8 +23,7 @@
 #include "QMPCUE.h"
 #include "QMPInput.h"
 
-#include <list>
-using namespace std;
+#include <atlcoll.h>
 
 #include "QCUESheet.h"
 
@@ -39,10 +38,10 @@ QCDModInitIn	QMPInput::QCDCallbacks;
 
 typedef struct __PLUGINCACHE {
 	int number;   // loading number
-	CPath path;     // full path of plugin
+	CPath path;   // plug-in name(a.k.a. module name for "GetModuleHandle")
 	CString exts; // supported extensions in form ":.ext1:.ext2:^^^:.extN:"
 } PLUGINCACHE;
-list<PLUGINCACHE> g_listPlugins;
+CAtlList< PLUGINCACHE > g_listPlugins;
 
 typedef QCDModInitIn * (*pfnEntryPoint)();
 
@@ -161,75 +160,55 @@ bool _is_supported(const CString & strExts, const CString & strExt)
 	return strExts.Find( pattern.MakeUpper()) >= 0;
 }
 
-bool _my_compare(const PLUGINCACHE & pc1, const PLUGINCACHE & pc2)
-{
-	return pc1.number < pc2.number;
-}
-
 /************************************************************************
  ** Read all input plug-ins from cache file
  **
  ***********************************************************************/
-void _read_plugin_cache(const CPath & pathPluginFolder)
+void _read_plugin_cache(const CPath & pathPluginFolder, const CPath & pathCacheFile)
 {
-	TCHAR buf[1000];
 	TCHAR myfn[MAX_PATH];
-	LPTSTR p;
-	CPath inifile;
-
-	inifile = pathPluginFolder; inifile.Append( _T("PluginCache.ini"));
-	if ( !inifile.FileExists())
-		return;
 
 	// get filename of myself
 	GetModuleFileName( g_hInstance, myfn, MAX_PATH);
-	PathStripPath( myfn);
 
-	// get all cached plug-in filename
-	ZeroMemory( buf, 1000);
-	GetPrivateProfileSectionNames( buf, 1000, inifile);
-	if ( buf[0] == _T('\0')) // no section cached
-		return;
+	CFindFile ff;
+	CPath pattern(pathPluginFolder); pattern.Append( _T("*.dll"));
+	if ( ! ff.FindFile( pattern)) return ;
 
-	// start processing
-	p = buf;
-	while ( *p) {
-		// concatenate a full path of plug-in file
-		CPath pathPluginFile = pathPluginFolder; pathPluginFile.Append( p);
+	do {
+		CString fn = ff.GetFileName();
 
-		// process all existent plug-ins except myself
-		if ( pathPluginFile.FileExists() && lstrcmpi( p, myfn)) {
-			TCHAR value[200];
-			GetPrivateProfileString( p, _T("Input0"), _T(""), value, 10, inifile);
-			if ( _tcsnicmp( value, _T("TRUE"), 4) == 0) {
-				int num;
-				CString exts;
+		// skip myself
+		if ( 0 == lstrcmpi( ff.GetFilePath(), myfn)) continue;
 
-				GetPrivateProfileString( p, _T("Exts20"), _T(""), value, 200, inifile);
+		// skip any non-input plug-in
+		TCHAR value[200];
+		if ( 0 == GetPrivateProfileString( fn, _T("Input0"), _T(""), value, 10, pathCacheFile)) continue;
+		if ( 0 != _tcsnicmp( value, _T("TRUE"), 4)) continue;
 
-				num = GetPrivateProfileInt( p, _T("Param20"), 0, inifile);
+		// get plug-in order number
+		int num;
+		num = GetPrivateProfileInt( fn, _T("Param20"), 0, pathCacheFile);
+		// get the supported extensions and make it in the form of ":.ext1:.ext2:...:.extN:"
+		CString exts;
+		GetPrivateProfileString( fn, _T("Exts20"), _T(""), value, 200, pathCacheFile);
+		exts = value; exts.Replace( _T(":"), _T(":."));
+		exts = _T(":.") + exts + _T(":");
 
-				// make the supported ext in the form of ":.ext1:.ext2:...:.extN:"
-				exts = value; exts.Replace( _T(":"), _T(":."));
-				exts = _T(":.") + exts + _T(":");
+		// save input plug-in info.
+		PLUGINCACHE pc = { num, ff.GetFilePath(), exts.MakeUpper() };
+		g_listPlugins.AddTail( pc);
+	} while ( ff.FindNextFile());
 
-				// push input plug-in info.
-				PLUGINCACHE pc = { num, pathPluginFile, exts.MakeUpper() };
-				g_listPlugins.push_back( pc);
-			}
-		}
-
-		// next section name(plug-in name)
-		p += (lstrlen(p)+1);
-	}
+	ff.Close();
 }
 
 //-----------------------------------------------------------------------------
 
 int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 {
-	WCHAR inifile[MAX_PATH], pluginfldr[MAX_PATH];
-	int i;
+	TCHAR inifile[MAX_PATH];
+	size_t i, j;
 
 	ModInfo->moduleString = (LPSTR)g_szInputModDisplayStr;
 	ModInfo->moduleExtensions = (LPSTR)L"VT"; // virtual track
@@ -241,25 +220,52 @@ int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 	lstrcat( g_szInputModDisplayStr, _T("(debug)"));
 #endif
 
+	// the unique player window handle
+	hwndPlayer = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
 
-	hwndPlayer = (HWND)QCDCallbacks.Service(opGetParentWnd, 0, 0, 0);
+	// determine the installation mode
+	// Multi-User mode: there is only one plug-in cache file in uers's application settings folder.
+	// Single-User mode: each plug-in folder has a plug-in cache file
+	QCDCallbacks.Service( opGetPlayerFolder, inifile, MAX_PATH*sizeof(TCHAR), 0);
+	PathAppend( inifile, _T("UserPrefs"));
+	BOOL bMultiUser = PathFileExists( inifile);
 
-	// load player's input plug-in which will be used by ourself
-	QCDCallbacks.Service( opGetPlayerSettingsFile, inifile, MAX_PATH, 0);
-	g_listPlugins.clear();
+	// clean the plug-in list
+	g_listPlugins.RemoveAll();
+
+	// get the default plug-in cache file
+	TCHAR cachefile[MAX_PATH];
+	QCDCallbacks.Service( opGetPluginCacheFile, cachefile, MAX_PATH*sizeof(TCHAR), 0);
+
+	// read plug-in cache in all plug-in folders
+	QCDCallbacks.Service( opGetPlayerSettingsFile, inifile, MAX_PATH*sizeof(TCHAR), 0);
 	i = 0;
 	do {
-		TCHAR buf[20];
+		TCHAR pluginfldr[MAX_PATH], buf[20];
 		wsprintf( buf, _T("PluginFolder%i"), i++);
 		GetPrivateProfileString( _T("Folders"), buf, _T(""), pluginfldr, MAX_PATH, inifile);
-		if ( lstrlen( pluginfldr))
-			_read_plugin_cache( pluginfldr);
-		else
-			break;
-	} while ( true);
-	g_listPlugins.sort( _my_compare);
 
-	// init
+		// Finished here
+		if ( 0 >= lstrlen( pluginfldr)) break;
+
+		CPath pathCacheFile(pluginfldr); pathCacheFile.Append( _T("PluginCache.ini"));
+		if ( bMultiUser) pathCacheFile = cachefile; // multi-user mode, only one cache file
+		if ( pathCacheFile.FileExists()) _read_plugin_cache( pluginfldr, pathCacheFile);
+	} while ( true);
+
+	// sort the plug-in with their order number
+	size_t count = g_listPlugins.GetCount();
+	for ( j = 0; j < count; ++j) {
+		for( i = 0; i < count-1; ++i) {
+			POSITION l = g_listPlugins.FindIndex(i);
+			int ln = g_listPlugins.GetAt(l).number;
+			POSITION r = g_listPlugins.FindIndex(i+1);
+			int rn = g_listPlugins.GetAt(r).number;
+			if ( ln > rn) g_listPlugins.SwapElements( l, r);
+		}
+	}
+
+	// initialize all global variables
 	g_nCurTrack = g_nTotalTracks = 0;
 	g_pathVTrack = _T("");
 	g_pathImageFile = _T("");
@@ -277,9 +283,12 @@ void QMPInput::ShutDown(int flags)
 {
 	WCHAR inifile[MAX_PATH];
 
-	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH, 0);
+	QCDCallbacks.Service( opGetPluginSettingsFile, inifile, MAX_PATH*sizeof(TCHAR), 0);
 
 	Stop( (char *)(LPCTSTR)g_pathVTrack, STOPFLAG_SHUTDOWN);
+
+	// clean read cache
+	g_listPlugins.RemoveAll();
 }
 
 //-----------------------------------------------------------------------------
@@ -584,23 +593,26 @@ QCDModInitIn * QMPInput::_create_input_instance(const CPath pathImageFile)
 		return g_qcdCallbacks;
 
 	// Let the player load the plug-in and check the support.
-	// !! This is the best important step of our core. !!
+	// !! THIS IS THE BEST IMPORTANT STEP IN OUR CORE !!
 	if ( UNKNOWN_MEDIA == QCDCallbacks.Service( opGetMediaSupported, (void *)(LPCTSTR)pathImageFile, 0, 0))
 		return NULL;
 
 	// Get the module handle of loaded plug-in
 	HMODULE hmod = NULL;
-	for ( list<PLUGINCACHE>::iterator it = g_listPlugins.begin(); it != g_listPlugins.end(); it++) {
-		if ( _is_supported( (*it).exts, pathImageFile.GetExtension())) {
+	POSITION pos = g_listPlugins.GetHeadPosition();
+	while ( pos != NULL) {
+		const PLUGINCACHE & cache = g_listPlugins.GetNext( pos);
+		if ( _is_supported( cache.exts, pathImageFile.GetExtension())) {
 			// assume the player has loaded and initialized the plug-in.
 			// we just return its handle directly.
-			hmod = GetModuleHandle( (*it).path);
-
+			// !! THE SECOND IMPORTANT STEP IN OUR CORE !!
+			// !! DO NOT MODIFY THE PLAYER'S CORE, JUST PEEK AND GRAB IT !!
+			// !! DO NOT RELEASE THE HANDLE WHEN WE FINISHED OUR JOB !!
+			hmod = GetModuleHandle( cache.path);
 #ifdef _DEBUG
-			if ( hmod) QLogFile::GetInst().OutputLogStr( _T("input"), _T("%d: %s has been loaded!"), hmod, (*it).path);
+			if ( hmod) QLogFile::GetInst().OutputLogStr( _T("input"), _T("%d: %s has been loaded!"), hmod, cache.path);
 #endif
-
-			break;
+			if ( hmod) break;
 		}
 	}
 	if ( !hmod)
