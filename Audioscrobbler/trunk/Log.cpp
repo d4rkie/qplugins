@@ -131,7 +131,7 @@ void CLog::OutputInfoW(MsgType type, const wchar_t* str, ...)
 
 //-----------------------------------------------------------------------------
 // DirectOutput
-// Used for output that has a chance to break sprintf. F.x. strings with %s
+// Used for output that has a chance to break sprintf. F.x. url encoded strings
 //-----------------------------------------------------------------------------
 
 void CLog::DirectOutputInfoA(MsgType type, const char* str)

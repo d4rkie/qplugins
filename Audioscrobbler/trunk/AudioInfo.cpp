@@ -116,6 +116,28 @@ LPCSTR CAudioInfo::GetMusicBrainTrackId()
 	return m_strMbTrkId;
 }
 
+
+//-----------------------------------------------------------------------------
+// Is functions
+//-----------------------------------------------------------------------------
+
+BOOL CAudioInfo::IsEmpty(LPCSTR str)
+{
+	if (str != NULL && *str != NULL && str != m_strEmpty)
+		return false;
+
+	return true;
+}
+
+BOOL CAudioInfo::IsLegalNumber(char *str)
+{
+	for (size_t i = 0; i < strlen(str); i++) {
+		if ((str[i] < '0') || (str[i] > '9'))
+			return false;
+	}
+	return true; 
+}
+
 //-----------------------------------------------------------------------------
 // Set functions
 //-----------------------------------------------------------------------------
@@ -190,15 +212,6 @@ void CAudioInfo::SetStartTime()
 
 	// Below will throw access violation if buffer too small
 	_ui64toa_s(ltime, m_szStartTime, NUMOFTCHARS(m_szStartTime), 10);
-}
-
-bool CAudioInfo::IsLegalNumber(char *str)
-{
-	for (size_t i = 0; i < strlen(str); i++) {
-		if ((str[i] < '0') || (str[i] > '9'))
-			return false;
-	}
-	return true; 
 }
 
 void CAudioInfo::SetStartTime(LPCSTR str)

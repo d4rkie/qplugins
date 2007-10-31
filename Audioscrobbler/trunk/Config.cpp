@@ -11,41 +11,43 @@
 #include "Config.h"
 
 //////////////////////////////////////////////////////////////////////
-static const _TCHAR INI_SECTION[]   = _T("Audioscrobbler");
-static const char   INI_SECTION_A[] = "Audioscrobbler";
+static const _TCHAR  INI_SECTION[]   = _T("Audioscrobbler");
+static const char    INI_SECTION_A[] = "Audioscrobbler";
 
 //////////////////////////////////////////////////////////////////////
 
 void LoadSettings()
 {
 	int nRet = 0;
-	_TCHAR szBuffer[MAX_PATH] = {0};
+	WCHAR szBuffer[MAX_PATH] = {0};
 	QString strIni;
 
-	QMPCallbacks.Service(opGetPluginSettingsFile, szBuffer, MAX_PATH*sizeof(TCHAR), 0);
-	strIni = szBuffer;
+	QMPCallbacks.Service(opGetPluginSettingsFile, szBuffer, sizeof(szBuffer), 0);
+	strIni.SetUnicode(szBuffer);
 
 	Settings.logMode   = (LogMode)GetPrivateProfileInt(INI_SECTION, _T("LogMode"), LOG_NONE, strIni);
 	Settings.bFirstRun = GetPrivateProfileInt(INI_SECTION, _T("FirstRun"), 1, strIni);
 	
 	GetPrivateProfileString(INI_SECTION, _T("Username"), NULL, szBuffer, NUMOFTCHARS(szBuffer), strIni);
-	Settings.strUsername = szBuffer;
+	Settings.strUsername.SetUnicode(szBuffer);
 	
 	ZeroMemory(Settings.strPassword, sizeof(Settings.strPassword));
 	nRet = GetPrivateProfileStringA(INI_SECTION_A, "Password", NULL, (char*)szBuffer, NUMOFTCHARS(szBuffer), strIni.GetMultiByte());
-	if (nRet == 32)
+	if (nRet == 32) {
 		strcpy_s(Settings.strPassword, sizeof(Settings.strPassword), (char*)szBuffer);
+		Settings.strPassword[32] = NULL;
+	}
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void SaveSettings()
 {
-	_TCHAR szBuffer[MAX_PATH] = {0};
+	WCHAR szBuffer[MAX_PATH] = {0};
 	QString strIni;
 
-	QMPCallbacks.Service(opGetPluginSettingsFile, szBuffer, MAX_PATH*sizeof(TCHAR), 0);
-	strIni = szBuffer;
+	QMPCallbacks.Service(opGetPluginSettingsFile, szBuffer, sizeof(szBuffer), 0);
+	strIni.SetUnicode(szBuffer);
 
 	_stprintf_s(szBuffer, NUMOFTCHARS(szBuffer), _T("%d"), Settings.logMode);
 	WritePrivateProfileString(INI_SECTION, _T("LogMode"), szBuffer, strIni);
@@ -131,7 +133,7 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			//Settings.bShowWindowOnStart = IsDlgButtonChecked(hwndDlg, IDC_SHOW_ON_START);
 
 			GetDlgItemText(hwndDlg, IDC_CONFIG_USERNAME, szBuffer, NUMOFTCHARS(szBuffer));
-			Settings.strUsername.assign(szBuffer);
+			Settings.strUsername.SetTStr(szBuffer);
 			
 			if (g_bPasswordChanged) {
 				char szMd5[48];

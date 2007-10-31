@@ -17,14 +17,25 @@
 #include <vector>
 #include <deque>
 
+
 #define TIXML_USE_STL
 #include "tinyxml\tinyxml.h"
 
 #include <QString.h>
-#include "Log.h"
+
+
+#ifdef _DEBUG
+	#define DEBUG_NEW new(_NORMAL_BLOCK ,__FILE__, __LINE__)
+	#define new DEBUG_NEW
+#endif
 
 #include "md5.h"
+
+#define CURL_NO_OLDIES
+#define CURL_DISABLE_LDAP
 #include "curl\include\curl\curl.h"
+
+#include "Log.h"
 
 #include <QCDCtrlMsgs.h>
 #include <QCDModDefs.h>

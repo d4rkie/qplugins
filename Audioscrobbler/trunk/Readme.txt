@@ -5,4 +5,4 @@ http://curl.haxx.se/libcurl/c/
 
 
 Plug-in written and maintained by:
-Toke Noer (toke at noer"dot"it)
+Toke Noer (toke at noer "dot" it)

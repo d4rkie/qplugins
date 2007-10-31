@@ -25,6 +25,8 @@ public:
 
 	void    GetCacheString(char** pStr, DWORD* nChars);
 
+	BOOL   IsEmpty(LPCSTR str);
+
 	void   SetArtist(LPCSTR str);
 	void   SetArtist(LPCWSTR str);
 	void   SetTitle(LPCSTR str);
@@ -49,7 +51,7 @@ private:
 	void SetString(char** strDest, size_t nLen, LPCSTR strSrc);
 	void SetStringW(char** strDest, size_t nLen, LPCWSTR strSrc);
 
-	bool CAudioInfo::IsLegalNumber(char *str);
+	BOOL IsLegalNumber(char *str);
 
 	char  m_szSource[2];
 	char  m_szRating[2];

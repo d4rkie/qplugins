@@ -6,9 +6,18 @@
 //	Copyright (C) 2007
 //
 //-----------------------------------------------------------------------------
-// TODO
-//   Is handshaking too often when connection is bad.
+// Changelog 0.1.7:
+//   * Fix: CD's wasn't scrobbled
+//   * Fix: Crash if username had special characters
+//   * Fix: Trying to send too often when connection is bad
+//   * Fix: Offline mode didn't work, if the player had handshaken already.
+//   * Updated CURL Lib (memory leak fix)
 //
+// Known bugs:
+//   Don't send info when encoding
+//
+// TODO / Wishlist
+//   Custom send time. (Send at 50%->100% slider)
 //   Handle stream titles - InfoChanged
 //   Proxy connection
 //   Win9x support
@@ -16,7 +25,7 @@
 
 #include "Precompiled.h"
 
-#define PLUGIN_NAME L"Audioscrobbler v0.1.6"
+#define PLUGIN_NAME L"Audioscrobbler v0.1.7"
 
 // Project includes
 //#include "ThreadTools.h"
@@ -58,7 +67,12 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
-		// Don't use below when we use CreateThread. See doc for CreateThread, last remark
+		#ifdef _DEBUG
+			_CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+			//_CrtSetBreakAlloc(398);
+		#endif
+
+		// Don't use DisableThreadLibraryCalls when we use CreateThread. See doc for CreateThread, last remark
 		// DisableThreadLibraryCalls(hInst);
 		g_hInstance = hInst;
 	}
@@ -86,9 +100,9 @@ int Initialize(QCDModInfo *modInfo, int flags)
 {
 	modInfo->moduleString = (char*)PLUGIN_NAME;
 
-	// Check QMP version (b117+)
-	if (QMPCallbacks.Service(opGetPlayerVersion, NULL, 1, 0) < 117) {
-		MessageBox(0, L"The latest beta builds of Quintessential Media Player\nis needed to run this Audioscrobbler plug-in.\n\nAt least build 117 required!",
+	// Check QMP version (b118+)
+	if (QMPCallbacks.Service(opGetPlayerVersion, NULL, 1, 0) < 118) {
+		MessageBox(0, L"The latest beta builds of Quintessential Media Player\nis needed to run this Audioscrobbler plug-in.\n\nAt least build 118 required!",
 			L"QMP:Audioscrobbler initialization error", MB_ICONSTOP);
 		return FALSE;
 	}
@@ -109,7 +123,6 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	log = new CLog(g_hwndPlayer, Settings.logMode, strPath);
 
 	// Setup menu item in plugins menu
-	const _TCHAR* strMenu2 = _T("Audioscrobbler2");
 	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_HEAD,         (LONG)_T("Audioscrobbler"));
 	QMPCallbacks.Service(opSetPluginMenuState, g_hInstance, IDM_HEAD,         MF_POPUP);
 	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_CONFIG,       (LONG)_T("Configuration"));
@@ -121,13 +134,13 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	g_hASThread = CreateThread(NULL, 0, AS_Main, NULL, 0, &g_nASThreadId);
 	if (!g_hASThread)
 		return FALSE; // TODO: Cleanup
-	// SetThreadName(g_nASThreadId, "QMP_Audioscrobbler");
+	// SetThreadName(g_nASThreadId, "QMPAudioscrobbler");
 
 	Sleep(0);
 
 	// Subclass the player and listen for WM_PN_?
 	if ((g_QMPProc = (WNDPROC)SetWindowLong(g_hwndPlayer, GWL_WNDPROC, (LONG)QMPSubProc)) == 0) {
-		log->OutputInfo(E_FATAL, _T("Failed to subclass player!"));
+		log->OutputInfo(E_FATAL, _T("Failed to subclass player!\nError code: %u"), GetLastError());
 		return FALSE;
 	}
 
@@ -139,7 +152,7 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	}
 
 	// return TRUE for successful initialization
-	log->OutputInfo(E_DEBUG, _T("Initialize(): return true"));
+	log->OutputInfo(E_DEBUG, _T("Initialize() : return true"));
 	return TRUE;
 }
 
@@ -153,15 +166,23 @@ void ShutDown(int flags)
 	g_bIsClosing = TRUE;
 	PostThreadMessage(g_nASThreadId, WM_QUIT, 0, 0);
 	Sleep(0);
-	if (WaitForSingleObject(g_hASThreadEndedEvent, 40000) == WAIT_TIMEOUT)
+	
+	// QCDCallbacks.Service(opSafeWait, hMutex, 0, 0);	
+	if (WaitForSingleObject(g_hASThreadEndedEvent, 35000) == WAIT_TIMEOUT) {
 		TerminateThread(g_hASThread, -1);
+		log->OutputInfo(E_DEBUG, _T("ShutDown : AS thread terminated!"));
+	}
+	else
+		log->OutputInfo(E_DEBUG, _T("ShutDown : AS thread ended successfully"));
 
 	CloseHandle(g_hASThread);
 	CloseHandle(g_hASThreadEndedEvent);
 	DeleteCriticalSection(&g_csAIPending);
-	
+
+	log->OutputInfo(E_DEBUG, _T("ShutDown : Saving settings"));
 	SaveSettings();
 
+	log->OutputInfo(E_DEBUG, _T("ShutDown : Deleting remaining objects"));
 	delete g_pAIPending;
 	delete log;
 }
@@ -185,7 +206,13 @@ void Configure(int flags)
 					_T("Audioscrobbler"), MB_ICONEXCLAMATION);
 				QMPCallbacks.Service(opSetPluginMenuState,  g_hInstance, IDM_OFFLINE_MODE, MF_CHECKED);
 			}
-			PostThreadMessage(g_nASThreadId, AS_MSG_OFFLINE_MODE, 0, 0);
+			// Since we can "control" this message, use it for debugging
+			if (!PostThreadMessage(g_nASThreadId, AS_MSG_OFFLINE_MODE, 0, 0)) {
+				log->OutputInfo(E_FATAL, _T("Failed to post thread message!\nError code: %u"), GetLastError());
+			}
+			else
+				log->OutputInfo(E_DEBUG, _T("PostThreadMessage successfull"));
+
 
 			break;
 

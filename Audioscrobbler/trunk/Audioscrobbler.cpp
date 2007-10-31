@@ -102,10 +102,12 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 		}
 		else
 		{
+			// log->OutputInfo(E_DEBUG, _T("AS_Main : msg.message: %u"), msg.message);
 			switch (msg.message)
 			{
 			case AS_MSG_PLAY_STARTED :
 			{
+				g_nSongStartTime = 0;
 				g_bIsPaused = FALSE;
 				g_nPausedTime = 0;
 
@@ -113,24 +115,12 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 					KillTimer(NULL, g_nNowPlayingTimer);
 
 				EnterCriticalSection(&g_csAIPending);
-				if (!g_pAIPending) {
-					LeaveCriticalSection(&g_csAIPending);
-					break;
-				}
-
-				// We will delay sending this info a bit, so we don't spam the server
-				// going fast through a playlist
-				g_nNowPlayingTimer = SetTimer(NULL, NULL, 3000, AS_cbSendNowPlaying);
-
-				// Update song start time, but don't submit songs shorter than 30 sec.
-				if (g_pAIPending->GetTrackLength() < 30) {
-					delete g_pAIPending;
-					g_pAIPending = NULL;
-					g_nSongStartTime = 0;
-				}
-				else
+				if (g_pAIPending)
+				{
 					time(&g_nSongStartTime);
-				
+					// We will delay sending now playing info, so we don't spam the server going fast through a playlist
+					g_nNowPlayingTimer = SetTimer(NULL, NULL, 3000, AS_cbSendNowPlaying);
+				}
 				LeaveCriticalSection(&g_csAIPending);
 				break;
 			}
@@ -177,17 +167,24 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 
 			case AS_MSG_OFFLINE_MODE :
 			{
-				g_bMustHandshake = TRUE;
 				g_bOfflineMode = !g_bOfflineMode;
+
+				g_nHardFailureCount = 0;
+				g_bHandShakeSucces  = FALSE;
+				g_bMustHandshake    = TRUE;
+				g_bCanTryConnect    = TRUE;
+				g_nReHandshakeMinutes = 1;
+						
 				break;
 			}
 
-
 			case WM_TIMER :
 				// We need to take care of WM_TIMER event callback our self. See documentation for DispatchMessage
-				if (msg.lParam != NULL) {
-					TIMERPROC tp = (TIMERPROC)msg.lParam;
-					tp(msg.hwnd, WM_TIMER, msg.wParam, msg.time);
+				if (msg.lParam != 0)
+				{
+					DispatchMessage(&msg);
+					// Calling the function (lParam) directly, doesn't work under win9x
+					//((TIMERPROC)msg.lParam)(msg.hwnd, WM_TIMER, msg.wParam, GetTickCount());
 				}
 				break;
 
@@ -209,11 +206,14 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 	AS_SaveQueue();
 
 	// Clean AIQueue
+	log->OutputInfo(E_DEBUG, _T("AS_Main : Cleaning queue objects"));
 	for (std::deque<CAudioInfo*>::iterator aiIter = g_AIQueue.begin(); aiIter != g_AIQueue.end( ); aiIter++)
 		delete *aiIter;
 
+	log->OutputInfo(E_DEBUG, _T("AS_Main : Setting End Event"));
 	SetEvent(g_hASThreadEndedEvent);
 
+	log->OutputInfo(E_DEBUG, _T("AS_Main : Thread end"));
 	return 0;
 }
 
@@ -233,9 +233,6 @@ BOOL AS_Initialize()
 	curl_easy_setopt(g_curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 	curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, &AS_DataReceived);
 
-	g_bCanTryConnect = TRUE;
-	g_nHardFailureCount = 0;
-	
 	return TRUE;
 }
 
@@ -390,6 +387,7 @@ cleanup:
 void AS_AddPendingSongToQueue()
 {
 	EnterCriticalSection(&g_csAIPending);
+
 	if (g_pAIPending)
 	{
 		INT nTrackLength = g_pAIPending->GetTrackLength();
@@ -401,7 +399,8 @@ void AS_AddPendingSongToQueue()
 			time_t nTimePlayed = 0, nTime = 0;
 			time(&nTime);
 
-			if (g_bIsPaused) {
+			if (g_bIsPaused)
+			{
 				g_bIsPaused = FALSE;
 				g_nPausedTime = nTime - g_nPauseTimestamp;
 				if (g_nPausedTime < 0)
@@ -411,20 +410,23 @@ void AS_AddPendingSongToQueue()
 			nTimePlayed = nTime - g_nSongStartTime - g_nPausedTime;
 
 			// Add song if 50% played or 240 sec. whichever comes first
-			if (nTrackLength/2 > 240)
-				nTrackLength = 240;
-
-			if (nTimePlayed >= 240 || nTimePlayed >= nTrackLength/2) {
-				log->OutputInfoA(E_DEBUG, "Added: %s / %s to queue", g_pAIPending->GetArtist(), g_pAIPending->GetTitle());
+			if (nTimePlayed >= 240 || nTimePlayed >= nTrackLength/2)
+			{
+				log->OutputInfoA(E_DEBUG, "AS_AddPendingSongToQueue : Added: %s / %s to queue", g_pAIPending->GetArtist(), g_pAIPending->GetTitle());
 				g_AIQueue.push_back(g_pAIPending);
 			}
 			else
+			{
 				delete g_pAIPending;
+				log->OutputInfo(E_DEBUG, _T("AS_AddPendingSongToQueue : Not added to queue. (Timeplayed=%u : Tracklength=%u)"), nTimePlayed, nTrackLength);
+			}
 		}		
 		g_pAIPending = NULL;
 
-		log->OutputInfo(E_DEBUG, _T("Finished updating queue"));
+		log->OutputInfo(E_DEBUG, _T("AS_AddPendingSongToQueue : Finished updating queue"));
 	} // if (g_pAIPending)
+	else
+		log->OutputInfo(E_DEBUG, _T("AS_AddPendingSongToQueue : g_pAIPending == null"));
 	
 	LeaveCriticalSection(&g_csAIPending);
 }
@@ -519,8 +521,10 @@ void AS_HandleSendQueueData(std::vector<std::string>* strLines)
 	{
 		log->OutputInfo(E_DEBUG, _T("Submission : OK"));
 		// Delete all the songs submitted from the queue
-		for (UINT i = 0; i < g_nLastSubmitCount; i++)
+		for (UINT i = 0; i < g_nLastSubmitCount; i++) {
+			delete g_AIQueue.front();
 			g_AIQueue.pop_front();
+		}
 		
 		QMPCallbacks.Service(opSetStatusMessage, L"AS : Song(s) scrobbled", TEXT_DEFAULT | TEXT_UNICODE, 0);
 	}
@@ -599,17 +603,21 @@ void AS_Handshake()
 	// token := md5(md5(password) + timestamp)
 	log->OutputInfo(E_DEBUG, _T("AS_Handshake: Starting..."));
 
-	if (!g_bCanTryConnect) {
-		log->OutputInfo(E_DEBUG, _T("g_bCanTryConnect false. Exiting"));
-		return;
-	}
+	// Exit conditions
 	if (g_bIsClosing)
 		return;
+	if (!g_bCanTryConnect) {
+		log->OutputInfo(E_DEBUG, _T("g_bCanTryConnect==false. Exiting"));
+		return;
+	}
 	if (g_bOfflineMode) {
 		log->OutputInfo(E_DEBUG, _T("AS_Handshake : Running in offline mode. Exiting"));
 		return;
 	}
-
+	if (g_nReHandshakeMinutes > 1) {
+		AS_TryReHandshake();
+		return;
+	}
 
 	CURLcode nResult = CURLE_OK;
 	BOOL bFirstTry = TRUE;
@@ -645,7 +653,7 @@ void AS_Handshake()
 		return;
 	}
 
-	log->OutputInfoA(E_DEBUG, strBuffer);
+	log->DirectOutputInfoA(E_DEBUG, strBuffer);
 	
 	curl_free(szUsername);
 
@@ -771,9 +779,8 @@ void AS_SendQueue()
 		log->OutputInfo(E_DEBUG, _T("Queue is empty"));
 		return;
 	}
-
 	if (!g_bCanTryConnect) {
-		log->OutputInfo(E_DEBUG, _T("g_bCanTryConnect false. Exiting"));
+		log->OutputInfo(E_DEBUG, _T("g_bCanTryConnect==false. Exiting"));
 		return;
 	}
 	if (g_bMustHandshake)
@@ -877,8 +884,6 @@ void CALLBACK AS_cbSendNowPlaying(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwT
 		g_nNowPlayingTimer = 0;
 	}
 
-	log->OutputInfo(E_DEBUG, _T("AS_cbSendNowPlaying : Entered"));
-
 	EnterCriticalSection(&g_csAIPending);
 	if (g_pAIPending)
 	{
@@ -912,6 +917,10 @@ void CALLBACK AS_cbSendQueue(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime)
 
 void AS_TryReHandshake()
 {
+	if (g_nReconnectTimer) {
+		KillTimer(NULL, g_nReconnectTimer);
+		g_nReconnectTimer = 0;
+	}
 	g_nReconnectTimer = SetTimer(NULL, NULL, g_nReHandshakeMinutes * 60 * 1000, AS_cbSendQueue);
 	
 	// Set minutes
@@ -919,6 +928,8 @@ void AS_TryReHandshake()
 		g_nReHandshakeMinutes = 120;
 	else
 		g_nReHandshakeMinutes = g_nReHandshakeMinutes * 2;
+	
+	log->OutputInfo(E_DEBUG, _T("AS_TryReHandshake : New ReHandshakeMinutes value=%d"), g_nReHandshakeMinutes);
 }
 
 //-----------------------------------------------------------------------------

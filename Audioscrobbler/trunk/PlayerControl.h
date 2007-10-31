@@ -26,7 +26,7 @@ void InfoChanged(LPCSTR szMedianame);
 
 
 CAudioInfo* GetAudioInfo(LPCWSTR strFile);
-void GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai);
+BOOL GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai);
 
 //-----------------------------------------------------------------------------
 
@@ -50,37 +50,28 @@ void PlayStarted()
 		g_pAIPending = NULL;
 	}
 
-	// Only support for audio files and audio streams
-	long nMediaType = QMPCallbacks.Service(opGetMediaType, NULL, -1, 0);
-	if (nMediaType == DIGITAL_AUDIOFILE_MEDIA)
-		g_pAIPending = GetAudioInfo(strFileUCS2);
-	else
-		log->OutputInfo(E_DEBUG, _T("PlayStarted : File not a digital audio file - File is not scrobbled"));
-	/*else if (nMediaType == DIGITAL_AUDIOSTREAM_MEDIA)
-	{
-		CAudioInfo ai;
-		GetAudioInfo(&ai);
-		g_pAIPending = new CAudioInfo(ai);
+	g_pAIPending = GetAudioInfo(strFileUCS2);
 
-		// Shoutcast streams has station set in album field, so parse title
-		std::string strTmp;
-		strTmp.assign(ai.GetTitle());
-		int nPos = strTmp.find("/", 0);
-		if (nPos > 0)
-			g_pAIPending->SetTitle(strTmp.substr(0, nPos).c_str());
-
-	}*/
-
+	// Validate song info and send message to AS thread if valid
 	if (g_pAIPending)
 	{
-		if (*(g_pAIPending->GetArtist()) == NULL || *(g_pAIPending->GetTitle()) == NULL )
+		// Don't submit songs shorter than 30 sec (exept if they have a MBID)
+		int nTrackLen = g_pAIPending->GetTrackLength();
+		BOOL bArtistIsEmpty = g_pAIPending->IsEmpty(g_pAIPending->GetArtist());
+		BOOL bTitleIsEmpty  = g_pAIPending->IsEmpty(g_pAIPending->GetTitle());
+		BOOL bMBIdIsEmpty   = g_pAIPending->IsEmpty(g_pAIPending->GetMusicBrainTrackId());
+
+		if ( (nTrackLen > 30 || (nTrackLen > 0 && !bMBIdIsEmpty))
+				&& !bArtistIsEmpty && !bTitleIsEmpty)
 		{
+			// Send information
+			PostThreadMessage(g_nASThreadId, AS_MSG_PLAY_STARTED, 0, 0);
+		}
+		else {
 			log->OutputInfo(E_DEBUG, _T("PlayStarted : Required song info not set - File is not scrobbled"));
 			delete g_pAIPending;
 			g_pAIPending = NULL;
-		}
-		else // Send information
-			PostThreadMessage(g_nASThreadId, AS_MSG_PLAY_STARTED, 0, 0);
+		}			
 	}
 
 	LeaveCriticalSection(&g_csAIPending);
@@ -145,31 +136,65 @@ void InfoChanged(LPCSTR szMedianame)
 CAudioInfo* GetAudioInfo(LPCWSTR strFile)
 {
 	CAudioInfo* ai = new CAudioInfo();
-	GetAudioInfo(strFile, ai);
-	return ai;
+	if (GetAudioInfo(strFile, ai))
+		return ai;
+	else
+		delete ai;
+
+	return NULL;
 }
 
-void GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai)
+BOOL GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai)
 {
 	const static int BUF_SIZE = 1024;
 	WCHAR strUCS2[BUF_SIZE] = {0};
 	long nDataSize = 0;
+	IQCDMediaInfo* info = NULL;
+
+	
+	// Only support for audio files and CD atm.
+	long nMediaType = QMPCallbacks.Service(opGetMediaType, NULL, -1, 0);
+	if (nMediaType != DIGITAL_AUDIOFILE_MEDIA && nMediaType != CD_AUDIO_MEDIA) {
+		log->OutputInfo(E_DEBUG, _T("PlayStarted : File not a CD or digital audio file - File is not scrobbled"));
+		return FALSE;
+	}
+	/*if (nMediaType == DIGITAL_AUDIOSTREAM_MEDIA)
+	{
+		// Shoutcast streams has station set in album field, so parse title
+		std::string strTmp;
+		strTmp.assign(ai.GetTitle());
+		int nPos = strTmp.find("/", 0);
+		if (nPos > 0)
+			g_pAIPending->SetTitle(strTmp.substr(0, nPos).c_str());
+
+	}*/
+
 
 	long nIndex = QMPCallbacks.Service(opGetCurrentIndex, NULL, 0, 0);
 
-	ai->SetTrackLength(QMPCallbacks.Service(opGetTrackLength, NULL, nIndex, 0));
+	long nTrackLen = QMPCallbacks.Service(opGetTrackLength, NULL, nIndex, 0); // Get seconds
+	if (nTrackLen <= 0) {
+		log->OutputInfo(E_DEBUG, _T("GetAudioInfo : Tracklength=%u"), nTrackLen);
+		return FALSE;
+	}
+
+	ai->SetTrackNumber(0);
+	ai->SetTrackLength(nTrackLen);	
 	ai->SetStartTime();
 	ai->SetRating("");
 
-	//***********************************************
+	//*************************************************************************
 	// Get Artist, Title, Album, Tracknumber
-	//***********************************************
+	//*************************************************************************
 	// Use MediaInfo interface if possible
-	IQCDMediaInfo* info = (IQCDMediaInfo*)QMPCallbacks.Service(opGetIQCDMediaInfo, (void*)strFile, 0, 0);
-	if (info)
+
+	if (nMediaType != CD_AUDIO_MEDIA && 
+		(info = (IQCDMediaInfo*)QMPCallbacks.Service(opGetIQCDMediaInfo, (void*)strFile, 0, 0)) )
 	{
 		if (!info->LoadFullData())
 			goto cleanup;
+
+		log->OutputInfo(E_DEBUG, _T("GetAudioInfo : Retrieving info through interface"));
 
 		// Artist
 		nDataSize = BUF_SIZE;
@@ -197,27 +222,14 @@ void GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai)
 
 			ai->SetTrackNumber(strUCS2);
 		}
-		else
-			ai->SetTrackNumber(0);
 
-
-		/*int i = 0;
-		long nNameLen = 1024;
-		long nValueLen = 1024;
-		WCHAR szName[1024];
-		WCHAR szValue[1024];
-		while ( info->GetInfoByIndex(i++, szName, &nNameLen, szValue, &nValueLen) )
-		{
-			nNameLen = 1024;
-			nValueLen = 1024;
-		}*/
 
 		cleanup:
-		info->Release();
+			info->Release();
 	}
 	else
-	// Use non interface version
-	{
+	{  // Use non interface version
+		log->OutputInfo(E_DEBUG, _T("GetAudioInfo : Retrieving info with old method"));
 		
 		QMPCallbacks.Service(opGetArtistName, strUCS2, BUF_SIZE, nIndex);
 		ai->SetArtist(strUCS2);
@@ -228,14 +240,17 @@ void GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai)
 		QMPCallbacks.Service(opGetAlbumName, strUCS2, BUF_SIZE, nIndex);
 		ai->SetAlbum(strUCS2);
 
-		// We don't get tracknumber, since opGetTrackNum returns 1 on unknown		
-		ai->SetTrackNumber(0);
+		// We don't get tracknumber for mp3's etc, since opGetTrackNum returns 1 on unknown
+		if (nMediaType == CD_AUDIO_MEDIA) {
+			long nTrackNr = QMPCallbacks.Service(opGetTrackNum, NULL, nIndex, 0);
+			ai->SetTrackNumber(nTrackNr);
+		}
 	}
 
 
-	//***********************************************
+	//*************************************************************************
 	// Get MusicBrainzID
-	//***********************************************
+	//*************************************************************************
 	IQCDTagInfo* tag = (IQCDTagInfo*)QMPCallbacks.Service(opGetIQCDTagInfo, (void*)strFile, 0, 0);
 	if ( tag )
 	{
@@ -250,8 +265,23 @@ void GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai)
 		
 		tag->Release();
 	}
+	
+	return TRUE;
 }
 
 //-----------------------------------------------------------------------------
 
 #endif // __PLAYERCONTROL_H_
+
+
+
+		/*int i = 0;
+		long nNameLen = 1024;
+		long nValueLen = 1024;
+		WCHAR szName[1024];
+		WCHAR szValue[1024];
+		while ( info->GetInfoByIndex(i++, szName, &nNameLen, szValue, &nValueLen) )
+		{
+			nNameLen = 1024;
+			nValueLen = 1024;
+		}*/
