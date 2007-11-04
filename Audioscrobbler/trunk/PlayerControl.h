@@ -11,9 +11,10 @@
 
 
 //-----------------------------------------------------------------------------
+static const int CD_WAIT_TIME = 1000;
 
-// This handles next/prev track, since we receive no notification of those
-bool g_bTrackIsDone = TRUE;
+bool      g_bTrackIsDone       = TRUE; // This handles next/prev track, since we receive no notification of those
+UINT_PTR  g_TrackChangedTimer  = 0;
 
 //-----------------------------------------------------------------------------
 
@@ -24,6 +25,7 @@ void PlayPaused();
 void TrackChanged();
 void InfoChanged(LPCSTR szMedianame);
 
+void CALLBACK cbTrackChanged(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime);
 
 CAudioInfo* GetAudioInfo(LPCWSTR strFile);
 BOOL GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai);
@@ -112,16 +114,6 @@ void PlayPaused()
 //-----------------------------------------------------------------------------
 
 __inline
-void TrackChanged()
-{
-	log->OutputInfo(E_DEBUG, _T("TrackChanged"));
-
-	PostThreadMessage(g_nASThreadId, AS_MSG_TRACK_CHANGED, 0, 0);
-}
-
-//-----------------------------------------------------------------------------
-
-__inline
 void InfoChanged(LPCSTR szMedianame)
 {
 	// Is commented out in the subclassing proc
@@ -129,6 +121,32 @@ void InfoChanged(LPCSTR szMedianame)
 	//		PlayDone();
 	//    PlayStarted();
 	// log->OutputInfoW(E_DEBUG, L"InfoChanged: %s", (LPWSTR)szMedianame);
+}
+
+//-----------------------------------------------------------------------------
+
+__inline
+void TrackChanged()
+{
+	log->OutputInfo(E_DEBUG, _T("TrackChanged"));
+
+	if (g_TrackChangedTimer) {
+		KillTimer(NULL, g_TrackChangedTimer);
+		g_TrackChangedTimer = 0;
+	}
+	g_TrackChangedTimer = SetTimer(NULL, NULL, CD_WAIT_TIME, cbTrackChanged);
+}
+
+//-----------------------------------------------------------------------------
+
+void CALLBACK cbTrackChanged(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime)
+{
+	if (g_TrackChangedTimer) {
+		KillTimer(NULL, g_TrackChangedTimer);
+		g_TrackChangedTimer = 0;
+	}
+
+	PlayStarted();
 }
 
 //-----------------------------------------------------------------------------

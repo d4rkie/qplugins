@@ -13,9 +13,28 @@ CLog::CLog(HWND hwndOwner, LogMode mode, LPCTSTR strFilePath)
 	: m_hwndOwner(hwndOwner), // m_strFilePath(strFilePath), 
 	  m_logMode(mode), m_pFile(NULL)
 {
-	if (m_logMode & LOG_FILE) {
-		if ( !(m_pFile = _tfsopen(strFilePath, _T("w"), _SH_DENYWR)) )
+	if (m_logMode & LOG_FILE)
+	{
+		if ( !(m_pFile = _tfsopen(strFilePath, _T("w"), _SH_DENYWR)) ) {
+			m_logMode = LOG_NONE;
 			MessageBox(m_hwndOwner, _T("Failed to open log file for writing"), _T("CLog"), MB_OK | MB_ICONEXCLAMATION);
+		}
+		else
+		{
+			char szBuf[256] = {0};
+			char szTimeBuf[16] = {0};
+			__time64_t nNow = 0;
+			tm now;
+
+			_tzset();
+			_time64(&nNow);
+			_gmtime64_s( &now, &nNow );
+
+			strftime(szBuf, sizeof(szBuf), "Audioscrobbler log file\nDate created: %d. %b %y\n\n", &now);			
+
+			fwrite(szBuf, sizeof(char), strlen(szBuf), m_pFile);
+			fflush(m_pFile);
+		}
 	}
 }
 
@@ -37,12 +56,13 @@ void CLog::OutputInfoA(MsgType type, const char* str, ...)
 	const static size_t STR_CHARS = 2048;
 	const static size_t STR_PRE = 16;
 	
+	char  szTime[16];
 	char  strLog[STR_CHARS] = {0};
 	char* pStrLog = strLog + STR_PRE;
 
 	va_list args;
 	va_start(args, str);
-	int nCopiedChars = vsprintf_s(pStrLog, STR_CHARS-STR_PRE, str, args);
+	int nCopiedChars = vsprintf_s(pStrLog, STR_CHARS-STR_PRE-1, str, args);
 	va_end(args);
 
 	switch (type)
@@ -58,7 +78,15 @@ void CLog::OutputInfoA(MsgType type, const char* str, ...)
 
 			if (m_logMode == LOG_FILE)
 			{
-				fwrite(pStrLog, 1, nCopiedChars+1, m_pFile);
+				// Append timestamp
+				_strtime_s(szTime, sizeof(szTime));
+
+				pStrLog -= 9; // "00:00:00 "
+				for (int i = 0; i < 8; i++)
+					pStrLog[i] = szTime[i];
+				pStrLog[8] = ' ';
+
+				fwrite(pStrLog, 1, nCopiedChars + 1 + 9, m_pFile);
 				#ifdef _DEBUG
 					fflush(m_pFile);
 				#endif
@@ -88,13 +116,19 @@ void CLog::OutputInfoW(MsgType type, const wchar_t* str, ...)
 	const static size_t STR_CHARS = 2048;
 	const static size_t STR_PRE = 16;
 	
-	wchar_t strLog[STR_CHARS] = {0};
+	wchar_t  szTime[16];
+	wchar_t  strLog[STR_CHARS] = {0};
 	wchar_t* pStrLog = strLog + STR_PRE;
 
 	va_list args;
 	va_start(args, str);
-	int nCopiedChars = vswprintf_s(pStrLog, STR_CHARS-STR_PRE, str, args);
+	int nCopiedChars = vswprintf_s(pStrLog, STR_CHARS-STR_PRE-1, str, args);
 	va_end(args);
+
+	if (nCopiedChars == -1) {
+		MessageBoxW(m_hwndOwner, L"Failed to write log entry", L"QMP:Audioscrobbler error", MB_OK | MB_ICONEXCLAMATION);
+		return;
+	}
 
 	switch (type)
 	{
@@ -109,6 +143,14 @@ void CLog::OutputInfoW(MsgType type, const wchar_t* str, ...)
 
 			if (m_logMode == LOG_FILE)
 			{
+				// Append timestamp
+				_wstrtime_s(szTime, sizeof(szTime)/sizeof(wchar_t));
+
+				pStrLog -= 9; // "00:00:00 "
+				for (int i = 0; i < 8; i++)
+					pStrLog[i] = szTime[i];
+				pStrLog[8] = ' ';
+
 				fwprintf(m_pFile, pStrLog);
 				#ifdef _DEBUG
 					fflush(m_pFile);
@@ -151,13 +193,27 @@ void CLog::DirectOutputInfoA(MsgType type, const char* str)
 		{
 			const static size_t STR_CHARS = 2048;
 			const static size_t STR_PRE = 16;
+
 			char strLog[STR_CHARS] = {0};
+			char szTime[16];
+
 			strcpy_s(strLog+STR_PRE, STR_CHARS-STR_PRE, str);
 			strcat_s(strLog+STR_PRE, STR_CHARS-STR_PRE, "\n");
 
 			if (m_logMode == LOG_FILE)
 			{
-				fwrite(strLog+STR_PRE, 1, strlen(strLog+STR_PRE), m_pFile);
+				// Append timestamp
+				char* pStrLog = strLog + STR_PRE - 9; // pStrLog -= 9; // "00:00:00 "
+
+				_strtime_s(szTime, sizeof(szTime));
+				
+				for (int i = 0; i < 8; i++)
+					pStrLog[i] = szTime[i];
+				pStrLog[8] = ' ';
+				
+				strLog[STR_CHARS - 1] = NULL;
+
+				fwrite(pStrLog, 1, strlen(pStrLog), m_pFile);
 				#ifdef _DEBUG
 					fflush(m_pFile);
 				#endif
@@ -168,7 +224,6 @@ void CLog::DirectOutputInfoA(MsgType type, const char* str)
 				for (int i = 0; i < 16; i++)
 					strLog[i] = "Audioscrobbler:"[i];
 				strLog[15] = ' ';
-				// strLog[16] = NULL;
 
 				OutputDebugStringA(strLog);
 			}

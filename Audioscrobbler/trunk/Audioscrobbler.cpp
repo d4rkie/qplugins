@@ -106,6 +106,7 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 			switch (msg.message)
 			{
 			case AS_MSG_PLAY_STARTED :
+			case AS_MSG_TRACK_CHANGED :
 			{
 				g_nSongStartTime = 0;
 				g_bIsPaused = FALSE;
@@ -126,14 +127,13 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 			}
 
 			case AS_MSG_PLAY_DONE :
-			case AS_MSG_TRACK_CHANGED :
 			case AS_MSG_PLAY_STOPPED :
 			{
-				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED: Start"));
+				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED : Start"));
 
 				AS_AddPendingSongToQueue();
 
-				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED: Queue size = %d"), g_AIQueue.size());
+				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED : Queue size = %d"), g_AIQueue.size());
 				if (g_AIQueue.size() > 0)
 					AS_SendQueue();
 			
@@ -199,7 +199,7 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 		}
 	} // while
 
-	log->OutputInfo(E_DEBUG, _T("AS_Main : Ending"));
+	log->OutputInfo(E_DEBUG, _T("AS_Main : Clean up startet"));
 	AS_CleanUp();
 
 	// AS_AddPendingSongToQueue();
@@ -213,7 +213,7 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 	log->OutputInfo(E_DEBUG, _T("AS_Main : Setting End Event"));
 	SetEvent(g_hASThreadEndedEvent);
 
-	log->OutputInfo(E_DEBUG, _T("AS_Main : Thread end"));
+	log->OutputInfo(E_DEBUG, _T("AS_Main : Thread ended"));
 	return 0;
 }
 
@@ -225,7 +225,7 @@ BOOL AS_Initialize()
 
 	g_curl = curl_easy_init();
 	if(!g_curl) {
-		log->OutputInfo(E_FATAL, _T("AS_Initialize: Failed to initialize CURLLib"));
+		log->OutputInfo(E_FATAL, _T("AS_Initialize : Failed to initialize CURLLib"));
 		return FALSE;
 	}
 	curl_easy_setopt(g_curl, CURLOPT_ERRORBUFFER, &g_szErrorBuffer);
@@ -418,7 +418,7 @@ void AS_AddPendingSongToQueue()
 			else
 			{
 				delete g_pAIPending;
-				log->OutputInfo(E_DEBUG, _T("AS_AddPendingSongToQueue : Not added to queue. (Timeplayed=%u : Tracklength=%u)"), nTimePlayed, nTrackLength);
+				log->OutputInfo(E_DEBUG, _T("AS_AddPendingSongToQueue : Not added to queue (Timeplayed=%u : Tracklength=%u)"), (int)nTimePlayed, nTrackLength);
 			}
 		}		
 		g_pAIPending = NULL;
@@ -449,7 +449,11 @@ void AS_HandleHandshakeData(std::vector<std::string>* strLines)
 		g_bMustHandshake    = FALSE;
 		g_bCanTryConnect    = TRUE;
 		g_nReHandshakeMinutes = 1;
-		log->OutputInfoA(E_DEBUG, "Handshake OK\nSessionID: %s\nSubmission URL: %s\nNow playing URL: %s", g_strSessionID.c_str(), g_strSubmissionURL.c_str(), g_strNowPlayingURL.c_str());
+		// We can't use log->OutputInfo on inbound untrusted data
+		log->DirectOutputInfoA(E_DEBUG, "Handshake OK\nOrder: SessionID, Submission URL, Now playing URL");
+		log->DirectOutputInfoA(E_DEBUG, g_strSessionID.c_str());
+		log->DirectOutputInfoA(E_DEBUG, g_strSubmissionURL.c_str());
+		log->DirectOutputInfoA(E_DEBUG, g_strNowPlayingURL.c_str());
 		
 		QMPCallbacks.Service(opSetStatusMessage, L"AS : Handshaked with success", TEXT_DEFAULT | TEXT_UNICODE, 0);
 	}
@@ -482,7 +486,7 @@ void AS_HandleHandshakeData(std::vector<std::string>* strLines)
 		// Hard failure
 		// An error may be reported to the user, but as with other messages this should be kept to a minimum.
 		// AS_HandleHardFailure();
-		log->OutputInfoA(E_DEBUG, "AS_HandleHandshakeData unknown response.\nFirst line response was: %s", strLines->at(0).c_str());
+		log->OutputInfoA(E_DEBUG, "AS_HandleHandshakeData : Unknown response.\nFirst line response was: %s", strLines->at(0).c_str());
 	}
 }
 
@@ -504,7 +508,8 @@ void AS_HandleNowPlayingData(std::vector<std::string>* strLines)
 	}
 	else if (strLines->at(0).compare(0, 6, "FAILED") == 0)
 	{
-		log->OutputInfoA(E_DEBUG, "Now-Playing : %s", strLines->at(0).c_str());
+		log->DirectOutputInfoA(E_DEBUG, "Now-Playing : FAILED\nReason: ");
+		log->DirectOutputInfoA(E_DEBUG, strLines->at(0).c_str());
 	}
 	else
 	{
@@ -536,7 +541,8 @@ void AS_HandleSendQueueData(std::vector<std::string>* strLines)
 	}
 	else if (strLines->at(0).compare(0, 6, "FAILED") == 0)
 	{
-		log->OutputInfoA(E_DEBUG, "Submission error : %s", strLines->at(0).c_str());
+		log->DirectOutputInfoA(E_DEBUG, "Submission : FAILED\nReason: ");
+		log->DirectOutputInfoA(E_DEBUG, strLines->at(0).c_str());
 		AS_HandleHardFailure();
 	}
 	else
@@ -555,7 +561,7 @@ size_t AS_DataReceived(void* ptr, size_t size, size_t nmemb, void* stream)
 	memcpy(str, ptr, nmemb*size);
 	str[nmemb*size] = 0;
 
-	// log->OutputInfoA(E_DEBUG, "Data received: %s", str);
+	// log->DirectOutputInfoA(E_DEBUG, "Data received: %s", str);
 	
 	// Get all lines and convert to std::string
 	std::vector<std::string> strLines;
@@ -601,13 +607,13 @@ void AS_Handshake()
 	// http://post.audioscrobbler.com/
 	// ?hs=true&p=1.2&c=<client-id>&v=<client-ver>&u=<user>&t=<timestamp>&a=<auth>
 	// token := md5(md5(password) + timestamp)
-	log->OutputInfo(E_DEBUG, _T("AS_Handshake: Starting..."));
+	log->OutputInfo(E_DEBUG, _T("AS_Handshake : Starting..."));
 
 	// Exit conditions
 	if (g_bIsClosing)
 		return;
 	if (!g_bCanTryConnect) {
-		log->OutputInfo(E_DEBUG, _T("g_bCanTryConnect==false. Exiting"));
+		log->OutputInfo(E_DEBUG, _T("AS_Handshake : g_bCanTryConnect==false. Exiting"));
 		return;
 	}
 	if (g_bOfflineMode) {
@@ -649,7 +655,7 @@ void AS_Handshake()
 		AS_HANDSHAKE_URL, AS_PROTOCOL_VER, AS_CLIENT_ID, AS_CLIENT_VER, szUsername, strTime, strLongAuth);
 
 	if (nChars < 10) {
-		log->OutputInfo(E_DEBUG, _T("Failed to make handshake string"));
+		log->OutputInfo(E_DEBUG, _T("AS_Handshake : Failed to make handshake string"));
 		return;
 	}
 
@@ -671,36 +677,36 @@ void AS_Handshake()
 	switch (nResult)
 	{
 		case CURLE_OK :
-			log->OutputInfo(E_DEBUG, _T("AS_Handshake: Perform success"));
+			log->OutputInfo(E_DEBUG, _T("AS_Handshake : Perform success"));
 			break;
 
 		case CURLE_COULDNT_RESOLVE_HOST :
 			if (bFirstTry) {
 				bFirstTry = FALSE;
-				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Could not resolve host. Retrying to handshake once"));
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake : Could not resolve host. Retrying to handshake once"));
 				goto curlperform;
 			}
 			else
-				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Could not resolve host!"));
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake : Could not resolve host!"));
 			break;
 
 		case CURLE_GOT_NOTHING : 
 			if (bFirstTry) {
 				bFirstTry = FALSE;
-				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Server returned empty reply. Trying to connect again"));
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake : Server returned empty reply. Trying to connect again"));
 				goto curlperform;
 			}
 			else
-				log->OutputInfo(E_DEBUG, _T("AS_Handshake: Server returned empty reply!"));
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake : Server returned empty reply!"));
 			break;
 
 		case CURLE_COULDNT_CONNECT :
-			log->OutputInfo(E_DEBUG, _T("AS_Handshake: Could not connect. Will try handshaking later."));
+			log->OutputInfo(E_DEBUG, _T("AS_Handshake : Could not connect. Will try handshaking later."));
 			AS_TryReHandshake();
 			break;
 
 		default :
-			log->OutputInfoA(E_DEBUG, "AS_Handshake: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);	
+			log->OutputInfoA(E_DEBUG, "AS_Handshake : Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);	
 			break;
 	} // switch (nResult)
 }
@@ -709,10 +715,10 @@ void AS_Handshake()
 
 void AS_SendNowPlaying(CAudioInfo* ai)
 {
-	log->OutputInfoA(E_DEBUG, "AS_SendNowPlaying: Now-Playing: %s / %s", ai->GetArtist(), ai->GetTitle());
+	log->OutputInfoA(E_DEBUG, "AS_SendNowPlaying : Now-Playing \"%s / %s\"", ai->GetArtist(), ai->GetTitle());
 
 	if (!g_bCanTryConnect) {
-		log->OutputInfo(E_DEBUG, _T("g_bCanTryConnect false. Exiting"));
+		log->OutputInfo(E_DEBUG, _T("AS_SendNowPlaying : g_bCanTryConnect false. Exiting"));
 		return;
 	}
 	if (g_bMustHandshake)
@@ -763,24 +769,24 @@ void AS_SendNowPlaying(CAudioInfo* ai)
 	// Perform the request
 	CURLcode nResult = curl_easy_perform(g_curl);
 	if (nResult != CURLE_OK) {
-		log->OutputInfoA(E_DEBUG, "AS_SendNowPlaying: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
+		log->OutputInfoA(E_DEBUG, "AS_SendNowPlaying : Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
 		AS_HandleHardFailure();
 	}
 	else
-		log->OutputInfo(E_DEBUG, _T("AS_SendNowPlaying: Perform success\n"));
+		log->OutputInfo(E_DEBUG, _T("AS_SendNowPlaying : Perform success\n"));
 }
 
 //-----------------------------------------------------------------------------
 
 void AS_SendQueue()
 {
-	log->OutputInfo(E_DEBUG, _T("AS_SendQueue: Starting to send cached information"));
+	log->OutputInfo(E_DEBUG, _T("AS_SendQueue : Starting to send cached information"));
 	if (g_AIQueue.empty()) {
-		log->OutputInfo(E_DEBUG, _T("Queue is empty"));
+		log->OutputInfo(E_DEBUG, _T("AS_SendQueue : Queue is empty"));
 		return;
 	}
 	if (!g_bCanTryConnect) {
-		log->OutputInfo(E_DEBUG, _T("g_bCanTryConnect==false. Exiting"));
+		log->OutputInfo(E_DEBUG, _T("AS_SendQueue : g_bCanTryConnect==false. Exiting"));
 		return;
 	}
 	if (g_bMustHandshake)
@@ -791,7 +797,7 @@ void AS_SendQueue()
 		return;
 
 	// Create song submit list
-	log->DirectOutputInfoA(E_DEBUG, "AS_SendQueue: Building queue information:");
+	log->DirectOutputInfoA(E_DEBUG, "AS_SendQueue : Building queue information:");
 	const static int CACHE_SIZE = 2048;
 	char strI[4] = {0};
 	char* strCache = new char[CACHE_SIZE];
@@ -850,11 +856,11 @@ void AS_SendQueue()
 	// Perform the request
 	CURLcode nResult = curl_easy_perform(g_curl);
 	if (nResult != CURLE_OK) {
-		log->OutputInfoA(E_DEBUG, "AS_SendQueue: Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
+		log->OutputInfoA(E_DEBUG, "AS_SendQueue : Perform error - Code: %d\nError buffer: %s\n", nResult, g_szErrorBuffer);
 		AS_HandleHardFailure();
 	}
 	else {
-		log->OutputInfo(E_DEBUG, _T("AS_SendQueue: Perform success"));
+		log->OutputInfo(E_DEBUG, _T("AS_SendQueue : Perform success"));
 	}
 }
 
@@ -865,7 +871,7 @@ void AS_HandleHardFailure()
 	g_nHardFailureCount++;
 
 	if (g_nHardFailureCount >= 3) {
-		log->OutputInfo(E_DEBUG, _T("3 hard failures. Client must handshake again!"));
+		log->OutputInfo(E_DEBUG, _T("AS_HandleHardFailure : 3 hard failures. Client must handshake again!"));
 		
 		g_bMustHandshake = TRUE;
 		g_bCanTryConnect = TRUE;

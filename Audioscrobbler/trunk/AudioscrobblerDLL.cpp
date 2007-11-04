@@ -6,29 +6,31 @@
 //	Copyright (C) 2007
 //
 //-----------------------------------------------------------------------------
-// Changelog 0.1.7:
-//   * Fix: CD's wasn't scrobbled
-//   * Fix: Crash if username had special characters
-//   * Fix: Trying to send too often when connection is bad
-//   * Fix: Offline mode didn't work, if the player had handshaken already.
-//   * Updated CURL Lib (memory leak fix)
+// Changelog 0.1.8:
+//   * Win9x support
+//   + Added timestamp to log file
+//   * Fix: Only first track on CD was scrobbled
+//   * Fix: Numerious log fixes
+//   * Fix: Player crash if log file can't be opened (f.x with two logs writing to same location)
+//   * Security fix: More secure handling of data from audioscrobbler
 //
 // Known bugs:
 //   Don't send info when encoding
 //
-// TODO / Wishlist
+// TODO
+//   
+//
+// Wishlist
 //   Custom send time. (Send at 50%->100% slider)
 //   Handle stream titles - InfoChanged
 //   Proxy connection
-//   Win9x support
 //-----------------------------------------------------------------------------
 
 #include "Precompiled.h"
 
-#define PLUGIN_NAME L"Audioscrobbler v0.1.7"
+#define PLUGIN_NAME L"Audioscrobbler v0.1.8"
 
 // Project includes
-//#include "ThreadTools.h"
 #include "PlayerControl.h"
 #include "About.h"
 #include "Config.h"
@@ -196,12 +198,13 @@ void Configure(int flags)
 		case IDM_HEAD :
 			break;
 		case IDM_OFFLINE_MODE :
+		{
 			if (g_bOfflineMode) {
-				log->OutputInfo(E_DEBUG, _T("Swiching to online mode"));
+				log->OutputInfo(E_DEBUG, _T("Switching to online mode"));
 				QMPCallbacks.Service(opSetPluginMenuState,  g_hInstance, IDM_OFFLINE_MODE, MF_UNCHECKED);
 			}
 			else {
-				log->OutputInfo(E_DEBUG, _T("Swiching to offline mode"));
+				log->OutputInfo(E_DEBUG, _T("Switching to offline mode"));
 				MessageBox(g_hwndPlayer, _T("Audioscrobbler is now running in offline mode\nand it will not send song information."), 
 					_T("Audioscrobbler"), MB_ICONEXCLAMATION);
 				QMPCallbacks.Service(opSetPluginMenuState,  g_hInstance, IDM_OFFLINE_MODE, MF_CHECKED);
@@ -213,9 +216,8 @@ void Configure(int flags)
 			else
 				log->OutputInfo(E_DEBUG, _T("PostThreadMessage successfull"));
 
-
 			break;
-
+		}
 		case IDM_CONFIG :
 		default :
 			CreateConfigDlg(g_hInstance, g_hwndPlayer);
@@ -268,4 +270,3 @@ LRESULT CALLBACK QMPSubProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 }
 
 //-----------------------------------------------------------------------------
-
