@@ -334,6 +334,10 @@
 				RelativePath=".\resource.h"
 				>
 			</File>
+			<File
+				RelativePath=".\ThreadTools.h"
+				>
+			</File>
 			<Filter
 				Name="External"
 				>

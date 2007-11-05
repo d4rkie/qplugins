@@ -57,7 +57,7 @@ void PlayStarted()
 	// Validate song info and send message to AS thread if valid
 	if (g_pAIPending)
 	{
-		// Don't submit songs shorter than 30 sec (exept if they have a MBID)
+		// Don't submit songs shorter than 30 sec (except if they have a MBID)
 		int nTrackLen = g_pAIPending->GetTrackLength();
 		BOOL bArtistIsEmpty = g_pAIPending->IsEmpty(g_pAIPending->GetArtist());
 		BOOL bTitleIsEmpty  = g_pAIPending->IsEmpty(g_pAIPending->GetTitle());
@@ -173,7 +173,7 @@ BOOL GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai)
 	// Only support for audio files and CD atm.
 	long nMediaType = QMPCallbacks.Service(opGetMediaType, NULL, -1, 0);
 	if (nMediaType != DIGITAL_AUDIOFILE_MEDIA && nMediaType != CD_AUDIO_MEDIA) {
-		log->OutputInfo(E_DEBUG, _T("PlayStarted : File not a CD or digital audio file - File is not scrobbled"));
+		log->OutputInfo(E_DEBUG, _T("PlayStarted : File is not a CD or digital audio file - File is not scrobbled"));
 		return FALSE;
 	}
 	/*if (nMediaType == DIGITAL_AUDIOSTREAM_MEDIA)
@@ -195,16 +195,16 @@ BOOL GetAudioInfo(LPCWSTR strFile, CAudioInfo* ai)
 		log->OutputInfo(E_DEBUG, _T("GetAudioInfo : Tracklength=%u"), nTrackLen);
 		return FALSE;
 	}
+	ai->SetTrackLength(nTrackLen);
 
-	ai->SetTrackNumber(0);
-	ai->SetTrackLength(nTrackLen);	
-	ai->SetStartTime();
 	ai->SetRating("");
+	ai->SetStartTime();
+	ai->SetTrackNumber(0);	
 
 	//*************************************************************************
 	// Get Artist, Title, Album, Tracknumber
 	//*************************************************************************
-	// Use MediaInfo interface if possible
+	// Use MediaInfo interface if possible (doesn't work for CD's in b119)
 
 	if (nMediaType != CD_AUDIO_MEDIA && 
 		(info = (IQCDMediaInfo*)QMPCallbacks.Service(opGetIQCDMediaInfo, (void*)strFile, 0, 0)) )

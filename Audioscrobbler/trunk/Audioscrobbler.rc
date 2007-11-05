@@ -128,7 +128,7 @@ IDB_LOGO                BITMAP                  "Res\\AS_Logo.bmp"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,1,8,0
+ FILEVERSION 1,0,0,1
  PRODUCTVERSION 1,0,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
@@ -145,7 +145,7 @@ BEGIN
         BLOCK "000904b0"
         BEGIN
             VALUE "FileDescription", "Audioscrobbler plug-in"
-            VALUE "FileVersion", "0, 1, 8, 0"
+            VALUE "FileVersion", "1, 0, 0, 1"
             VALUE "InternalName", "Audioscrobbler plug-in"
             VALUE "LegalCopyright", "Copyright (C) 2007"
             VALUE "OriginalFilename", "Audioscrobbler.dll"

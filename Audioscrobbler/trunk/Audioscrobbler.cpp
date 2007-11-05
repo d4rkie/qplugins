@@ -1,5 +1,6 @@
 #include "Precompiled.h"
 
+#include "ThreadTools.h"
 #include "AudioscrobblerDLL.h"
 #include "Audioscrobbler.h"
 
@@ -24,7 +25,7 @@ enum AS_SENDSTATE {
 //-----------------------------------------------------------------------------
 
 BOOL      g_bCanTryConnect      = TRUE;
-BOOL      g_bHandShakeSucces    = FALSE;
+BOOL      g_bHandShakeSuccess   = FALSE;
 BOOL      g_bMustHandshake      = TRUE;
 
 BOOL      g_bOfflineMode        = FALSE;
@@ -62,12 +63,14 @@ void AS_SaveQueue();
 void AS_GetCacheString(CAudioInfo* ai, std::string* str);
 
 size_t AS_DataReceived(void* ptr, size_t size, size_t nmemb, void* stream);
+
 void AS_Handshake();
 void AS_SendNowPlaying(CAudioInfo* ai);
 void AS_SendQueue();
 
 void AS_HandleHardFailure();
 void AS_TryReHandshake();
+
 void AS_SettingsChanged();
 
 void CALLBACK AS_cbSendNowPlaying(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime);
@@ -83,6 +86,8 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 	BOOL bRet;
 
 	log->OutputInfo(E_DEBUG, _T("AS_Main : Started"));
+
+	SetThreadName(-1, "QMPAudioscrobbler");
 	if (!AS_Initialize())
 		return 0;
 
@@ -129,8 +134,6 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 			case AS_MSG_PLAY_DONE :
 			case AS_MSG_PLAY_STOPPED :
 			{
-				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED : Start"));
-
 				AS_AddPendingSongToQueue();
 
 				log->OutputInfo(E_DEBUG, _T("PLAY_DONE/STOPPED : Queue size = %d"), g_AIQueue.size());
@@ -146,9 +149,7 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 					g_bIsPaused = FALSE; // resumed
 					time_t nTime = 0;
 					time(&nTime);
-					g_nPausedTime = nTime - g_nPauseTimestamp;
-					if (g_nPausedTime < 0)
-						g_nPausedTime = 0;
+					g_nPausedTime += nTime - g_nPauseTimestamp;
 				}
 				else
 				{
@@ -160,8 +161,13 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 			case AS_MSG_SETTINGS_CHANGED :
 			{
 				log->OutputInfo(E_DEBUG, _T("AS_Main : Settings changed message"));
-				g_bCanTryConnect = TRUE;
-				g_bMustHandshake = TRUE;
+				
+				g_nHardFailureCount = 0;
+				g_nReHandshakeMinutes = 1;
+				g_bHandShakeSuccess = FALSE;
+				g_bMustHandshake    = TRUE;
+				g_bCanTryConnect    = TRUE;
+
 				break;
 			}
 
@@ -170,10 +176,10 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 				g_bOfflineMode = !g_bOfflineMode;
 
 				g_nHardFailureCount = 0;
-				g_bHandShakeSucces  = FALSE;
+				g_nReHandshakeMinutes = 1;
+				g_bHandShakeSuccess = FALSE;
 				g_bMustHandshake    = TRUE;
 				g_bCanTryConnect    = TRUE;
-				g_nReHandshakeMinutes = 1;
 						
 				break;
 			}
@@ -202,7 +208,6 @@ DWORD WINAPI AS_Main(LPVOID lpParameter)
 	log->OutputInfo(E_DEBUG, _T("AS_Main : Clean up startet"));
 	AS_CleanUp();
 
-	// AS_AddPendingSongToQueue();
 	AS_SaveQueue();
 
 	// Clean AIQueue
@@ -399,13 +404,12 @@ void AS_AddPendingSongToQueue()
 			time_t nTimePlayed = 0, nTime = 0;
 			time(&nTime);
 
-			if (g_bIsPaused)
-			{
+			if (g_bIsPaused) {
 				g_bIsPaused = FALSE;
-				g_nPausedTime = nTime - g_nPauseTimestamp;
-				if (g_nPausedTime < 0)
-					g_nPausedTime = 0;
+				g_nPausedTime += nTime - g_nPauseTimestamp;
 			}
+			if (g_nPausedTime < 0)
+				g_nPausedTime = 0;
 
 			nTimePlayed = nTime - g_nSongStartTime - g_nPausedTime;
 
@@ -435,17 +439,17 @@ void AS_AddPendingSongToQueue()
 
 void AS_HandleHandshakeData(std::vector<std::string>* strLines)
 {
-	g_bHandShakeSucces  = FALSE;
+	g_bHandShakeSuccess = FALSE;
 	g_bMustHandshake    = TRUE;
 
 	// Process data
 	if (strLines->at(0).compare("OK") == 0)
 	{
-		g_strSessionID     = strLines->at(1);
-		g_strNowPlayingURL = strLines->at(2);
-		g_strSubmissionURL = strLines->at(3);
+		g_strSessionID      = strLines->at(1);
+		g_strNowPlayingURL  = strLines->at(2);
+		g_strSubmissionURL  = strLines->at(3);
 		g_nHardFailureCount = 0;
-		g_bHandShakeSucces  = TRUE;
+		g_bHandShakeSuccess = TRUE;
 		g_bMustHandshake    = FALSE;
 		g_bCanTryConnect    = TRUE;
 		g_nReHandshakeMinutes = 1;
@@ -503,7 +507,7 @@ void AS_HandleNowPlayingData(std::vector<std::string>* strLines)
 	else if (strLines->at(0).compare("BADSESSION") == 0)
 	{
 		log->OutputInfo(E_DEBUG, _T("Now-Playing : BADSESSION"));
-		g_bHandShakeSucces = FALSE;
+		g_bHandShakeSuccess = FALSE;
 		g_bMustHandshake = TRUE;
 	}
 	else if (strLines->at(0).compare(0, 6, "FAILED") == 0)
@@ -536,7 +540,7 @@ void AS_HandleSendQueueData(std::vector<std::string>* strLines)
 	else if (strLines->at(0).compare("BADSESSION") == 0)
 	{
 		log->OutputInfo(E_DEBUG, _T("Submission : BADSESSION"));
-		g_bHandShakeSucces = FALSE;
+		g_bHandShakeSuccess = FALSE;
 		g_bMustHandshake = TRUE;
 	}
 	else if (strLines->at(0).compare(0, 6, "FAILED") == 0)
@@ -632,7 +636,7 @@ void AS_Handshake()
 	char strLongAuth[64] = {0};
 	char strBuffer[512] = {0};
 
-	g_bHandShakeSucces = FALSE;
+	g_bHandShakeSuccess = FALSE;
 
 	// Get unix timestamp and convert to string
 	time_t ltime;
@@ -723,7 +727,7 @@ void AS_SendNowPlaying(CAudioInfo* ai)
 	}
 	if (g_bMustHandshake)
 		AS_Handshake();
-	if (!g_bHandShakeSucces)
+	if (!g_bHandShakeSuccess)
 		return;
 	if (g_bIsClosing)
 		return;
@@ -791,7 +795,7 @@ void AS_SendQueue()
 	}
 	if (g_bMustHandshake)
 		AS_Handshake();
-	if (!g_bHandShakeSucces)
+	if (!g_bHandShakeSuccess)
 		return;
 	if (g_bIsClosing)
 		return;
@@ -870,7 +874,8 @@ void AS_HandleHardFailure()
 {
 	g_nHardFailureCount++;
 
-	if (g_nHardFailureCount >= 3) {
+	if (g_nHardFailureCount >= 3)
+	{
 		log->OutputInfo(E_DEBUG, _T("AS_HandleHardFailure : 3 hard failures. Client must handshake again!"));
 		
 		g_bMustHandshake = TRUE;
@@ -914,7 +919,7 @@ void CALLBACK AS_cbSendQueue(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime)
 
 	g_bCanTryConnect = TRUE;
 	g_bMustHandshake = TRUE;
-	g_bHandShakeSucces = FALSE;
+	g_bHandShakeSuccess = FALSE;
 	
 	AS_SendQueue();
 }

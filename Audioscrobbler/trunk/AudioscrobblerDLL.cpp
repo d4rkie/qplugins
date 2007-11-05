@@ -6,13 +6,9 @@
 //	Copyright (C) 2007
 //
 //-----------------------------------------------------------------------------
-// Changelog 0.1.8:
-//   * Win9x support
-//   + Added timestamp to log file
-//   * Fix: Only first track on CD was scrobbled
-//   * Fix: Numerious log fixes
-//   * Fix: Player crash if log file can't be opened (f.x with two logs writing to same location)
-//   * Security fix: More secure handling of data from audioscrobbler
+// Changelog 1.0.0:
+//   * Fix: Pause times weren't summed
+//   * Better handling of failure when plug-in loads
 //
 // Known bugs:
 //   Don't send info when encoding
@@ -21,6 +17,7 @@
 //   
 //
 // Wishlist
+//   Save queue regularly (in case of crash)
 //   Custom send time. (Send at 50%->100% slider)
 //   Handle stream titles - InfoChanged
 //   Proxy connection
@@ -28,7 +25,7 @@
 
 #include "Precompiled.h"
 
-#define PLUGIN_NAME L"Audioscrobbler v0.1.8"
+#define PLUGIN_NAME         L"Audioscrobbler v1.0.0"
 
 // Project includes
 #include "PlayerControl.h"
@@ -43,6 +40,8 @@
 #define IDM_CONFIG        1
 #define IDM_HEAD          2
 #define IDM_OFFLINE_MODE  3
+
+#define PLUGIN_NAME_FAILED  L"Audioscrobbler - Failed to load"
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -102,10 +101,11 @@ int Initialize(QCDModInfo *modInfo, int flags)
 {
 	modInfo->moduleString = (char*)PLUGIN_NAME;
 
-	// Check QMP version (b118+)
-	if (QMPCallbacks.Service(opGetPlayerVersion, NULL, 1, 0) < 118) {
-		MessageBox(0, L"The latest beta builds of Quintessential Media Player\nis needed to run this Audioscrobbler plug-in.\n\nAt least build 118 required!",
+	// Check QMP version (b119+)
+	if (QMPCallbacks.Service(opGetPlayerVersion, NULL, 1, 0) < 119) {
+		MessageBox(0, L"The latest beta builds of Quintessential Media Player\nis needed to run this Audioscrobbler plug-in.\n\nAt least build 119 required!",
 			L"QMP:Audioscrobbler initialization error", MB_ICONSTOP);
+		modInfo->moduleString = (char*)PLUGIN_NAME_FAILED;
 		return FALSE;
 	}
 
@@ -113,14 +113,16 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	_tzset();
 
 	g_hwndPlayer  = (HWND)QMPCallbacks.Service(opGetParentWnd, 0, 0, 0);
-	if (!g_hwndPlayer)
-		return false;
+	if (!g_hwndPlayer) {
+		modInfo->moduleString = (char*)PLUGIN_NAME_FAILED;
+		return FALSE;
+	}
 
 	LoadSettings();
 
 	// Create log object
 	WCHAR strPath[MAX_PATH] = {0};
-	QMPCallbacks.Service(opGetSettingsFolder, strPath, MAX_PATH*sizeof(WCHAR), 0);
+	QMPCallbacks.Service(opGetSettingsFolder, strPath, sizeof(strPath), 0);
 	wcscat_s(strPath, MAX_PATH, L"\\Audioscrobbler.log");
 	log = new CLog(g_hwndPlayer, Settings.logMode, strPath);
 
@@ -134,9 +136,14 @@ int Initialize(QCDModInfo *modInfo, int flags)
 	InitializeCriticalSection(&g_csAIPending);
 	g_hASThreadEndedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	g_hASThread = CreateThread(NULL, 0, AS_Main, NULL, 0, &g_nASThreadId);
-	if (!g_hASThread)
-		return FALSE; // TODO: Cleanup
-	// SetThreadName(g_nASThreadId, "QMPAudioscrobbler");
+	if (!g_hASThread) {
+		modInfo->moduleString = (char*)PLUGIN_NAME_FAILED;
+		// Cleanup
+		CloseHandle(g_hASThreadEndedEvent);
+		DeleteCriticalSection(&g_csAIPending);
+		QMPCallbacks.Service(opSetPluginMenuItem, g_hInstance, 0, 0);
+		return FALSE;
+	}
 
 	Sleep(0);
 
@@ -148,7 +155,7 @@ int Initialize(QCDModInfo *modInfo, int flags)
 
 	if (Settings.bFirstRun) {
 		MessageBox(g_hwndPlayer, _T("This is the first time you run the Audioscrobbler plug-in.\n\nPlease provide your Audioscrobbler username and password in the following configuration screen."),
-			_T("Audioscrobbler"), MB_ICONINFORMATION);
+			_T("QMP:Audioscrobbler"), MB_ICONINFORMATION);
 		Configure(0);
 		Settings.bFirstRun = FALSE;
 	}
