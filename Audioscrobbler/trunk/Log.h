@@ -30,20 +30,44 @@ enum MsgType {
 class CLog
 {
 private:
-	FILE* m_pFile;
-	//LPCTSTR m_strFilePath;
+	struct IOQueueItem {
+		int bUnicode;
+		int nCchSize;
+
+		union _pStrData {
+			char* cStr;
+			wchar_t* wStr;
+		} pStrData;
+	};
+
+	struct IOThreadData {
+		FILE*   pFile;
+		WCHAR*  pwszFilePath;
+		DWORD   nThreadId;
+		HANDLE  hInitDoneEvent;
+		HANDLE  hThread;
+		CRITICAL_SECTION CS_IOQueue;
+		std::deque<IOQueueItem*> IOQueue;
+		BOOL    bIsRunning;
+		LogMode logMode;
+	} m_IOThreadData;
+
+	void AddStringToIOList(LPCSTR str, size_t nCchSize);
+	void AddStringToIOList(LPCWSTR str, size_t nCchSize);
+
+	static DWORD WINAPI FileIOThreadProc(LPVOID lpParameter);	
+	
 	HWND m_hwndOwner;
-	LogMode m_logMode;
 
 public:
-	CLog::CLog(HWND hwndOwner, LogMode mode, LPCTSTR strFilePath);
+	CLog::CLog(HWND hwndOwner, HANDLE hInitDoneEvent, LogMode mode, LPCTSTR strFilePath);
 	~CLog();
 
 	void OutputInfoA(MsgType type, const char* str, ...);
 	void OutputInfoW(MsgType type, const wchar_t* str, ...);
 	void DirectOutputInfoA(MsgType type, const char* str);
 
-	void Flush() { if (m_logMode == LOG_FILE && m_pFile) fflush(m_pFile); };
+	void Flush() { if (m_IOThreadData.logMode == LOG_FILE && m_IOThreadData.pFile) fflush(m_IOThreadData.pFile); };
 };
 
 #endif // __LOG_H
