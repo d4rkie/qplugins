@@ -12,8 +12,10 @@
 struct _Settings
 {
 	BOOL bFirstRun;
+	BOOL bUseProxy;
 	LogMode logMode;
 	
+	QString strSettingsPath;
 	QString strUsername;
 	char strPassword[33];
 };

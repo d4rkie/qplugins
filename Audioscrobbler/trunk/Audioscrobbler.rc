@@ -7,8 +7,7 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include "afxres.h"
-
+#include "afxres.h"
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -62,21 +61,23 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_CONFIG DIALOGEX 0, 0, 236, 154
+IDD_CONFIG DIALOGEX 0, 0, 236, 164
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Audioscrobbler configuration"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,67,133,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,120,133,50,14
-    COMBOBOX        IDC_CONFIG_DEBUG,84,96,62,44,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
-    RTEXT           "Debug output to:",IDC_STATIC,13,98,69,8
-    LTEXT           "* Requires restart of plug-in to take effect",IDC_STATIC,83,111,146,8
+    DEFPUSHBUTTON   "OK",IDOK,67,143,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,120,143,50,14
+    COMBOBOX        IDC_CONFIG_DEBUG,84,105,62,44,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    RTEXT           "Debug output to:",IDC_STATIC,13,107,69,8
+    LTEXT           "* Requires restart of player to take effect",IDC_STATIC,84,128,146,8
     CONTROL         105,IDC_STATIC,"Static",SS_BITMAP | SS_CENTERIMAGE | SS_REALSIZEIMAGE,0,0,237,42
     EDITTEXT        IDC_CONFIG_USERNAME,84,49,102,14,ES_AUTOHSCROLL
     RTEXT           "Username:",IDC_STATIC,36,51,46,8
     RTEXT           "Password:",IDC_STATIC,35,69,47,8
     EDITTEXT        IDC_CONFIG_PASSWORD,84,67,102,14,ES_PASSWORD | ES_AUTOHSCROLL
+    CONTROL         "Use qmp proxy settings *",IDC_CONFIG_PROXY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,84,86,117,10
+    LTEXT           "*",IDC_STATIC,150,105,8,8
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 234, 155
@@ -102,7 +103,7 @@ BEGIN
     IDD_CONFIG, DIALOG
     BEGIN
         VERTGUIDE, 8
-        BOTTOMMARGIN, 147
+        BOTTOMMARGIN, 157
         HORZGUIDE, 42
     END
 
@@ -128,8 +129,8 @@ IDB_LOGO                BITMAP                  "Res\\AS_Logo.bmp"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,0
+ FILEVERSION 1,1,2,0
+ PRODUCTVERSION 1,1,2,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -145,12 +146,12 @@ BEGIN
         BLOCK "000904b0"
         BEGIN
             VALUE "FileDescription", "Audioscrobbler plug-in"
-            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "FileVersion", "1, 1, 2, 0"
             VALUE "InternalName", "Audioscrobbler plug-in"
             VALUE "LegalCopyright", "Copyright (C) 2007"
             VALUE "OriginalFilename", "Audioscrobbler.dll"
             VALUE "ProductName", "Audioscrobbler plug-in for QMP"
-            VALUE "ProductVersion", "1, 0, 0, 0"
+            VALUE "ProductVersion", "1, 1, 2, 0"
         END
     END
     BLOCK "VarFileInfo"

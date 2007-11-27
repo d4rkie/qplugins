@@ -10,7 +10,7 @@ static const LPCSTR AS_HANDSHAKE_URL = "http://post.audioscrobbler.com:80/";
 static const LPCSTR AS_PROTOCOL_VER  = "1.2";
 
 static const LPCSTR AS_CLIENT_ID     = "qcd";
-static const LPCSTR AS_CLIENT_VER    = "2.0.1"; // old plug-in used 1.5 in latest version
+static const LPCSTR AS_CLIENT_VER    = "2.0.2"; // old plug-in used 1.5 in latest version
 
 //static const LPCSTR AS_CLIENT_ID     = "tst";
 //static const LPCSTR AS_CLIENT_VER    = "1.0";
@@ -233,10 +233,43 @@ BOOL AS_Initialize()
 		log->OutputInfo(E_FATAL, _T("AS_Initialize : Failed to initialize CURLLib"));
 		return FALSE;
 	}
-	curl_easy_setopt(g_curl, CURLOPT_ERRORBUFFER, &g_szErrorBuffer);
-	curl_easy_setopt(g_curl, CURLOPT_DNS_CACHE_TIMEOUT, -1);
-	curl_easy_setopt(g_curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-	curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, &AS_DataReceived);
+	curl_easy_setopt(g_curl, CURLOPT_ERRORBUFFER,        &g_szErrorBuffer);
+	curl_easy_setopt(g_curl, CURLOPT_DNS_CACHE_TIMEOUT,  -1);
+	curl_easy_setopt(g_curl, CURLOPT_HTTP_VERSION,       CURL_HTTP_VERSION_1_1);
+	curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION,      &AS_DataReceived);
+
+	if (Settings.bUseProxy)
+	{
+		log->OutputInfo(E_DEBUG, _T("AS_Initialize : Setting proxy"));
+		// Get qmp proxy settings
+		ProxyInfo pi;
+		ZeroMemory(&pi, sizeof(ProxyInfo));
+		pi.struct_size = sizeof(ProxyInfo);
+
+		QMPCallbacks.Service(opGetProxyInfo, &pi, 0, 0);
+
+		// Set CURL proxy
+		if (pi.hostname[0] != 0)
+		{
+			curl_easy_setopt(g_curl, CURLOPT_PROXY,     pi.hostname);
+			curl_easy_setopt(g_curl, CURLOPT_PROXYPORT, pi.port);
+
+			if (pi.username[0] != 0)
+			{
+				char szUserPwd[200] = {0};
+				strcpy_s(szUserPwd, sizeof(szUserPwd), pi.username);
+				strcat_s(szUserPwd, sizeof(szUserPwd), ":");
+				strcat_s(szUserPwd, sizeof(szUserPwd), pi.password);
+
+				curl_easy_setopt(g_curl, CURLOPT_PROXYAUTH,    CURLAUTH_ANY);
+				curl_easy_setopt(g_curl, CURLOPT_PROXYUSERPWD, szUserPwd); // [user name]:[password]
+			}
+			log->OutputInfo(E_DEBUG, _T("AS_Initialize : Proxy setup done"));
+		}
+		else
+			log->OutputInfo(E_DEBUG, _T("AS_Initialize : No proxy settings found"));
+
+	}
 
 	return TRUE;
 }
@@ -260,10 +293,9 @@ void AS_LoadQueue()
 {
 	log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : Start"));
 
-	WCHAR szCacheFile[MAX_PATH] = {0};
-	QMPCallbacks.Service(opGetSettingsFolder, szCacheFile, MAX_PATH*sizeof(WCHAR), 0);
-	wcscat_s(szCacheFile, MAX_PATH, L"\\Audioscrobbler.cache");
-	QString strCacheFile = szCacheFile;
+	QString strCacheFile;
+	strCacheFile.SetUnicode(Settings.strSettingsPath.GetUnicode());
+	strCacheFile.AppendUnicode(L"\\Audioscrobbler.cache");
 
 	TiXmlDocument xmlDocCache(strCacheFile.GetMultiByte());
 	if (!xmlDocCache.LoadFile())
@@ -278,12 +310,11 @@ void AS_LoadQueue()
 			goto cleanup;
 		
 		// Check version of cache document
-		TiXmlElement* pVersion = hRoot.FirstChild("Version").ToElement();
-		if (pVersion) {
-			if (strcmp(pVersion->GetText(), "1.0") != 0) {
-				log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : Wrong cache version"));
-				goto cleanup;
-			}
+		LPCSTR strVersion = hRoot.ToElement()->Attribute("Version");
+		if (strVersion == NULL || (strcmp(strVersion, "1.1") != 0) )
+		{
+			log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : Wrong cache version. Cache is discarded!"));
+			goto cleanup;
 		}
 
 		CAudioInfo* ai = NULL;
@@ -317,6 +348,7 @@ void AS_LoadQueue()
 			log->OutputInfoA(E_DEBUG, "AS_LoadQueue : Added %s / %s to queue", ai->GetArtist(), ai->GetTitle());
 		}
 
+		cleanup:
 		// Clean the cache file
 		log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : Erasing cache file"));
 		FILE* pFile = NULL;
@@ -328,7 +360,6 @@ void AS_LoadQueue()
 		fclose(pFile);
 	}
 
-cleanup:
 	log->OutputInfo(E_DEBUG, _T("AS_LoadQueue : End"));
 }
 
@@ -340,50 +371,90 @@ void AS_SaveQueue()
 	
 	if (g_AIQueue.size() > 0)
 	{
-		std::string str;
-		FILE* pFile = NULL;
+		QString strCacheFile;
+		strCacheFile.SetUnicode(Settings.strSettingsPath.GetUnicode());
+		strCacheFile.AppendUnicode(L"\\Audioscrobbler.cache");
+
+		TiXmlDocument xmlDocCache(strCacheFile.GetMultiByte());
+		TiXmlBase::SetCondenseWhiteSpace(false);
+
+		TiXmlDeclaration dec("1.0", "", "");
+		xmlDocCache.InsertEndChild(dec);
+
+		TiXmlElement elm_root("Audioscrobbler_Cache");
+		elm_root.SetAttribute("Version", "1.1");
 		
-		// Create file to write
-		WCHAR szCacheFile[MAX_PATH] = {0};
-		QMPCallbacks.Service(opGetSettingsFolder, szCacheFile, MAX_PATH*sizeof(WCHAR), 0);
-		wcscat_s(szCacheFile, MAX_PATH, L"\\Audioscrobbler.cache");
-
-		if (_tfopen_s(&pFile, szCacheFile, _T("w"))) {
-			int nErr = 0;
-			WCHAR strError[256];
-			_get_errno(&nErr);
-			_wcserror_s(strError, 256, nErr);
-			log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : Failed to open cache file for writing. Error nr: %d\n\t%s\n"), nErr, strError);
-			goto cleanup;
-		}
-
-		// Add header
-		log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : Creating XML"));
-		str.append("<Audioscrobbler_Cache>\n<Version>1.0</Version>\n");
-		fwrite(str.c_str(), sizeof(char), str.size(), pFile);
-		str.clear();
-
 		// Loop through the queue and add songs
 		for (UINT i = 0; i < g_AIQueue.size(); i++)
 		{
-			str = "\t<Entry>\n";
-			AS_GetCacheString(g_AIQueue.at(i), &str);
-			str += "\t</Entry>\n";
+			log->OutputInfoA(E_DEBUG, "AS_SaveQueue : Saving %s/%s", g_AIQueue[i]->GetArtist(), g_AIQueue[i]->GetTitle());
 
-			fwrite(str.c_str(), 1, str.size(), pFile);
-			str.clear();
+			TiXmlText text("");
+			TiXmlElement elm_entry("Entry");
+			
+			TiXmlElement elmAlbum("Album");
+			TiXmlElement elmArtist("Artist");
+			TiXmlElement elmMB("MusicBrainId");
+			TiXmlElement elmRating("Rating");
+			TiXmlElement elmSource("Source");
+			TiXmlElement elmStartTime("StartTime");
+			TiXmlElement elmTitle("Title");
+			TiXmlElement elmTrackLength("TrackLength");
+			TiXmlElement elmTrackNumber("TrackNumber");
+
+			char strTrackNumber[32] = {0};
+			char strTrackLength[32] = {0};
+			_itoa_s(g_AIQueue.at(i)->GetTrackNumber(), strTrackNumber, sizeof(strTrackNumber), 10);
+			_itoa_s(g_AIQueue.at(i)->GetTrackLength(), strTrackLength, sizeof(strTrackLength), 10);
+
+			text.SetValue(g_AIQueue.at(i)->GetAlbum());
+			elmAlbum.InsertEndChild(text);
+			
+			text.SetValue(g_AIQueue.at(i)->GetArtist());
+			elmArtist.InsertEndChild(text);
+
+			text.SetValue(g_AIQueue.at(i)->GetMusicBrainTrackId());
+			elmMB.InsertEndChild(text);
+
+			text.SetValue(g_AIQueue.at(i)->GetRating());
+			elmRating.InsertEndChild(text);
+
+			text.SetValue(g_AIQueue.at(i)->GetSource());
+			elmSource.InsertEndChild(text);
+
+			text.SetValue(g_AIQueue.at(i)->GetStartTime());
+			elmStartTime.InsertEndChild(text);
+
+			text.SetValue(g_AIQueue.at(i)->GetTitle());
+			elmTitle.InsertEndChild(text);
+
+			text.SetValue(strTrackLength);
+			elmTrackLength.InsertEndChild(text);
+
+			text.SetValue(strTrackNumber);
+			elmTrackNumber.InsertEndChild(text);
+
+			elm_entry.InsertEndChild(elmAlbum);
+			elm_entry.InsertEndChild(elmArtist);
+			elm_entry.InsertEndChild(elmMB);
+			elm_entry.InsertEndChild(elmRating);
+			elm_entry.InsertEndChild(elmSource);
+			elm_entry.InsertEndChild(elmStartTime);
+			elm_entry.InsertEndChild(elmTitle);
+			elm_entry.InsertEndChild(elmTrackLength);
+			elm_entry.InsertEndChild(elmTrackNumber);
+			
+			elm_root.InsertEndChild(elm_entry);
 		}
 
-		str = "</Audioscrobbler_Cache>";
-		fwrite(str.c_str(), 1, str.size(), pFile);
-
-
-		fclose(pFile);
+		xmlDocCache.InsertEndChild(elm_root);
+		
+		if (!xmlDocCache.SaveFile())
+			log->OutputInfoA(E_DEBUG, "AS_SaveQueue : Failed to create cache file - %s", xmlDocCache.ErrorDesc());
 	}
 	else
 		log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : Queue size = 0"));
 
-cleanup:
 	log->OutputInfo(E_DEBUG, _T("AS_SaveQueue : End"));
 }
 
@@ -454,7 +525,7 @@ void AS_HandleHandshakeData(std::vector<std::string>* strLines)
 		g_bCanTryConnect    = TRUE;
 		g_nReHandshakeMinutes = 1;
 		// We can't use log->OutputInfo on inbound untrusted data
-		log->DirectOutputInfoA(E_DEBUG, "Handshake OK\nOrder: SessionID, Submission URL, Now playing URL");
+		log->DirectOutputInfoA(E_DEBUG, "Handshake OK - Returned info order: SessionID, Submission URL, Now playing URL");
 		log->DirectOutputInfoA(E_DEBUG, g_strSessionID.c_str());
 		log->DirectOutputInfoA(E_DEBUG, g_strSubmissionURL.c_str());
 		log->DirectOutputInfoA(E_DEBUG, g_strNowPlayingURL.c_str());
@@ -489,8 +560,8 @@ void AS_HandleHandshakeData(std::vector<std::string>* strLines)
 	{
 		// Hard failure
 		// An error may be reported to the user, but as with other messages this should be kept to a minimum.
-		// AS_HandleHardFailure();
-		log->OutputInfoA(E_DEBUG, "AS_HandleHandshakeData : Unknown response.\nFirst line response was: %s", strLines->at(0).c_str());
+		log->DirectOutputInfoA(E_DEBUG, "AS_HandleHandshakeData : Unknown response.\nFirst line response was:");
+		log->DirectOutputInfoA(E_DEBUG, strLines->at(0).c_str());
 	}
 }
 
@@ -501,6 +572,9 @@ void AS_HandleNowPlayingData(std::vector<std::string>* strLines)
 	// Process data
 	if (strLines->at(0).compare("OK") == 0)
 	{
+		g_nHardFailureCount = 0;
+		g_nReHandshakeMinutes = 1;
+
 		log->OutputInfo(E_DEBUG, _T("Now-Playing : Info set successfully"));
 		QMPCallbacks.Service(opSetStatusMessage, L"AS : Now-Playing sent", TEXT_DEFAULT | TEXT_UNICODE, 0);
 	}
@@ -512,7 +586,7 @@ void AS_HandleNowPlayingData(std::vector<std::string>* strLines)
 	}
 	else if (strLines->at(0).compare(0, 6, "FAILED") == 0)
 	{
-		log->DirectOutputInfoA(E_DEBUG, "Now-Playing : FAILED\nReason: ");
+		log->DirectOutputInfoA(E_DEBUG, "Now-Playing : FAILED - Reason: ");
 		log->DirectOutputInfoA(E_DEBUG, strLines->at(0).c_str());
 	}
 	else
@@ -528,6 +602,9 @@ void AS_HandleSendQueueData(std::vector<std::string>* strLines)
 	// Process data
 	if (strLines->at(0).compare("OK") == 0)
 	{
+		g_nHardFailureCount = 0;
+		g_nReHandshakeMinutes = 1;
+
 		log->OutputInfo(E_DEBUG, _T("Submission : OK"));
 		// Delete all the songs submitted from the queue
 		for (UINT i = 0; i < g_nLastSubmitCount; i++) {
@@ -545,7 +622,7 @@ void AS_HandleSendQueueData(std::vector<std::string>* strLines)
 	}
 	else if (strLines->at(0).compare(0, 6, "FAILED") == 0)
 	{
-		log->DirectOutputInfoA(E_DEBUG, "Submission : FAILED\nReason: ");
+		log->DirectOutputInfoA(E_DEBUG, "Submission : FAILED - Reason: ");
 		log->DirectOutputInfoA(E_DEBUG, strLines->at(0).c_str());
 		AS_HandleHardFailure();
 	}
@@ -624,10 +701,9 @@ void AS_Handshake()
 		log->OutputInfo(E_DEBUG, _T("AS_Handshake : Running in offline mode. Exiting"));
 		return;
 	}
-	if (g_nReHandshakeMinutes > 1) {
-		AS_TryReHandshake();
+	if (g_nReconnectTimer != 0)
 		return;
-	}
+
 
 	CURLcode nResult = CURLE_OK;
 	BOOL bFirstTry = TRUE;
@@ -681,7 +757,11 @@ void AS_Handshake()
 	switch (nResult)
 	{
 		case CURLE_OK :
-			log->OutputInfo(E_DEBUG, _T("AS_Handshake : Perform success"));
+			if (g_bHandShakeSuccess)
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake : Perform success"));
+			else
+				log->OutputInfo(E_DEBUG, _T("AS_Handshake : Server returned data, but the response could not be recognised."));
+
 			break;
 
 		case CURLE_COULDNT_RESOLVE_HOST :
@@ -928,46 +1008,22 @@ void CALLBACK AS_cbSendQueue(HWND hWnd, UINT nMsg, UINT nIDEvent, DWORD dwTime)
 
 void AS_TryReHandshake()
 {
-	if (g_nReconnectTimer) {
-		KillTimer(NULL, g_nReconnectTimer);
-		g_nReconnectTimer = 0;
-	}
-	g_nReconnectTimer = SetTimer(NULL, NULL, g_nReHandshakeMinutes * 60 * 1000, AS_cbSendQueue);
+	if (g_nReconnectTimer == 0)
+	{
+		g_nReconnectTimer = SetTimer(NULL, NULL, g_nReHandshakeMinutes * 60 * 1000, AS_cbSendQueue);
 	
-	// Set minutes
-	if (g_nReHandshakeMinutes >= 120)
-		g_nReHandshakeMinutes = 120;
-	else
+		// Set minutes
 		g_nReHandshakeMinutes = g_nReHandshakeMinutes * 2;
-	
-	log->OutputInfo(E_DEBUG, _T("AS_TryReHandshake : New ReHandshakeMinutes value=%d"), g_nReHandshakeMinutes);
+		if (g_nReHandshakeMinutes >= 120)
+			g_nReHandshakeMinutes = 120;
+		
+		log->OutputInfo(E_DEBUG, _T("AS_TryReHandshake : New ReHandshakeMinutes value=%d"), g_nReHandshakeMinutes);
+	}
+	else
+		log->OutputInfo(E_DEBUG, _T("AS_TryReHandshake : Waiting for retry"), g_nReHandshakeMinutes);
 }
 
 //-----------------------------------------------------------------------------
-
-void AS_GetCacheString(CAudioInfo* ai, std::string* str)
-{
-	// CAudioInfo data is UTF8, so we can safely just write it
-
-	char strTrackNumber[32] = {0};
-	char strTrackLength[32] = {0};
-	_itoa_s(ai->GetTrackNumber(), strTrackNumber, sizeof(strTrackNumber), 10);
-	_itoa_s(ai->GetTrackLength(), strTrackLength, sizeof(strTrackLength), 10);
-
-	str->append("\t\t<Album>").append(ai->GetAlbum()).append("</Album>\n");
-	str->append("\t\t<Artist>").append(ai->GetArtist()).append("</Artist>\n");
-	str->append("\t\t<MusicBrainId>").append(ai->GetMusicBrainTrackId()).append("</MusicBrainId>\n");
-	str->append("\t\t<Rating>").append(ai->GetRating()).append("</Rating>\n");
-	str->append("\t\t<Source>").append(ai->GetSource()).append("</Source>\n");
-	str->append("\t\t<StartTime>").append(ai->GetStartTime()).append("</StartTime>\n");
-	str->append("\t\t<Title>").append(ai->GetTitle()).append("</Title>\n");
-	str->append("\t\t<TrackLength>").append(strTrackLength).append("</TrackLength>\n");	
-	str->append("\t\t<TrackNumber>").append(strTrackNumber).append("</TrackNumber>\n");
-}
-
-
-
-
 
 #if 0
 	for (std::deque<CAudioInfo*>::iterator aiIter = g_AIQueue.begin(); aiIter != g_AIQueue.end( ); aiIter++)

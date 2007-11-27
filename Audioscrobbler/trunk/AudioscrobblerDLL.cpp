@@ -6,26 +6,33 @@
 //	Copyright (C) 2007
 //
 //-----------------------------------------------------------------------------
-// Changelog 1.0.0:
-//   * Fix: Pause times weren't summed
-//   * Better handling of failure when plug-in loads
+// Changelog 1.1.2:
+//   + Added: Proxy support. Audioscrobbler will use the qmp proxy settings.
+//   * Change: Logging to file moved to separate thread. (Better performance for qmp main thread)
+//   * Change: Log path now set to audioscrobbler.dll folder under non multiuser setup.
+//   * Fix: Audioscrobbler could get stuck not sending info, if handshake failed.
+//   * Fix: Special characters like ", &, ' etc. wasn't handled properly in cache file.
+//   * Fix: Crash if cache file lacked version information.
+//   * Fix: Logging issue when server responds with something unknown to AS.
+//   * Security fix: Bad handling of unknown server response.
 //
 // Known bugs:
 //   Don't send info when encoding
+//   First CD track isn't always scrobbled, because info hasn't been fetch yet.
 //
 // TODO
 //   
 //
 // Wishlist
+//   Love / Hate support
 //   Save queue regularly (in case of crash)
 //   Custom send time. (Send at 50%->100% slider)
 //   Handle stream titles - InfoChanged
-//   Proxy connection
 //-----------------------------------------------------------------------------
 
 #include "Precompiled.h"
 
-#define PLUGIN_NAME         L"Audioscrobbler v1.0.0"
+#define PLUGIN_NAME         L"Audioscrobbler v1.1.2"
 
 // Project includes
 #include "PlayerControl.h"
@@ -109,6 +116,7 @@ int Initialize(QCDModInfo *modInfo, int flags)
 		return FALSE;
 	}
 
+	///////////////////////////////////////////////////////////////////////////
 	// Initialization
 	_tzset();
 
@@ -120,18 +128,48 @@ int Initialize(QCDModInfo *modInfo, int flags)
 
 	LoadSettings();
 
-	// Create log object
+	///////////////////////////////////////////////////////////////////////////
+	// Get settings folder path
 	WCHAR strPath[MAX_PATH] = {0};
+	WCHAR strPath2[MAX_PATH] = {0};
 	QMPCallbacks.Service(opGetSettingsFolder, strPath, sizeof(strPath), 0);
-	wcscat_s(strPath, MAX_PATH, L"\\Audioscrobbler.log");
-	log = new CLog(g_hwndPlayer, Settings.logMode, strPath);
+	QMPCallbacks.Service(opGetPluginSettingsFile, strPath2, sizeof(strPath2), 0);
 
+	wcscat_s(strPath, MAX_PATH, L"\\Plugins.ini");
+	if (_wcsnicmp(strPath, strPath2, MAX_PATH) == 0) // Multi user setup
+	{
+		QMPCallbacks.Service(opGetSettingsFolder, strPath, sizeof(strPath), 0);
+	}
+	else
+	{
+		TCHAR szFilename[MAX_PATH] = {0};
+		HMODULE hMod = GetModuleHandle(_T("Audioscrobbler.dll"));
+		GetModuleFileName(hMod, szFilename, MAX_PATH);
+		
+		QMPCallbacks.Service(opGetPluginFolder, strPath, sizeof(strPath), (long)szFilename);
+	}
+	Settings.strSettingsPath.SetUnicode(strPath);
+
+	///////////////////////////////////////////////////////////////////////////
+	// Create log object
+	wcscat_s(strPath, MAX_PATH, L"\\Audioscrobbler.log");
+
+	HANDLE hInitLogEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	log = new CLog(g_hwndPlayer, hInitLogEvent, Settings.logMode, strPath);
+
+	QMPCallbacks.Service(opSafeWait, hInitLogEvent, 0, 0);
+	CloseHandle(hInitLogEvent); hInitLogEvent = NULL;
+
+
+	///////////////////////////////////////////////////////////////////////////
 	// Setup menu item in plugins menu
 	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_HEAD,         (LONG)_T("Audioscrobbler"));
 	QMPCallbacks.Service(opSetPluginMenuState, g_hInstance, IDM_HEAD,         MF_POPUP);
 	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_CONFIG,       (LONG)_T("Configuration"));
 	QMPCallbacks.Service(opSetPluginMenuItem,  g_hInstance, IDM_OFFLINE_MODE, (LONG)_T("Work Offline"));
 
+
+	///////////////////////////////////////////////////////////////////////////
 	// Start curl thread
 	InitializeCriticalSection(&g_csAIPending);
 	g_hASThreadEndedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -144,9 +182,9 @@ int Initialize(QCDModInfo *modInfo, int flags)
 		QMPCallbacks.Service(opSetPluginMenuItem, g_hInstance, 0, 0);
 		return FALSE;
 	}
-
 	Sleep(0);
 
+	///////////////////////////////////////////////////////////////////////////
 	// Subclass the player and listen for WM_PN_?
 	if ((g_QMPProc = (WNDPROC)SetWindowLong(g_hwndPlayer, GWL_WNDPROC, (LONG)QMPSubProc)) == 0) {
 		log->OutputInfo(E_FATAL, _T("Failed to subclass player!\nError code: %u"), GetLastError());
@@ -160,6 +198,7 @@ int Initialize(QCDModInfo *modInfo, int flags)
 		Settings.bFirstRun = FALSE;
 	}
 
+	///////////////////////////////////////////////////////////////////////////
 	// return TRUE for successful initialization
 	log->OutputInfo(E_DEBUG, _T("Initialize() : return true"));
 	return TRUE;

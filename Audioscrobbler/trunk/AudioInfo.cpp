@@ -96,24 +96,24 @@ LPCSTR CAudioInfo::GetRating()
 	return m_szRating;
 }
 
-INT CAudioInfo::GetTrackLength()
-{
-	return m_nTrackLength;
-}
-
 LPCSTR CAudioInfo::GetAlbum()
 {
 	return m_strAlbum;
 }
 
-INT CAudioInfo::GetTrackNumber()
-{
-	return m_nTrackNumber;
-}
-
 LPCSTR CAudioInfo::GetMusicBrainTrackId()
 {
 	return m_strMbTrkId;
+}
+
+INT CAudioInfo::GetTrackLength()
+{
+	return m_nTrackLength;
+}
+
+INT CAudioInfo::GetTrackNumber()
+{
+	return m_nTrackNumber;
 }
 
 

@@ -27,6 +27,7 @@ void LoadSettings()
 
 	Settings.logMode   = (LogMode)GetPrivateProfileInt(INI_SECTION, _T("LogMode"), LOG_NONE, strIni);
 	Settings.bFirstRun = GetPrivateProfileInt(INI_SECTION, _T("FirstRun"), 1, strIni);
+	Settings.bUseProxy = GetPrivateProfileInt(INI_SECTION, _T("UseProxy"), 0, strIni);
 	
 	GetPrivateProfileString(INI_SECTION, _T("Username"), NULL, szBuffer, NUMOFTCHARS(szBuffer), strIni);
 	Settings.strUsername.SetUnicode(szBuffer);
@@ -53,7 +54,10 @@ void SaveSettings()
 	WritePrivateProfileString(INI_SECTION, _T("LogMode"), szBuffer, strIni);
 
 	_stprintf_s(szBuffer, NUMOFTCHARS(szBuffer), _T("%d"), Settings.bFirstRun);
-	WritePrivateProfileString(INI_SECTION, _T("FirstRun"), szBuffer, strIni);	
+	WritePrivateProfileString(INI_SECTION, _T("FirstRun"), szBuffer, strIni);
+
+	_stprintf_s(szBuffer, NUMOFTCHARS(szBuffer), _T("%d"), Settings.bUseProxy);
+	WritePrivateProfileString(INI_SECTION, _T("UseProxy"), szBuffer, strIni);
 
 	WritePrivateProfileString(INI_SECTION, _T("Username"), Settings.strUsername, strIni);
 
@@ -87,6 +91,8 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		if (Settings.strPassword[0])
 			SetDlgItemText(hwndDlg, IDC_CONFIG_PASSWORD, _T("00000000"));
 		g_bPasswordChanged = FALSE;
+
+		CheckDlgButton(hwndDlg, IDC_CONFIG_PROXY, Settings.bUseProxy);
 
 		SendDlgItemMessage(hwndDlg, IDC_CONFIG_DEBUG, CB_ADDSTRING, 0, (LPARAM)_T("None"));
 		SendDlgItemMessage(hwndDlg, IDC_CONFIG_DEBUG, CB_ADDSTRING, 0, (LPARAM)_T("Debug console"));
@@ -130,7 +136,7 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 			_TCHAR szBuffer[128];
 
 			// Validate and save
-			//Settings.bShowWindowOnStart = IsDlgButtonChecked(hwndDlg, IDC_SHOW_ON_START);
+			Settings.bUseProxy = IsDlgButtonChecked(hwndDlg, IDC_CONFIG_PROXY);
 
 			GetDlgItemText(hwndDlg, IDC_CONFIG_USERNAME, szBuffer, NUMOFTCHARS(szBuffer));
 			Settings.strUsername.SetTStr(szBuffer);

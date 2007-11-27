@@ -8,6 +8,15 @@ Plug-in written and maintained by:
 Toke Noer (toke at noer "dot" it)
 
 
+
+//////////////////////////////////////////////////////////////////////////////
+// Changelog
+//////////////////////////////////////////////////////////////////////////////
+
+// Changelog 1.0.0:
+//   * Fix: Pause times weren't summed
+//   * Better handling of failure when plug-in loads
+
 // Changelog 0.1.8:
 //   * Win9x support
 //   + Added timestamp to log file

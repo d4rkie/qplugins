@@ -21,45 +21,6 @@ extern BOOL g_bOfflineMode;
 
 DWORD WINAPI AS_Main(LPVOID lpParameter);
 
-
-//-----------------------------------------------------------------------------
-// CQueueAPCItem Class
-//-----------------------------------------------------------------------------
-/*class CQueueAPCItem
-{
-private:
-	const static DWORD DEFAULT_TIMEOUT = 500;
-
-public:
-	CQueueAPCItem(UINT nEvent, BOOL bCreateEvent = TRUE, void* pData = NULL)
-		: m_nEvent(nEvent), m_pData(pData), m_hDoneEvent(NULL)
-	{
-		if (bCreateEvent)
-			m_hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	}
-	~CQueueAPCItem()
-	{
-		if (m_hDoneEvent)
-			CloseHandle(m_hDoneEvent);
-	}
-
-	void PostMessage(ULONG nThread)
-	{
-		PostThreadMessage(nThread, m_nEvent, (WPARAM)this, 0);
-	}
-
-	void PostMessageAndWait(ULONG nThread)
-	{
-		PostMessage(nThread);
-		if (m_hDoneEvent)
-			WaitForSingleObject(m_hDoneEvent, DEFAULT_TIMEOUT);
-	}
-
-	void*      m_pData;
-	HANDLE     m_hDoneEvent;
-	UINT       m_nEvent;
-};*/
-
 //-----------------------------------------------------------------------------
 
 
