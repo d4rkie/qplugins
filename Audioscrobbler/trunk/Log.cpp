@@ -57,6 +57,7 @@ DWORD WINAPI CLog::FileIOThreadProc(LPVOID lpParameter)
 {
 	DWORD nReturn = 0;
 	char szBuf[256] = {0};
+	IOQueueItem* qi = NULL;
 
 	IOThreadData* iotd = reinterpret_cast<IOThreadData*>(lpParameter);
 
@@ -91,8 +92,6 @@ DWORD WINAPI CLog::FileIOThreadProc(LPVOID lpParameter)
 
 	// We are done initializing, so tell caller the we are ready to be used
 	SetEvent(iotd->hInitDoneEvent);
-
-	IOQueueItem* qi = NULL;
 
 	while (iotd->bIsRunning)
 	{
@@ -132,6 +131,26 @@ DWORD WINAPI CLog::FileIOThreadProc(LPVOID lpParameter)
 	}
 
 	DeleteCriticalSection(&(iotd->CS_IOQueue));
+
+	// Write out last messages
+	while (!iotd->IOQueue.empty())
+	{
+		qi = iotd->IOQueue.front();
+		iotd->IOQueue.pop_front();
+		if (qi->bUnicode)
+		{
+			qi->pStrData.wStr[qi->nCchSize-1] = NULL;
+			fwprintf(iotd->pFile, qi->pStrData.wStr);
+			delete [] qi->pStrData.wStr;
+		}
+		else
+		{
+			fwrite(qi->pStrData.cStr, sizeof(char), qi->nCchSize, iotd->pFile);
+			delete [] qi->pStrData.cStr;
+		}
+
+		delete qi;
+	}
 	
 	strcpy_s(szBuf, sizeof(szBuf), "\nAudioscrobbler log file thread ending");
 	fwrite(szBuf, sizeof(char), strlen(szBuf), iotd->pFile);
