@@ -16,11 +16,11 @@ QCDModInitTag2	QMPTags::QCDCallbacks;
 
 // IO callbacks for read/write/strip
 ::FLAC__IOCallbacks iocb = {
-	(::FLAC__IOCallback_Read)fread, 
-	(::FLAC__IOCallback_Write)fwrite, 
-	(::FLAC__IOCallback_Seek)_fseeki64, 
-	(::FLAC__IOCallback_Tell)_ftelli64, 
-	(::FLAC__IOCallback_Eof)feof, 
+	(::FLAC__IOCallback_Read)fread,
+	(::FLAC__IOCallback_Write)fwrite,
+	(::FLAC__IOCallback_Seek)_fseeki64,
+	(::FLAC__IOCallback_Tell)_ftelli64,
+	(::FLAC__IOCallback_Eof)feof,
 	NULL
 };
 
@@ -65,7 +65,7 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 		fclose( fp);
 		return FALSE;
 	}
- 
+
 	// read, close it.
 	fclose( fp);
 
@@ -164,6 +164,9 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 
 						UTF8toUCS2( (LPSTR)bv, wv);
 
+						// fix for "Date" label
+						if ( wn == _T("DATE")) wn = _T("YEAR");
+
 						QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_STRINGUNICODE, (BYTE *)(LPCWSTR)wv, sizeof(WCHAR)*(wv.GetLength()+1), &index);
 					}
 
@@ -173,9 +176,8 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 				}
 
 				if ( vcdata) delete vcdata;
-			}
+			} break;
 
-			break;
 		case FLAC__METADATA_TYPE_PICTURE: // for artwork
 			{
 				// prepare and initialize artwork metadata instance
@@ -205,9 +207,8 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 				++index;
 
 				if ( picdata) delete picdata;
-			}
+			} break;
 
-		//	break;
 		//case FLAC__METADATA_TYPE_APPLICATION:
 		//	{
 		//		FLAC::Metadata::Application * appdata = dynamic_cast< FLAC::Metadata::Picture * >(iterator.get_block());
@@ -219,9 +220,8 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 		//		buf[4] = '\0';
 		//		CStringW tmp;
 
-		//	}
+		//	} break;
 
-			break;
 		default:
 			break;
 		}
@@ -320,10 +320,11 @@ BOOL QMPTags::WriteToFile(LPCWSTR filename, void* tagHandle, int flags)
 
 		// the unique field for vorbis comment in UTF8 format
 		CStringA name;
+		DWORD namelen;
 		LPSTR field, value;
-		DWORD fieldlen, namelen, valuelen;
+		DWORD fieldlen, valuelen;
 
-		// a vorbis comment's field name contains no embedded Nulls, 
+		// a vorbis comment's field name contains no embedded Nulls,
 		// so we convert it to UTF8 string directly
 		UCS2toUTF8( wn, name);
 		namelen = lstrlenA( name);
@@ -374,6 +375,12 @@ BOOL QMPTags::WriteToFile(LPCWSTR filename, void* tagHandle, int flags)
 			// general field is wrapped in the form "content"
 			CStringA tmp;
 			UCS2toUTF8( (LPWSTR)bv, tmp);
+
+			// fix for "Date" label
+			if ( wn == QCDTag_Year) {
+				name = "DATE";
+				namelen = lstrlenA( name);
+			}
 
 			valuelen = tmp.GetLength() + 1;
 			value = new CHAR[valuelen];
@@ -567,8 +574,8 @@ bool _strip_all_tags(FLAC::Metadata::Iterator & iterator)
 					}
 
 					// remove all tags
-					if ( !::FLAC__metadata_object_vorbiscomment_resize_comments( 
-						const_cast< FLAC__StreamMetadata * >((const FLAC__StreamMetadata *)(*block)), 
+					if ( !::FLAC__metadata_object_vorbiscomment_resize_comments(
+						const_cast< FLAC__StreamMetadata * >((const FLAC__StreamMetadata *)(*block)),
 						0))
 					{
 						return false;

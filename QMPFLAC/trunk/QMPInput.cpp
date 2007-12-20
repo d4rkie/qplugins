@@ -75,7 +75,7 @@ int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 
 void QMPInput::ShutDown(int flags)
 {
-	Stop( NULL, STOPFLAG_FORCESTOP);
+	Stop( NULL, STOPFLAG_SHUTDOWN);
 	//SaveSettings();
 }
 
