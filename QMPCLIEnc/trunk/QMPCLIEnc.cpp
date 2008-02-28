@@ -264,18 +264,20 @@ BOOL Complete(int flags)
 		int i, count;
 		IQCDTagInfo * piTagSrc;
 		IQCDTagInfo * piTagDst;
+		BOOL ret;
 
-		try {		
+		ret = FALSE; // default is FALSE
+		do {
 			// Get IQCDTagInfo for source file
 			piTagSrc = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCWSTR)g_strSrc, 0, 0);
-			if ( !piTagSrc) throw FALSE;
+			if ( !piTagSrc) break;
 
 			// Get IQCDTagInfo for destination file
 			piTagDst = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCWSTR)g_strDst, 0, 0);
-			if ( !piTagDst) throw FALSE;
+			if ( !piTagDst) break;
 
 			// read tag from source file
-			if ( !piTagSrc->ReadFromFile( TAG_DEFAULT)) throw FALSE;
+			if ( !piTagSrc->ReadFromFile( TAG_DEFAULT)) break;
 
 			count = piTagSrc->GetFieldCount();
 			for ( i = 0; i < count; ++i) {
@@ -283,7 +285,6 @@ BOOL Complete(int flags)
 				LPBYTE lpbData;
 				DWORD lenName, lenData;
 				QTAGDATA_TYPE type;
-				int startIndex;
 				int ret;
 
 				// get length of tag name and tag data
@@ -296,23 +297,24 @@ BOOL Complete(int flags)
 				ret = piTagSrc->GetTagDataByIndex( i, lpwszName, &lenName, &type, lpbData, &lenData);
 
 				// write tag information into destination file
-				ret = piTagDst->SetTagDataByName( lpwszName, type, lpbData, lenData, &startIndex);
+				ret = piTagDst->SetTagDataByName( lpwszName, type, lpbData, lenData, &i);
 
 				delete [] lpwszName;
 				delete [] lpbData;
 			}
 
-			if ( !piTagDst->WriteToFile( TAG_DEFAULT)) throw FALSE;
-		} catch (BOOL success) {
-			if ( !success) {
-				if ( piTagSrc) piTagSrc->Release();
-				if ( piTagDst) piTagDst->Release();
-				return FALSE;
-			}
-		}
-	}
+			if ( !piTagDst->WriteToFile( TAG_DEFAULT)) break;
 
-	return TRUE;
+			ret = TRUE;
+		} while (0);
+
+		if ( piTagSrc) piTagSrc->Release();
+		if ( piTagDst) piTagDst->Release();
+
+		return ret;
+	} else {
+		return TRUE;
+	}
 }
 
 //-----------------------------------------------------------------------------

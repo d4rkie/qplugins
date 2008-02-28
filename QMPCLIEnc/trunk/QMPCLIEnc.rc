@@ -55,25 +55,25 @@ END
 STRINGTABLE 
 BEGIN
     IDC_PARAMETER           """-"": Stdin for most pipeline encoders.\r\n""%d"": Output file determined by player.\r\n\r\n""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
-END
-
-STRINGTABLE 
-BEGIN
-    IDC_EP_TREE             "Clicking the label of the item that has the focus \r\nor \r\nPressing ""F2"" key to edit lable.\r\n\r\nDouble click a preset item to load it."
-    IDS_DISPLAYNAME         "QPlugins Commandline Encoder v2.0"
-    IDS_DISPLAYEXT          "CLI Encoder"
-    IDC_PAR                 """-"": Stdin for most pipeline encoders.\r\n""%d"": Output file determined by player.\r\n\r\n""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
-END
-
-STRINGTABLE 
-BEGIN
+    IDC_DO_TAG              "Create tags on destination files through orignal files.\r\nCorresponding tag plug-ins should be installed."
     IDC_NO_WAV_HEADER       "Plug-in will not send the wav header data to encoder.\r\nOnly for some special encoders. Caution use! or you know what it is."
     IDC_SHOW_CONSOLE        "Display the console window when encode from a internal \r\ntemporary file to final output file.\r\nOnly available when the ""%s"" parameter is enabled."
 END
 
 STRINGTABLE 
 BEGIN
-    IDC_DO_TAG              "Create tags on destination files through orignal files.\r\nCorresponding tag plug-ins should be installed."
+    IDC_EP_TREE             "Clicking the label of the item that has the focus \r\nor \r\nPressing ""F2"" key to edit lable.\r\n\r\nDouble click a preset item to load it."
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_DISPLAYNAME         "QPlugins Commandline Encoder v1.7.1"
+    IDS_DISPLAYEXT          "CLI Encoder"
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_PAR                 """-"": Stdin for most pipeline encoders.\r\n""%d"": Output file determined by player.\r\n\r\n""%s"": Only for some non-pipeline encoders.\r\n        (This will notify CLI encoder to create a internal temporary file.\r\n         After finished encoding, this file will be deleted automatically.)"
 END
 
 #endif    // 中文(中华人民共和国) resources
@@ -168,7 +168,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,84,92,50,14
-    CTEXT           "Version 2.0\r\nLast modified June 2007",IDC_STATIC,47,54,126,16
+    CTEXT           "Version 1.7.1\r\nLast modified February 2008",IDC_STATIC,47,54,126,16
     CTEXT           "Ability to write audio data to various media formats with command line encoders.",IDC_STATIC,24,22,172,26
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,77,65,8
