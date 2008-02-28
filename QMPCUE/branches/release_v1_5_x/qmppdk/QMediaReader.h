@@ -10,26 +10,28 @@
 class QMediaReader
 {
 public:
-	QMediaReader(IQCDMediaSource * pms = NULL, HANDLE hReadingLoopKillEvent = NULL)
-		: m_pms(pms)
-		, m_hReadLoopKillEvent(hReadingLoopKillEvent)
-		, m_LastError(MSERROR_SUCCESS)
-	{}
+	QMediaReader(IQCDMediaSource * pms = NULL)
+	{
+		Attach( pms);
+	}
 	virtual ~QMediaReader()
 	{
 		if ( m_pms) {
 			m_pms->CloseMedia(0);
 			m_pms->Release();
 		}
+		if ( m_hKillReadingLoop) CloseHandle( m_hKillReadingLoop);
 	}
 
 	// Interfaces
 public:
-	BOOL Attach(IQCDMediaSource * pms, HANDLE hReadingLoopKillEvent = NULL)
+	BOOL Attach(IQCDMediaSource * pms)
 	{
 		m_pms = pms;
-		m_hReadLoopKillEvent = hReadingLoopKillEvent;
-		return (m_pms != NULL);
+		m_LastError = MSERROR_SUCCESS;
+		m_hKillReadingLoop = CreateEvent( NULL, FALSE, FALSE, NULL);
+
+		return (m_pms && m_hKillReadingLoop);
 	}
 	BOOL Open(LONG flags = 0)
 	{
@@ -56,35 +58,38 @@ public:
 		if ( m_pms) {
 			DWORD bufferPos = 0;
 			long readSize = size;
+			BOOL finished = FALSE;
 
 			m_LastError = MSERROR_SUCCESS;
 			do {
-				if ( m_LastError)
-					Sleep(10);
-
 				long bytesRead = 0;
 				m_LastError = m_pms->ReadBytes( &buffer[bufferPos], readSize, &bytesRead, flags);
+				switch ( m_LastError)
+				{
+				case MSERROR_SUCCESS:
+					{
+						bufferPos += bytesRead; readSize -= bytesRead;
+						finished = (bufferPos == size);
+					} break;
 
-				if ( MSERROR_SUCCESS == m_LastError) {
-					bufferPos += bytesRead;
-					readSize -= bytesRead;
+				case MSERROR_SOURCE_BUFFERING:
+					{
+						finished = (WAIT_OBJECT_0 == WaitForSingleObject( m_hKillReadingLoop, 0));
+						if ( !finished) Sleep(10);
+					} break;
 
-					if ( bufferPos == size)
-						return bufferPos;
+				case MSERROR_SOURCE_EXHAUSTED:
+					{
+						finished = TRUE;
+					} break;
 
-					// so we stay in loop
-					m_LastError = MSERROR_SOURCE_BUFFERING;
+				default:
+					{
+						finished = TRUE; // Oops!!
+					} break;
 				}
-
-				// to let us escape if we're trapped in here
-				if ( m_hReadLoopKillEvent && WAIT_OBJECT_0 == WaitForSingleObject( m_hReadLoopKillEvent, 0))
-					return bufferPos;
-			} while ( MSERROR_SOURCE_BUFFERING == m_LastError);
-
-			if ( (MSERROR_SUCCESS == m_LastError) || (MSERROR_SOURCE_EXHAUSTED == m_LastError))
-				return bufferPos;
-			else
-				return 0; // EOC
+			} while ( !finished);
+						return bufferPos;
 		} else {
 			m_LastError = MSERROR_FAILED;
 			return 0;
@@ -93,6 +98,7 @@ public:
 	virtual BOOL Seek(ULONGLONG seekPos = 0)
 	{
 		if ( m_pms) {
+			ResetEvent( m_hKillReadingLoop); // release the killing signal before seeking
 			m_LastError = m_pms->SeekToByte( seekPos);
 			return (MSERROR_SUCCESS == m_LastError);
 		} else {
@@ -136,7 +142,13 @@ public:
 	{
 		if ( m_pms) {
 			m_LastError = MSERROR_SUCCESS;
-			return !(m_pms->GetSourcePosition(0) < m_pms->GetSourceSize(0));
+			long props = m_pms->GetMediaProperties();
+			if ( props & MEDIASOURCE_PROP_CANSEEK)
+				return !(m_pms->GetSourcePosition(0) < m_pms->GetSourceSize(0));
+			else if ( props & MEDIASOURCE_PROP_INTERNETSTREAM)
+				return FALSE; // for non-seekable internet stream -- endless
+			else
+				return TRUE; // Oops!!
 		} else {
 			m_LastError = MSERROR_FAILED;
 			return FALSE;
@@ -174,34 +186,35 @@ public:
 			return 0;
 		}
 	}
-	long GetAvailableMetadata(IQCDMediaInfo* pMediaInfo)
+	bool IsConnected()
 	{
 		if ( m_pms) {
 			m_LastError = MSERROR_SUCCESS;
-			return m_pms->GetAvailableMetadata( pMediaInfo);
+			return m_pms->IsConnected();
 		} else {
 			m_LastError = MSERROR_FAILED;
-			return 0;
+			return false;
 		}
 	}
 
 public:
 	LONG GetLastError() const { return m_LastError; }
+	void Reset() { SetEvent( m_hKillReadingLoop); }
 
 public:
 	IQCDMediaSource * m_pms; // the unique mediasource interface
 
 protected:
-	LONG m_LastError; // end of content.
+	LONG m_LastError;
 
 private:
-	HANDLE m_hReadLoopKillEvent;
+	HANDLE m_hKillReadingLoop; // signal to kill reading loop when keeping in buffering
 };
 
 //////////////////////////////////////////////////////////////////////////
 
 // a simple file reader
-class QFileReader : private QMediaReader
+class QFileReader : public QMediaReader
 {
 public:
 	QFileReader()

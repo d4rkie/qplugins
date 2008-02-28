@@ -11,9 +11,9 @@
 //
 //  Quintessential Player Plugin Development Kit
 //
-//  Copyright (C) 1997-2006 Quinnware
+//  Copyright (C) 1997-2008 Quinnware
 //
-//  This code is free.  If you redistribute it in any form, leave this notice 
+//  This code is free.  If you redistribute it in any form, leave this notice
 //  here.
 //
 //  This program is distributed in the hope that it will be useful,
@@ -41,11 +41,13 @@
 // Current plugin version
 
 // use this version for old style API calls (all returned text in native encoding)
-#define PLUGIN_API_VERSION              300
-
+#define PLUGIN_API_VERSION              301
 // use this version for new style API calls (all returned text in UTF8 encoding on WinNT/2K/XP (native encoding on Win9x))
 #define PLUGIN_API_VERSION_NTUTF8		((PLUGIN_API_NTUTF8<<16)|PLUGIN_API_VERSION)
+// use this version for new style API calls (all returned text in Unicode encoding on all systems)
 #define PLUGIN_API_VERSION_UNICODE		((PLUGIN_API_UNICODE<<16)|PLUGIN_API_VERSION)
+
+// Private: for internal use
 #define PLUGIN_API_NTUTF8				100
 #define PLUGIN_API_UNICODE				1000
 
@@ -53,27 +55,27 @@
 //   Used by all plug-ins to pass needed information to the player on initialization.
 // Description:
 //   Due to support for older modules, this structure's members are only valid for
-//   some modules. For older module initialization interfaces--ones where there is no
-//   flags parameter accompanying the QCDModInfo* parameter--only the first two members
+//   some modules. For older module initialization interfaces—ones where there is no
+//   flags parameter accompanying the QCDModInfo* parameter—only the first two members
 //   are valid (moduleString and moduleExtensions).
-//   
+//
 //   For newer initialization routines where there is a flags parameter accompanying
 //   this structure, the following flags are defined:
-//   
+//
 //   MODINFO_VALID_CATEGORY: the moduleCategory member is available
-//   
+//
 //   MODINFO_VALID_PARAM: the moduleParam member is available
-//   
+//
 //   MODINFO_VALID_FLAGS: the moduleFlags member is available
-//   
+//
 //   It is important to check for these flags before de-referencing the members in
 //   this structure as older player versions will not support all the members. The
 //   first two members (moduleString and moduleExtensions) can always be considered
 //   valid.
-//   
+//
 //   This method of managing the QCDModInfo parameter on initialization is
 //   unfortunately complicated. This is based on design decisions in an early version
-//   \of the player, and due to reverse compatibility it has survived to this day.    
+//   \of the player, and due to reverse compatibility it has survived to this day.
 
 struct QCDModInfo
 {
@@ -97,11 +99,11 @@ struct QCDModInfo
 
 //-----------------------------------------------------------------------------
 // Services (ops) provided by the Player
-// 
+//
 // Parameters to service ops are buffer, param1, param2.
 // Relevant parameters for each op listed with op. Unmentioned
 // parameters for an op are unused (leave 0).
-// 
+//
 // For parameters defined as type (char*), the string should be a UTF8 string
 // if you specified PLUGIN_API_VERSION_NTUTF8 for the plugin version AND
 // the current system is Windows NT (NT/2000/XP)
@@ -126,7 +128,7 @@ enum PluginServiceOp
 
     opGetParentWnd = 1,             // Returns HWND to player window
     opGetExtensionWnd = 30,         // Returns handle to the draggable window extension (only available on some skins)
-                                    //      param1 = extension number (0 - 9), param2 unused. 
+                                    //      param1 = extension number (0 - 9), param2 unused.
 
     opGetMusicBrowserWnd = 32,      // Returns HWND to music browser window (returns 0 if window is closed)
     opGetSkinPreviewWnd = 33,       // Returns HWND to the skin preview window (returns 0 if window is closed)
@@ -223,17 +225,17 @@ enum PluginServiceOp
     opSetPlayNext = 1009,           // Set the next index to be played
                                     //      param1 = index, -1 unsets playnext
 
-    opSetPlaylist = 1006,           // Clear current playlist, add files to playlist or load playlist with new files 
+    opSetPlaylist = 1006,           // Clear current playlist, add files to playlist or load playlist with new files
                                     //      buffer = (char*)file list (each file in quotes, string null terminated) Eg; buffer="\"file1.mp3\" \"file2.mp3\"\0" - NULL to clear playlist
-                                    //      param1 = (char*)originating path (can be NULL if paths included with files) 
+                                    //      param1 = (char*)originating path (can be NULL if paths included with files)
                                     //      param2 = 0 - add files, 1 - clear playlist flag, 2 - add to top of playlist, 4 - add unique files only, 8 - apply to encoder list (options can be OR'd together)
 
-    opInsertPlaylist = 1011,        // Insert tracks into playlist 
+    opInsertPlaylist = 1011,        // Insert tracks into playlist
                                     //      buffer = (char*)file list (each file in quotes, string null terminated) Eg; buffer="\"file1.mp3\" \"file2.mp3\"\0"
-                                    //      param1 = (char*)originating path (can be NULL if paths included with files) 
+                                    //      param1 = (char*)originating path (can be NULL if paths included with files)
                                     //      param2 = index location to insert tracks (-1 to insert at end)
 
-    opMovePlaylistTrack = 1012,     // Move a track in playlist 
+    opMovePlaylistTrack = 1012,     // Move a track in playlist
                                     //      param1 = index of track to move
                                     //      param2 = destination index (move shifts tracks between param1 and param2)
 
@@ -364,8 +366,12 @@ enum PluginServiceOp
                                     //      param1 = size of buffer in bytes
                                     //      param2 = skin folder index (0 based)
 
-    opGetCurrentPlaylist = 114,     // Returns full pathname of playlist currently loaded 
+    opGetCurrentPlaylist = 114,     // Returns full pathname of playlist currently loaded
                                     //      buffer = (char*)buffer for filename
+                                    //      param1 = size of buffer in bytes
+
+    opGetDefaultMediaFolder = 132,  // Returns default media folder
+                                    //      buffer = (char*)buffer for folder
                                     //      param1 = size of buffer in bytes
 
 //-----Supported File Types----------------------------------------------------
@@ -413,7 +419,7 @@ enum PluginServiceOp
                                     //      buffer = (char*)msg buffer
                                     //      param1 = TEXT_* flags (see definitions below)
 
-    opSetBrowserUrl = 1001,         // Set music browser URL 
+    opSetBrowserUrl = 1001,         // Set music browser URL
                                     //      buffer = (char*)url (buffer = 0 closes browser)
                                     //      param1 = 0 - normal browser behavior, 1 - force browser open
 
@@ -544,11 +550,22 @@ enum PluginServiceOp
 
 //----Filename templates-------------------------------------------------------
 
-    opShowTemplateEditor = 2100,    // Display template editor dialog
+    opShowTemplateEditor = 2100,    // legacy
+    opShowFileNameTemplateEditor = 2100,// Display file name template editor dialog
                                     //      param1 = (HWND)parent window
                                     //      param2 = 1 - modal, 0 modeless
 
-    opLoadTemplate = 2101,          // Loads saved template
+    opLoadTemplate = 2101,          // legacy
+    opLoadFileNameTemplate = 2101,  // Loads saved filename template
+                                    //      buffer = (char*)template buffer
+                                    //      param1 = size of buffer in bytes
+                                    //      param2 = index of template (index < 0 for default formats, index >= 0 for user made formats)
+
+    opShowStreamFileTemplateEditor = 2200,// Display stream filename template editor dialog
+                                    //      param1 = (HWND)parent window
+                                    //      param2 = 1 - modal, 0 modeless
+
+    opLoadStreamFileTemplate = 2201,// Loads saved stream filename template
                                     //      buffer = (char*)template buffer
                                     //      param1 = size of buffer in bytes
                                     //      param2 = index of template (index < 0 for default formats, index >= 0 for user made formats)
@@ -557,6 +574,11 @@ enum PluginServiceOp
                                     //      buffer = (char*)template
                                     //      param1 = FormatMetaInfo*
                                     //      param2 = (char*)string buffer (*** must be min 1024 bytes ***)
+
+    opRenderTemplateEx = 2103,      // Render string based on template and metadata
+                                    //      buffer = (char*)template
+                                    //      param1 = FormatMetaInfo*
+                                    //      param2 = RenderTemplateInfo*
 
 //----Language and Resource Loading--------------------------------------------
 
@@ -611,13 +633,14 @@ enum PluginServiceOp
                                     // Returns IQCDMediaDecoder* if filename supported
                                     //      buffer = (char*)filename
                                     //      call Release on interface when done
+                                    // param1 = MEDIADECODER_* decoder flags
 
-    opGetIQCDMediaSource = 4070,    // Get pointer to mediasource interface 
-                                    // Returns IQCDMediaSource* if filename supported 
+    opGetIQCDMediaSource = 4071,    // Get pointer to mediasource interface
+                                    // Returns IQCDMediaSource* if filename supported
                                     // buffer = (char*)filename
                                     // param1 = MEDIASOURCE_* creation flags
-                                    // param2 = (char*)name of source plug-in (optional: request named implementation) 
-                                    //     call Release on interface when done         
+                                    // param2 = (char*)name of source plug-in (optional: request named implementation)
+                                    //     call Release on interface when done
 
     opGetIQCDMediaLibrary = 4080,   // Get pointer to media library interface
                                     // Returns IQCDMediaLibrary*
@@ -720,10 +743,10 @@ typedef long (*PluginServiceFunc)(enum PluginServiceOp op, void *buffer, long pa
 
 
 // Used with QCDModInitIn::toPlayer::OutputWrite.
-// 
+//
 // Used with QCDModInitPlay2::toModule::Write.
-// 
-// Used with QCDModInitEnc::toModule::Write.     
+//
+// Used with QCDModInitEnc::toModule::Write.
 
 struct WriteDataStruct
 {
@@ -734,24 +757,24 @@ struct WriteDataStruct
     UINT    nch;                 // number of channels
     UINT    srate;               // sample rate
 
-    UINT    markerstart;         // Marker position at start of data (marker is time value of data) 
+    UINT    markerstart;         // Marker position at start of data (marker is time value of data)
                                  // (set to WAVE_VIS_DATA_ONLY to not have data sent to output plugins)
     UINT	markerend;           // Marker position at end of data (not currently used, set to 0)
 };
 
 
 // Used with opUpdateIndexExts, opSetTrackExtents services.
-// 
+//
 // Used with QCDModInitIn::GetTrackExtents Input plug-in API
 
 struct TrackExtents
 {
     UINT track;                  // for CD's, set the track number. Otherwise set to 1.
-    UINT start;                  // for CD's or media that doesn't start at the beginning 
+    UINT start;                  // for CD's or media that doesn't start at the beginning
                                  // of the file, set to start position. Otherwise set to 0.
     UINT end;                    // set to end position of media.
     UINT unitpersec;             // whatever units are being used for this media, how many
-                                 // of them per second. 
+                                 // of them per second.
                                  // (Note: ((end - start) / unitpersecond) = file length
     UINT bytesize;               // size of file in bytes (if applicable, otherwise 0).
 };
@@ -798,7 +821,7 @@ struct ProxyInfo
 
 // Media type identifiers
 // Supported media is assigned one of these MediaTypes
-// 
+//
 // Used with MediaInfo::mediaType and throughout player and media library interfaces
 
 enum MediaTypes
@@ -862,19 +885,40 @@ struct MediaInfo
 struct FormatMetaInfo
 {
     long        struct_size;        // sizeof(FormatMetaInfo)
-    LPCWSTR     title;
-    LPCWSTR     artalb;
-    LPCWSTR     album;
-    LPCWSTR     genre;
-    LPCWSTR     year;
-    LPCWSTR     tracknum;
-    LPCWSTR     filename;
-    LPCWSTR     arttrk;
-    LPCWSTR     plnum;
-    LPCWSTR     time;
-    LPCWSTR     discnum;
+
+    LPCWSTR     title;				// title of track/stream
+
+	union
+	{
+	LPCWSTR     artalb;				// artist of album for track
+	LPCWSTR		station;			// name of station for stream
+	};
+
+    LPCWSTR     album;				// album title
+    LPCWSTR     genre;				// genre of title
+    LPCWSTR     year;				// release year of title
+    LPCWSTR     tracknum;			// track number of title on album
+
+	union
+	{
+	LPCWSTR     filename;			// filename of track for title
+	LPCWSTR		streamurl;			// url of stream for title
+	};
+
+    LPCWSTR     arttrk;				// artist of title
+    LPCWSTR     plnum;				// play queue number of title
+    LPCWSTR     time;				// duration of title
+    LPCWSTR     discnum;			// disc number for album in set
 };
 
+// Used with opRenderTemplateEx service
+
+struct RenderTemplateInfo
+{
+	long		struct_size;		// sizeof(RenderTemplateInfo)
+	long		buffer_size;		// size of renderBuffer in WCHARs
+	WCHAR*		renderBuffer;		// buffer to render template to
+};
 
 // Used with opSetPluginPage service
 
@@ -896,7 +940,7 @@ struct PluginPrefPage
 // PluginPrefPage::nCategory values
 #define PREFPAGE_CATEGORY_GENERAL				0x000	// use this value if unsure
 #define PREFPAGE_CATEGORY_SYSTEM				0x100
-#define PREFPAGE_CATEGORY_UI					0x200 
+#define PREFPAGE_CATEGORY_UI					0x200
 #define PREFPAGE_CATEGORY_PLAYER				PREFPAGE_CATEGORY_UI // legacy
 
 #define PREFPAGE_CATEGORY_ENCODER				0x300
@@ -921,8 +965,13 @@ struct ResInfo
     HINSTANCE   hModule;            // plugin HINSTANCE
     LPCWSTR     resID;              // resource id of resource
     long        langid;             // requested lang id of resource (0 for current player lang)
-    long        encoding;           // 0-default (based on version flag), 1-UTF8, 2-active code page
+    long        encoding;           // see RESINFO_ENC_* flags below
 };
+
+#define RESINFO_ENC_DEFAULT     0   // default encoding (based on version flag)
+#define RESINFO_ENC_UTF8        1   // UTF8 encoding
+#define RESINFO_ENC_ACP         2   // Active Code Page encoding
+#define RESINFO_ENC_UNICODE     3   // Unicode encoding
 
 
 // Used with opSetAccelerator service

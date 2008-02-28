@@ -54,12 +54,15 @@ CPath g_pathImageFile; // playing image file name
 double g_lfStart, g_lfEnd; // the position for playback
 TrackExtents g_tePlaying; // TrackExtents of the playing image file
 
-BOOL g_bChanged;
+BOOL g_bChanging;
 
 HANDLE g_hSignal;
 
 CStringA g_strModulePath; // store Multi-Bytes/UTF-8 string
 CStringW g_wstrAgentPath; // store UNICODE string
+
+int g_playFlags; // Encoding or Playback?
+BOOL g_bDoingPlayDone; // Is doing PlayDone?
 
 //-----------------------------------------------------------------------------
 
@@ -104,11 +107,19 @@ int QMPInput::OutputWrite(WriteDataStruct * wd)
 	if ( wd->markerstart >= g_lfEnd && g_nCurTrack < g_nTotalTracks) { // ready to switch?
 		double cur = QCDCallbacks.Service( opGetOutputTime, NULL, 0, 0) / 1000.0 * g_tePlaying.unitpersec;
 		if ( cur >= (g_lfEnd - g_lfStart)) { // It's time to switch!
-			g_bChanged = TRUE;
-			ResetEvent( g_hSignal);
+			g_bChanging = TRUE;
+			if ( g_hSignal) ResetEvent( g_hSignal);
 
-			QCDCallbacks.toPlayer.PlayDone( (char *)(LPCTSTR)g_pathVTrack, 0);
-			WaitForSingleObject( g_hSignal, INFINITE); // Wait until the new g_lfStart is set
+			// notify the player only once!
+			if ( !g_bDoingPlayDone) {
+				QCDCallbacks.toPlayer.PlayDone( (char *)(LPCTSTR)g_pathVTrack, 0);
+				g_bDoingPlayDone = TRUE;
+			}
+
+			if ( PLAYFLAG_ENCODING == g_playFlags)
+				return FALSE; // return immediately for encoding
+			else
+				WaitForSingleObject( g_hSignal, INFINITE); // Wait until the new g_lfStart is set for playback
 		}
 	}
 
@@ -270,8 +281,9 @@ int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 	g_pathVTrack = _T("");
 	g_pathImageFile = _T("");
 	g_lfStart = g_lfEnd = 0.0;
-	g_bChanged = FALSE;
+	g_bChanging = FALSE;
 	g_hSignal = NULL;
+	g_bDoingPlayDone = FALSE;
 
 	// return TRUE for successful initialization
 	return TRUE;
@@ -370,6 +382,9 @@ int QMPInput::Play(const char* medianame, int playfrom, int playto, int flags)
 {
 	int ret;
 
+	// save playflags
+	g_playFlags = flags;
+
 	if ( flags != PLAYFLAG_SEEKING) { // for playback/encoding
 		// parse virtual track
 		CPath pathImageFile;
@@ -386,8 +401,8 @@ int QMPInput::Play(const char* medianame, int playfrom, int playto, int flags)
 		if ( lstrcmpi( pathImageFile, g_pathImageFile)) {
 			if ( lstrlen( g_pathImageFile) > 0) { // close previous track
 				// fix for playdone
-				if ( g_bChanged) {
-					g_bChanged = FALSE;
+				if ( g_bChanging) {
+					g_bChanging = FALSE;
 					SetEvent( g_hSignal);
 				}
 				QCDCallbacks.toPlayer.OutputStop( STOPFLAG_PLAYDONE);
@@ -442,15 +457,15 @@ int QMPInput::Play(const char* medianame, int playfrom, int playto, int flags)
 			ret = g_qcdCallbacks->toModule.Play( _gen_module_path( g_qcdCallbacks, g_pathImageFile), playfrom, g_tePlaying.end, flags);
 
 			// fix for playdone
-			if ( g_bChanged) {
-				g_bChanged = FALSE;
+			if ( g_bChanging) {
+				g_bChanging = FALSE;
 				SetEvent( g_hSignal);
 			}
 		} else {
 			// Seamless Playback mode: notify playdone, then play new track
 			// fix for playdone
-			if ( g_bChanged) {
-				g_bChanged = FALSE;
+			if ( g_bChanging) {
+				g_bChanging = FALSE;
 				SetEvent( g_hSignal);
 				return PLAYSTATUS_SUCCESS; // return immediately when virtual track play done.
 			}
@@ -492,10 +507,12 @@ int QMPInput::Stop(const char* medianame, int flags)
 		g_pathVTrack = _T("");
 		g_pathImageFile = _T("");
 		g_lfStart = g_lfEnd = 0.0;
-		g_bChanged = FALSE;
 
+		g_bChanging = FALSE;
 		CloseHandle( g_hSignal);
 		g_hSignal = NULL;
+
+		g_bDoingPlayDone = FALSE;
 
 		return ret;
 	}

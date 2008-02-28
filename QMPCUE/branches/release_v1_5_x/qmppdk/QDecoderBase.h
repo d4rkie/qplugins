@@ -85,27 +85,29 @@ public:
 		if ( !pMDCallback || !_pmrDec)
 			return FALSE;
 
-		WAVEFORMATEX wfex;
-		WriteDataStruct wd;
+		WAVEFORMATEX wfex; ZeroMemory( &wfex, sizeof(WAVEFORMATEX));
+		WriteDataStruct wd; ZeroMemory( &wd, sizeof(WriteDataStruct));
 
 		// open media reader
 		if ( !_pmrDec->Open(0))
 			return FALSE;
 
 		// open decoder
-		if ( Open( *_pmrDec) <= 0) {
+		if ( this->Open( *_pmrDec) <= 0) {
 			_pmrDec->Close();
 			return FALSE;
 		}
 
 		// do decoding
-		while ( IsActive()) {
-			if ( Decode( wd) > 0) {
-				GetWaveFormFormat( wfex);
-				int cb_ret = pMDCallback->OnReceive( (BYTE *)wd.data, wd.bytelen, &wfex, userData);
-				if ( cb_ret <= 0) break;
-			} else {
+		while ( this->IsActive()) {
+			int dec_ret = this->Decode( wd);
+			if ( dec_ret <= 0) {
 				pMDCallback->OnError( -1, userData);
+				Sleep(10); // let decoder catch up
+			} else {
+				this->GetWaveFormFormat( wfex);
+				int cb_ret = pMDCallback->OnReceive( (BYTE *)wd.data, wd.bytelen, &wfex, userData);
+				if ( cb_ret <= 0) break; // cancel decoding
 			}
 		}
 
@@ -113,7 +115,7 @@ public:
 		pMDCallback->OnEOF( userData);
 
 		// close decoder
-		Close();
+		this->Close();
 
 		// close media reader
 		_pmrDec->Close();

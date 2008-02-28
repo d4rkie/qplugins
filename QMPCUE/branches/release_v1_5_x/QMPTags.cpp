@@ -88,19 +88,17 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 	vtNum = cueSheet.GetVirtualTrackNumber();
 	pathImageFile = cueSheet.GetImageFilePath(vtNum);
 
-	int startIndex = 0;
+	int index = 0;
 	tags_read.clear();
 	// If the tag info interface is available, Import tag infos from original image file.
 	// Note: some fields should be overwrite with the cue sheet file info.
 	IQCDTagInfo * piTag = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (char *)(LPCTSTR)pathImageFile, 0, 0);
 	if ( piTag && piTag->ReadFromFile( flags)) {
-		int index;
 		DWORD wnl, bvl;
 		QTAGDATA_TYPE type;
 
-		index = 0;
 		wnl = bvl = 0;
-		while ( piTag->GetTagDataByIndex( index++, NULL, &wnl , &type, NULL, &bvl)) {
+		while ( piTag->GetTagDataByIndex( index, NULL, &wnl , &type, NULL, &bvl)) {
 			// skip the ZERO length tag field
 			if ( wnl <= 0 || bvl <= 0) continue;
 			// get the information from the tag instance.
@@ -108,22 +106,25 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 			CStringW wn;
 			LPBYTE bv = new BYTE[bvl]; ZeroMemory( bv, sizeof(BYTE)*bvl);
 			// get the tag data.
-			piTag->GetTagDataByIndex( index-1, wn.GetBuffer( wnl), &wnl, &type, bv, &bvl);
+			piTag->GetTagDataByIndex( index, wn.GetBuffer( wnl), &wnl, &type, bv, &bvl);
 			wn.ReleaseBuffer();
 
 			LPCWSTR pv = NULL;
 			if ( g_bOWIMGTags && (pv = cueSheet.GetTrackTagByName( vtNum, wn)) && (0 != lstrlen( pv))) {
 				// need overwrite and find the tag
-				QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_STRINGUNICODE, (BYTE*)pv, sizeof(WCHAR)*(lstrlenW( pv)+1), &startIndex);
+				QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, QTD_TYPE_STRINGUNICODE, (BYTE*)pv, sizeof(WCHAR)*(lstrlenW( pv)+1), &index);
 			} else {
 				// pass the original value to virtual track.
-				QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, type, bv, bvl, &startIndex);
+				QCDCallbacks.toPlayer.SetTagData( tagHandle, wn, type, bv, bvl, &index);
 			}
 
 			tags_read.insert( wn); // Marking the tag field which we have processed it.
 
 			// clear all
 			if (bv) delete [] bv;
+
+			// next tag metadata
+			++index;
 		}
 	}
 
@@ -139,7 +140,9 @@ BOOL QMPTags::ReadFromFile(LPCWSTR filename, void* tagHandle, int flags)
 		else {
 			// process the unread tags
 			LPCWSTR pv = cit->second;
-			QCDCallbacks.toPlayer.SetTagData( tagHandle, cit->first, QTD_TYPE_STRINGUNICODE, (BYTE*)pv, sizeof(WCHAR)*(lstrlenW( pv)+1), &startIndex);
+			QCDCallbacks.toPlayer.SetTagData( tagHandle, cit->first, QTD_TYPE_STRINGUNICODE, (BYTE*)pv, sizeof(WCHAR)*(lstrlenW( pv)+1), &index);
+			// point to next
+			++index;
 		}
 	}
 
