@@ -1,8 +1,7 @@
 #define _WIN32_IE  0x0600
 
-#include ".\BASSCfgUI.h"
-
 #include "QCDBASS.h"
+#include "BASSCfgUI.h"
 
 #include "Hyperlinks.h"
 #include "bass.h"
@@ -636,8 +635,7 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 						lstrcpy((LPTSTR)(LPCTSTR)strStreamSavingPath, szBuffer);
 					}
 
-					if (hwndStreamSavingBar)
-						SendMessage(hwndStreamSavingBar, WM_INITDIALOG, 0, 0);
+					UpdateSSBarStatus(hwndStreamSavingBar);
 
 					reset_menu();
 
@@ -753,8 +751,8 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 	case WM_INITDIALOG:
 		{
 			DWORD ver = BASS_GetVersion();
-            TCHAR buf[32];
-			_stprintf_s( buf, 32, _T("v%d.%d.%d.%d"), HIBYTE(HIWORD(ver)), LOBYTE(HIWORD(ver)), HIBYTE(LOWORD(ver)), HIBYTE(LOWORD(ver)));
+			TCHAR buf[32];
+			_stprintf_s( buf, 32, _T("v%d.%d.%d.%d"), HIBYTE(HIWORD(ver)), LOBYTE(HIWORD(ver)), HIBYTE(LOWORD(ver)), LOBYTE(LOWORD(ver)));
 			SetDlgItemText(hwndDlg, IDC_BASS_VERSION, buf);
 
 			SetDlgItemText(hwndDlg, IDC_PLUGIN_VERSION, PLUGIN_VERSION);
@@ -780,18 +778,91 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 
 //-- for stream saving bar
-HWND DoStreamSavingBar(HINSTANCE hInstance, HWND hwndParent)
+void ShowStreamSavingBar(BOOL bShow)
 {
-	HWND ret = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_STREAM_SAVING_BAR), hwndParent, (DLGPROC)StreamSavingBarProc);
-	SetWindowPos(ret, HWND_TOPMOST, xStreamSavingBar, yStreamSavingBar, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
+	if (bShow)
+		UpdateSSBarStatus(hwndStreamSavingBar);
 
-	return ret;
+	SetWindowPos(hwndStreamSavingBar, HWND_TOPMOST, xStreamSavingBar, yStreamSavingBar, 0, 0, SWP_NOSIZE);
+	ShowWindow(hwndStreamSavingBar, (bShow) ? SW_SHOW : SW_HIDE);
+
+	return;
 }
 
 static HWND hwndToolTip = NULL;
 static char szToolTip[3*MAX_PATH] = {'\0'};
 static HIMAGELIST himlStreamSavingBar = NULL;
+
+void InitStreamSavingBar(HWND hwndDlg)
+{
+	// enlarge individual control
+	SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_GO), 0, 6, 6, 18, 18, SWP_NOZORDER);
+	SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SKIP_TITLE), 0, 26, 6, 18, 18, SWP_NOZORDER);
+	SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_STATUS), 0, 50, 6, 140, 18, SWP_NOZORDER);
+	SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SETPATH), 0, 194, 6, 18, 18, SWP_NOZORDER);
+	SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_BROWSE), 0, 214, 6, 18, 18, SWP_NOZORDER);
+	SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_CLOSE), 0, 234, 6, 18, 18, SWP_NOZORDER);
+
+	// load image list
+	if (!himlStreamSavingBar)
+		himlStreamSavingBar = ImageList_LoadImage(hInstance, MAKEINTRESOURCE(IDB_STREAM_SAVING_BAR), 18, 0, CLR_NONE, IMAGE_BITMAP, LR_CREATEDIBSECTION);
+
+	// create tooltips
+	INITCOMMONCONTROLSEX icex;
+	// Load the ToolTip class from the DLL.
+	icex.dwSize = sizeof(icex);
+	icex.dwICC  = ICC_BAR_CLASSES;
+	if(InitCommonControlsEx(&icex) && !hwndToolTip) {
+		// Create the ToolTip control.
+		hwndToolTip = CreateWindowEx(NULL, TOOLTIPS_CLASS, NULL, 
+									WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP, 
+									CW_USEDEFAULT, CW_USEDEFAULT, 
+									CW_USEDEFAULT, CW_USEDEFAULT, 
+									hwndDlg, (HMENU)NULL, hInstance, 
+									NULL);
+		SetWindowPos(hwndToolTip, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+		// Prepare TOOLINFO structure.
+		TOOLINFO ti;
+		ti.cbSize		= sizeof(TOOLINFO);
+		ti.uFlags		= TTF_SUBCLASS;
+		ti.hwnd			= hwndDlg;
+		ti.uId			= IDC_STREAM_SAVING_BAR_STATUS;
+		ti.hinst		= hInstance;
+		ti.lpszText		= LPSTR_TEXTCALLBACK;
+		ti.rect.left	= 50;
+		ti.rect.top		= 6;
+		ti.rect.right	= 190;
+		ti.rect.bottom	= 24;
+		SendMessage(hwndToolTip, TTM_ADDTOOL, 0, (LPARAM)&ti);
+	}
+
+	return;
+}
+
+void UpdateSSBarStatus(HWND hwndDlg)
+{
+	TCHAR buf1[20], buf2[20];
+
+	LoadResString(hInstance, IDS_STREAM_SAVING_ON, buf1, sizeof(buf1));
+	LoadResString(hInstance, IDS_STREAM_SAVING_OFF, buf2, sizeof(buf2));
+
+	SetDlgItemText(hwndDlg, IDC_STREAM_SAVING_BAR_STATUS, bStreamSaving ? buf1 :buf2);
+
+	// Really need greyed out folder items in stream saving bar bitmap to display status correctly
+	EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SETPATH), !bStreamSaving); 
+	EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_BROWSE), !bStreamSaving); 
+
+	// Set button status
+	EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SKIP_TITLE), bStreamSaving);
+	EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_GO), bStreamSaving);
+
+	return;
+}
+
+
 #define DrawBarButton(i) ImageList_Draw(himlStreamSavingBar, (i), lpdis->hDC, 0, 0, ILD_NORMAL)
+
 INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LPDRAWITEMSTRUCT lpdis;
@@ -810,57 +881,12 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 		return TRUE;
 	case WM_INITDIALOG:
 		{
-			TCHAR buf1[20], buf2[20];
-
-			LoadResString(hInstance, IDS_STREAM_SAVING_ON, buf1, sizeof(buf1));
-			LoadResString(hInstance, IDS_STREAM_SAVING_OFF, buf2, sizeof(buf2));
 			// fix our size and pos for better UI
 			// enlarge the whole bar
 			SetWindowPos(hwndDlg, 0, 0, 0, 268, 39, SWP_NOMOVE | SWP_NOZORDER);
-			// enlarge individual control
-			SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_GO), 0, 6, 6, 18, 18, SWP_NOZORDER);
-			SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SKIP_TITLE), 0, 26, 6, 18, 18, SWP_NOZORDER);
-			SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_STATUS), 0, 50, 6, 140, 18, SWP_NOZORDER);
-			SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SETPATH), 0, 194, 6, 18, 18, SWP_NOZORDER);
-			SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_BROWSE), 0, 214, 6, 18, 18, SWP_NOZORDER);
-			SetWindowPos(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_CLOSE), 0, 234, 6, 18, 18, SWP_NOZORDER);
 
-			EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SKIP_TITLE), bStreamSaving);
-			SetDlgItemText(hwndDlg, IDC_STREAM_SAVING_BAR_STATUS, bStreamSaving ? buf1 :buf2);
+			UpdateSSBarStatus(hwndDlg);
 
-			// load image list
-			if (!himlStreamSavingBar)
-				himlStreamSavingBar = ImageList_LoadImage(hInstance, MAKEINTRESOURCE(IDB_STREAM_SAVING_BAR), 18, 0, CLR_NONE, IMAGE_BITMAP, LR_CREATEDIBSECTION);
-
-			// create tooltips
-			INITCOMMONCONTROLSEX icex;
-			// Load the ToolTip class from the DLL.
-			icex.dwSize = sizeof(icex);
-			icex.dwICC  = ICC_BAR_CLASSES;
-			if(InitCommonControlsEx(&icex) && !hwndToolTip) {
-				// Create the ToolTip control.
-				hwndToolTip = CreateWindowEx(NULL, TOOLTIPS_CLASS, NULL, 
-					WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP, 
-					CW_USEDEFAULT, CW_USEDEFAULT, 
-					CW_USEDEFAULT, CW_USEDEFAULT, 
-					hwndDlg, (HMENU)NULL, hInstance, 
-					NULL);
-				SetWindowPos(hwndToolTip, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-				// Prepare TOOLINFO structure.
-				TOOLINFO ti;
-				ti.cbSize		= sizeof(TOOLINFO);
-				ti.uFlags		= TTF_SUBCLASS;
-				ti.hwnd			= hwndDlg;
-				ti.uId			= IDC_STREAM_SAVING_BAR_STATUS;
-				ti.hinst		= hInstance;
-				ti.lpszText		= LPSTR_TEXTCALLBACK;
-				ti.rect.left	= 50;
-				ti.rect.top		= 6;
-				ti.rect.right	= 190;
-				ti.rect.bottom	= 24;
-				SendMessage(hwndToolTip, TTM_ADDTOOL, 0, (LPARAM)&ti);
-			}
 		}
 
 		return TRUE;
@@ -877,12 +903,13 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 						SendMessage(lpnmhdr->hwndFrom, TTM_SETMAXTIPWIDTH, 0, 3*MAX_PATH);
 
 						//if (bStreamSaving && cur_title && *cur_title) {
-						if (bStreamSaving && decoderInfo.pDecoder->m_strCurTitle &&
+						if (bStreamSaving && decoderInfo.pDecoder &&
+							decoderInfo.pDecoder->m_strCurTitle &&
 							*decoderInfo.pDecoder->m_strCurTitle)
 						{
 							TCHAR buf[50];
 							LoadResString(hInstance, IDS_STREAM_SAVING_TOOLTIP, buf, sizeof(buf));
-							wsprintf(szToolTip, buf, decoderInfo.pDecoder->m_strCurTitle, strStreamSavingPath);
+							wsprintf(szToolTip, buf, decoderInfo.pDecoder->m_strCurTitle, (LPCTSTR)strStreamSavingPath);
 						} else {
 							TCHAR buf[50];
 							LoadResString(hInstance, IDS_STREAM_SAVING_TOOLTIP_STATUS, buf, sizeof(buf));
@@ -937,7 +964,7 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 					{
 						bStreamSaving = !bStreamSaving;
 
-						SendMessage(hwndDlg, WM_INITDIALOG, 0, 0);
+						UpdateSSBarStatus(hwndDlg);
 
 						reset_menu();
 					}
@@ -969,8 +996,8 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 					break;
 				case IDC_STREAM_SAVING_BAR_CLOSE:
 					{
-						DestroyWindow(hwndStreamSavingBar);
-						hwndStreamSavingBar = NULL;
+						bStreamSaveBarVisible = FALSE;
+						ShowStreamSavingBar(bStreamSaveBarVisible);
 
 						reset_menu();
 					}

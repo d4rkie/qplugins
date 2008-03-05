@@ -174,7 +174,7 @@ private:
 	static void CALLBACK rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD length, DWORD user);
 
 	// Streaming
-	static const char* stream_type;
+	static char stream_type[16];
 	FILE* m_StreamFile;
 
 	// static void update_stream_title(char * meta);
@@ -182,4 +182,3 @@ private:
 	static void CALLBACK stream_title_sync(HSYNC handle, DWORD channel, DWORD data, DWORD user);
 	static void CALLBACK stream_status_proc(const void *buffer, DWORD length, DWORD user);
 };
-

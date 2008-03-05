@@ -51,6 +51,7 @@ extern cfg_int bStreamTitle;
 extern cfg_int bStreamSaving;
 extern cfg_string strStreamSavingPath;
 extern cfg_int bAutoShowStreamSavingBar;
+extern cfg_int bStreamSaveBarVisible;
 extern cfg_int bSaveStreamsBasedOnTitle; // save streams based on stream title
 
 extern cfg_int xStreamSavingBar; // left side of stream saving bar
@@ -63,6 +64,7 @@ extern std::string strAddonExtensions; // Extensions provided by addons
 extern HWND hwndConfig; // config property
 extern HWND hwndAbout; // about dialog box
 extern HWND hwndStreamSavingBar; // stream saving bar
+extern HWND hwndPlayer;
 
 extern list<std::string> listAddons; // Pointer to a buffer containing pairs of null-terminated filename strings.
                                      // The last string in the buffer must be terminated by two NULL characters.

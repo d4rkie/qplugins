@@ -42,7 +42,9 @@ INT_PTR CALLBACK AddonsDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
 HWND DoAboutDlg(HINSTANCE hInstance, HWND hwndParent);
 INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LPCDLGTEMPLATE LoadResDialog(HINSTANCE hInstance, int nTemplate);
 
-HWND DoStreamSavingBar(HINSTANCE hInstance, HWND hwndParent);
+void ShowStreamSavingBar(BOOL bShow);
 INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
+void UpdateSSBarStatus(HWND hwndDlg);
+void InitStreamSavingBar(HWND hwndDlg);

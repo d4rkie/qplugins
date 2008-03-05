@@ -96,6 +96,7 @@ cfg_int uBufferLen("QCDBASS", "BufferLen", 10);			// stream buffer lengthen in m
 cfg_int bStreamTitle("QCDBASS", "StreamTitle", TRUE);	// enable stream title
 
 cfg_int bStreamSaving("QCDBASS", "StreamSaving", FALSE);// enable stream saving
+cfg_int bStreamSaveBarVisible("QCDBASS", "StreamSavingVisible", FALSE);// stream saving dialog
 cfg_string strStreamSavingPath("QCDBASS", "StreamSavingPath", "", MAX_PATH);  // path to saving streamed files
 cfg_int bAutoShowStreamSavingBar("QCDBASS", "AutoShowStreamSavingBar", TRUE); // auto show stream saving bar
 cfg_int bSaveStreamsBasedOnTitle("QCDBASS", "SaveStreamsBasedOnTitle", TRUE); // save streams based on stream title
@@ -193,6 +194,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	uBufferLen.load(inifile);
 	bStreamTitle.load(inifile);
 	bStreamSaving.load(inifile);
+	bStreamSaveBarVisible.load(inifile);
 	strStreamSavingPath.load(inifile);
 	bAutoShowStreamSavingBar.load(inifile);
 	bSaveStreamsBasedOnTitle.load(inifile);
@@ -228,6 +230,11 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	ModInfo->moduleExtensions  = (LPSTR)strAllExtensions.c_str();
 	ModInfo->moduleCategory    = "AUDIO";
 
+	// Create stream saving bar
+	hwndStreamSavingBar = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_STREAM_SAVING_BAR), hwndPlayer, (DLGPROC)StreamSavingBarProc);
+	InitStreamSavingBar(hwndStreamSavingBar);
+	ShowStreamSavingBar(bStreamSaveBarVisible);
+
 	return TRUE;
 }
 
@@ -235,9 +242,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 
 void ShutDown(int flags)
 {
-	Stop(decoderInfo.playingFile, STOPFLAG_FORCESTOP);
-	destroy_bass();
-	// CloseHandle(hThreadMutex);
+	Stop(decoderInfo.playingFile, STOPFLAG_SHUTDOWN);
 
 	// save config
 	char inifile[MAX_PATH];
@@ -264,6 +269,7 @@ void ShutDown(int flags)
 	uBufferLen.save(inifile);
 	bStreamTitle.save(inifile);
 	bStreamSaving.save(inifile);
+	bStreamSaveBarVisible.save(inifile);
 	strStreamSavingPath.save(inifile);
 	bAutoShowStreamSavingBar.save(inifile);
 	bSaveStreamsBasedOnTitle.save(inifile);
@@ -282,10 +288,13 @@ void ShutDown(int flags)
 		DestroyWindow(hwndAbout);
 		hwndAbout = NULL;
 	}
+
 	if(hwndStreamSavingBar) {
 		DestroyWindow(hwndStreamSavingBar);
 		hwndStreamSavingBar = NULL;
 	}
+
+	destroy_bass();
 }
 
 //-----------------------------------------------------------------------------
@@ -383,7 +392,7 @@ int GetTrackExtents(const char* medianame, TrackExtents *ext, int flags)
 
 		return TRUE;
 	}
-	
+
 	return FALSE;
 }
 
@@ -394,7 +403,7 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 	encoding = flags & PLAYFLAG_ENCODING;
 
 	if (decoderInfo.playingFile && lstrcmpi(decoderInfo.playingFile, medianame)) {
-		Stop(decoderInfo.playingFile, STOPFLAG_PLAYDONE);
+		Stop(decoderInfo.playingFile, STOPFLAG_PLAYSKIP);
 	}
 
 	if (!decoderInfo.playingFile) {
@@ -567,8 +576,7 @@ void Configure(int flags)
 		{
 			bStreamSaving = !bStreamSaving;
 
-			if (hwndStreamSavingBar)
-				SendMessage(hwndStreamSavingBar, WM_INITDIALOG, 0, 0);
+			UpdateSSBarStatus(hwndStreamSavingBar);
 
 			// modify our menu item status
 			reset_menu();
@@ -577,12 +585,9 @@ void Configure(int flags)
 		break;
 	case ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR:
 		{
-			if(hwndStreamSavingBar) {
-				DestroyWindow(hwndStreamSavingBar);
-				hwndStreamSavingBar = NULL;
-			}
-			else
-				hwndStreamSavingBar = DoStreamSavingBar(hInstance, NULL);
+			bStreamSaveBarVisible = !bStreamSaveBarVisible;
+
+			ShowStreamSavingBar(bStreamSaveBarVisible);
 
 			reset_menu();
 		}
@@ -618,7 +623,7 @@ void insert_menu(void)
 	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, (long)("Enable stream saving"));
 	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, bStreamSaving ? MF_CHECKED : MF_UNCHECKED);
 	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, (long)("Show stream saving bar"));
-	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, hwndStreamSavingBar ? MF_CHECKED : MF_UNCHECKED);
+	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, bStreamSaveBarVisible ? MF_CHECKED : MF_UNCHECKED);
 }
 
 void remove_menu(void)
@@ -724,14 +729,14 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	if (decoderInfo->pDecoder->is_stream() && 
 		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
 		!decoderInfo->pDecoder->init()) ) { // stream should be initialized here
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 
 			return 0;
 	}
 
 	// OK, play it
 	if (!decoderInfo->pDecoder->play()) {
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 		return 0;
 	}
 
@@ -744,7 +749,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 		done = TRUE;
 	}
 
@@ -756,7 +761,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 
 		if (pVisData == NULL) {
 			show_error("Error: Out of memory!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 			done = TRUE;
 		}
 	}
@@ -780,7 +785,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 		if (done) { // only available when playdone or output error
 			if (seek_to < 0) {
 				decoderInfo->pDecoder->stop(STOPFLAG_PLAYDONE);
-				QCDCallbacks.toPlayer.PlayDone(decoderInfo->playingFile);
+				QCDCallbacks.toPlayer.PlayDone(decoderInfo->playingFile, STOPFLAG_PLAYDONE);
 			}
 			else if (seek_to >= 0) {
 				done = FALSE;
@@ -798,20 +803,23 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 			ai.text[0] = '\0';
 
 			const char *type = decoderInfo->pDecoder->get_type();
-			if ( lstrcmpi(type, "mp1") == 0 ) {
-				ai.level = 1;
-				ai.layer = 1;
+			if (type)
+			{
+				if ( lstrcmpi(type, "mp1") == 0 ) {
+					ai.level = 1;
+					ai.layer = 1;
+				}
+				else if ( lstrcmpi(type, "mp2") == 0 ) {
+					ai.level = 1;
+					ai.layer = 2;
+				}
+				else if ( lstrcmpi(type, "mp3") == 0 ) {
+					ai.level = 1;
+					ai.layer = 3;
+				}
+				else
+					lstrcpyn(ai.text, type, sizeof(ai.text));
 			}
-			else if ( lstrcmpi(type, "mp2") == 0 ) {
-				ai.level = 1;
-				ai.layer = 2;
-			}
-			else if ( lstrcmpi(type, "mp3") == 0 ) {
-				ai.level = 1;
-				ai.layer = 3;
-			}
-			else
-				lstrcpyn(ai.text, type, sizeof(ai.text));
 
 			// update bitrate info
 			ai.bitrate = bShowVBR ? decoderInfo->pDecoder->get_bitrate() : avgbitrate;
@@ -873,7 +881,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
 		!decoderInfo->pDecoder->init()) ) { // stream should be initialized here
 
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 		return 0;
 	}
 
@@ -886,7 +894,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 		done = TRUE;
 	}
 
@@ -902,7 +910,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign;
 		if (!QCDCallbacks.toPlayer.OutputOpen(decoderInfo->playingFile, &wf)) {
 			show_error("Failed opening output device!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 			done = TRUE; // cannot open sound device
 		}
 	}	
@@ -920,7 +928,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
         
         if (hHeap == NULL || pRawData == NULL) {
 			show_error("Error: Out of memory!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
 			done = TRUE;
 		}
 	}
@@ -944,7 +952,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		if (done) { // only avaliable when playdone or output error
 			if (QCDCallbacks.toPlayer.OutputDrain(0) && seek_to < 0) {
 				QCDCallbacks.toPlayer.OutputStop(STOPFLAG_PLAYDONE);
-				QCDCallbacks.toPlayer.PlayDone(decoderInfo->playingFile);
+				QCDCallbacks.toPlayer.PlayDone(decoderInfo->playingFile, STOPFLAG_PLAYDONE);
 			}
 			else if (seek_to >= 0) {
 				done = FALSE;
@@ -964,20 +972,23 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				ai.text[0] = '\0';
 
 				const char *type = decoderInfo->pDecoder->get_type();
-				if ( lstrcmpi(type, "mp1") == 0 ) {
-					ai.level = 1;
-					ai.layer = 1;
+				if (type)
+				{
+					if ( lstrcmpi(type, "mp1") == 0 ) {
+						ai.level = 1;
+						ai.layer = 1;
+					}
+					else if ( lstrcmpi(type, "mp2") == 0 ) {
+						ai.level = 1;
+						ai.layer = 2;
+					}
+					else if ( lstrcmpi(type, "mp3") == 0 ) {
+						ai.level = 1;
+						ai.layer = 3;
+					}
+					else
+						lstrcpyn(ai.text, type, sizeof(ai.text));
 				}
-				else if ( lstrcmpi(type, "mp2") == 0 ) {
-					ai.level = 1;
-					ai.layer = 2;
-				}
-				else if ( lstrcmpi(type, "mp3") == 0 ) {
-					ai.level = 1;
-					ai.layer = 3;
-				}
-				else
-					lstrcpyn(ai.text, type, sizeof(ai.text));
 
 				// update bitrate info
 				ai.bitrate = bShowVBR ? decoderInfo->pDecoder->get_bitrate() : avgbitrate;

@@ -10,6 +10,9 @@
 
 #include "tags.h"
 
+#if !defined(timeGetTime)
+#define timeGetTime	GetTickCount
+#endif
 
 //-- for common functions
 void load_addons(const char * fldr)
@@ -76,7 +79,6 @@ bool create_bass (DWORD device)
 bool destroy_bass (void)
 {
 	free_addons(0); // free all addons
-
 	return BASS_Free() ? true : false;
 }
 
@@ -86,7 +88,7 @@ bool destroy_bass (void)
 // BASS Class
 //-----------------------------------------------------------------------------
 // Static variables
-const char * bass::stream_type = NULL; // stream type, used to saving stream
+char bass::stream_type[16]; // stream type, used to saving stream
 
 
 //-----------------------------------------------------------------------------
@@ -240,7 +242,7 @@ void bass::update_stream_title(char* meta, bass* pBass)
 				if (pBass->m_strCurTitle) free(pBass->m_strCurTitle);
 				pBass->m_strCurTitle = _strdup(t);
 
-				if (bStreamTitle){
+				if (bStreamTitle) {
 					QCDCallbacks.Service(opSetTrackTitle, pBass->m_strCurTitle, (long)pBass->m_strPath, DIGITAL_STREAM_MEDIA);
 				}
 			}
@@ -279,8 +281,6 @@ void CALLBACK bass::stream_status_proc(const void *buffer, DWORD length, DWORD u
 		else { // saving stream media to local files
 			if (bStreamSaving) {
 				if (!pBass->m_StreamFile) {
-					bStreamSaving = 0; // reset it to false
-
 					// first, check our saving path
 					if (!PathFileExists(strStreamSavingPath)) {
 						TCHAR szBuffer[MAX_PATH];
@@ -289,29 +289,33 @@ void CALLBACK bass::stream_status_proc(const void *buffer, DWORD length, DWORD u
 					}
 					// secondly, show our stream saving bar
 					if (bAutoShowStreamSavingBar) {
-						if (!hwndStreamSavingBar)
-							hwndStreamSavingBar = DoStreamSavingBar(hInstance, hwndPlayer);
+						bStreamSaveBarVisible = TRUE;
+						ShowStreamSavingBar(bStreamSaveBarVisible);
+						reset_menu();
 					}
 
 					// finally, create our file
-					if (PathFileExists(strStreamSavingPath)) { // now, everything should be OK!
-						TCHAR szPath[MAX_PATH];
-						ZeroMemory(szPath, MAX_PATH);
-						lstrcpy(szPath, strStreamSavingPath);
-						PathAppend(szPath, bSaveStreamsBasedOnTitle && pBass->m_strCurTitle && *(pBass->m_strCurTitle) ? pBass->m_strCurTitle : "stream");
-						szPath[lstrlen(szPath)] = '.';
-						lstrcat(szPath, stream_type);
+					if (PathFileExists(strStreamSavingPath)) {
+						// But, only if we have a title now
+						if (bSaveStreamsBasedOnTitle && pBass->m_strCurTitle && *(pBass->m_strCurTitle)) {
+							TCHAR szPath[MAX_PATH];
+							ZeroMemory(szPath, MAX_PATH);
+							lstrcpy(szPath, strStreamSavingPath);
+							PathAppend(szPath, pBass->m_strCurTitle);
+							szPath[lstrlen(szPath)] = '.';
+							lstrcat(szPath, stream_type);
 
-						if ( (pBass->m_StreamFile = fopen(szPath, "wb")) ) {
-                            bStreamSaving = 1;
+							if ( (pBass->m_StreamFile = fopen(szPath, "wb")) ) {
+								bStreamSaving = 1;
 
-							fwrite(buffer, sizeof(char), length, pBass->m_StreamFile);
-						} else
-							bStreamSaving = 0;
+								fwrite(buffer, sizeof(char), length, pBass->m_StreamFile);
+							} else
+								bStreamSaving = 0;
+						}
 					} else
 						bStreamSaving = 0;
 
-					SendMessage(hwndStreamSavingBar, WM_INITDIALOG, 0, 0);
+					UpdateSSBarStatus(hwndStreamSavingBar);
 				} else
 					fwrite(buffer, sizeof(char), length, pBass->m_StreamFile);
 			} else {
@@ -436,7 +440,7 @@ int bass::init ( bool fullinit )
 				(is_decode ? BASS_STREAM_DECODE : 0) | 
 				(use_32fp ? BASS_SAMPLE_FLOAT : 0), 
 				stream_status_proc, (DWORD)this)) ) {
-					const char *icy=BASS_ChannelGetTags(m_hBass, BASS_TAG_ICY);
+					const char *icy = BASS_ChannelGetTags(m_hBass, BASS_TAG_ICY);
 					if (icy) {
 						for (;*icy;icy+=strlen(icy)+1) {
 							if (!memcmp(icy, "icy-name:", 9))
@@ -446,13 +450,14 @@ int bass::init ( bool fullinit )
 						}
 					}
 
+					BASS_ChannelGetInfo(m_hBass, &ChannelInfo);
+
+					strcpy_s(stream_type, sizeof(stream_type), get_type());
+					_strlwr_s(stream_type, strlen(stream_type) + 1);
+
 					update_stream_title((char *)BASS_ChannelGetTags(m_hBass, BASS_TAG_META), this);
 					BASS_ChannelSetSync(m_hBass, BASS_SYNC_META, 0, &stream_title_sync, (DWORD)this);
 					//QCDCallbacks.Service(opSetTrackArtist, "", (long)path, DIGITAL_STREAM_MEDIA); // no artist name is need any more
-
-					BASS_ChannelGetInfo(m_hBass, &ChannelInfo);
-
-					stream_type = get_type();
 
 					init_rg(); // init replaygain
 
@@ -603,6 +608,9 @@ bool bass::play(void)
 	if (is_decode) return false;
 
 	if (starttime == 0) starttime = timeGetTime();
+
+	// Set BASS volume level from player
+	set_volume(QCDCallbacks.Service(opGetVolume, NULL, 0, 0));
 
 	return BASS_ChannelPreBuf(m_hBass, 0) && BASS_ChannelPlay(m_hBass, FALSE) ? true : false;
 }
