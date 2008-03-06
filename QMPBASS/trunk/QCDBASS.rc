@@ -65,8 +65,8 @@ LANGUAGE LANG_DANISH, SUBLANG_DEFAULT
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,1,1
- PRODUCTVERSION 1,0,1,0
+ FILEVERSION 2,0,2,0
+ PRODUCTVERSION 2,0,2,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -83,12 +83,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", " "
             VALUE "FileDescription", "QMPBASS"
-            VALUE "FileVersion", "1, 0, 1, 1"
+            VALUE "FileVersion", "2, 0, 2, 0"
             VALUE "InternalName", "QMPBASS"
-            VALUE "LegalCopyright", "Copyright ? 2006"
+            VALUE "LegalCopyright", "Copyright QPlugins 2006-2008"
             VALUE "OriginalFilename", "QMPBASS.dll"
-            VALUE "ProductName", "  QMPBASS"
-            VALUE "ProductVersion", "1, 0, 1, 0"
+            VALUE "ProductName", " QMPBASS"
+            VALUE "ProductVersion", "2, 0, 2, 0"
         END
     END
     BLOCK "VarFileInfo"
@@ -222,13 +222,13 @@ FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "&OK",IDOK,80,97,50,14
     CONTROL         105,IDC_STATIC,"Static",SS_BITMAP | SS_REALSIZEIMAGE,7,6,63,31
-    CTEXT           "BASS Sound System Plug-in for Quintessential Player",IDC_STATIC,84,6,108,16
-    LTEXT           "Author: Shao Hao",IDC_STATIC,7,57,65,8
-    LTEXT           "Plug-in Ver: ",IDC_STATIC,7,73,53,8
-    LTEXT           "BASS Core Ver: ",IDC_STATIC,109,66,56,8
+    CTEXT           "QPlugins BASS Sound System for Quintessential Player",IDC_STATIC,84,6,108,16
+    LTEXT           "Author:   Shao Hao",IDC_STATIC,9,56,71,8
+    LTEXT           "Plug-in Ver: ",IDC_STATIC,9,80,56,8
+    LTEXT           "BASS Core Ver: ",IDC_STATIC,9,68,56,8
     LTEXT           "Use Decoding Core of BASS, or use all of BASS -- choose whatever you like!",IDC_STATIC,76,36,128,24
-    LTEXT           "",IDC_BASS_VERSION,169,66,31,8
-    LTEXT           "",IDC_PLUGIN_VERSION,65,73,40,8
+    LTEXT           "",IDC_BASS_VERSION,69,68,51,8
+    LTEXT           "",IDC_PLUGIN_VERSION,69,80,56,8
 END
 
 IDD_ADDONS DIALOGEX 0, 0, 280, 160

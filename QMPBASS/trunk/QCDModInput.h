@@ -5,13 +5,13 @@
 // About:	Input plugin module interface.  This file is published with the 
 //			Input plugin SDK.
 //
-// Authors:	Written by Paul Quinn and Richard Carlson.
+// Authors:	Written by Paul Quinn
 //
 // Copyright:
 //
 //	QCD multimedia player application Software Development Kit Release 1.0.
 //
-//	Copyright (C) 1997-2002 Quinnware
+//	Copyright (C) 1997-2007 Quinnware
 //
 //	This code is free.  If you redistribute it in any form, leave this notice 
 //	here.
@@ -26,21 +26,23 @@
 #define QCDMODINPUT_H
 
 #include "QCDModDefs.h"
+#include "IQCDMediaDecoder.h"
 
 // name of the DLL export for input plugins
-#define INPUTDLL_ENTRY_POINT		QInputModule2	// (updated plugin api version 240+)
+#define INPUTDLL_ENTRY_POINT		PLUGIN_ENTRY_POINT(InputModule2)
 
-// media insert flags (plugin sends to MediaInserted function (used for CD plugin))
-#define MEDIAINSERT_PLAY			0x1
-#define MEDIAINSERT_ADDTRACKS		0x2
-#define MEDIAINSERT_ADDSEGMENTS		0x4
-#define MEDIAINSERT_CLEARPLAYLIST	0x8
-#define MEDIAINSERT_STARTUP			0x1000
-#define MEDIAINSERT_ADDONSTARTUP	0x2000
+// TestFormat return values
+#define TESTFORMAT_ACCEPTED			0
+#define TESTFORMAT_UNACCEPTED		-1
+#define TESTFORMAT_FAILURE			-2
+#define TESTFORMAT_NOTIMPL			-3
 
 // stop will receive one of these flags (pass to output plugin's stop())
-#define STOPFLAG_FORCESTOP			0	// stop occuring due to user action or other event
-#define STOPFLAG_PLAYDONE			1	// stop occuring due to playlist completion
+#define STOPFLAG_FORCESTOP			0		// stop occuring due to user action (player will enter stopped state)
+#define STOPFLAG_PLAYDONE			1		// stop occuring due to current track completion
+#define STOPFLAG_SHUTDOWN			2		// stop occuring due to player shutdown
+#define STOPFLAG_PLAYSKIP			3		// stop occuring due to current track skip
+#define STOPFLAG_ALLDONE			4		// stop occuring due to playlist completion (player will enter stopped state)
 
 // play flags (player sends these to play function)
 #define PLAYFLAG_PLAYBACK			0x0
@@ -48,42 +50,60 @@
 #define PLAYFLAG_SEEKING			0x2
 
 // pause flags (player sends these to pause function, plugin sends to PlayPaused function)
-#define PAUSE_DISABLED				0	// Pause() call is to unpause playback
-#define PAUSE_ENABLED				1	// Pause() call is to pause playback
+#define PAUSE_DISABLED				0		// Pause() call is to unpause playback
+#define PAUSE_ENABLED				1		// Pause() call is to pause playback
 
+// eject flags (player sends these to eject function)
+#define EJECT_TOGGLE				0		// toggle current open/close state of media tray
+#define EJECT_ENSURE_OPEN			1		// set state of media tray to open
+#define EJECT_ENSURE_CLOSED			2		// set state of media tray to closed
+									
 // play function return values (play function should return one of these)
-#define PLAYSTATUS_SUCCESS			1	// play call succeeded
-#define PLAYSTATUS_FAILED			0	// play call failed (player will go to next track)
-#define PLAYSTATUS_UNSUPPORTED		-1	// file is not supported by this plugin afterall (if guess made by GetMediaSupported was wrong). 
-                                        //     Player will find alternate plugin to play track, or go to next track
-#define PLAYSTATUS_STOPPLAYBACK		-2	// play call did not succeed, and player should not go to next track
+#define PLAYSTATUS_SUCCESS			1		// play call succeeded
+#define PLAYSTATUS_FAILED			0		// play call failed (player will go to next track)
+#define PLAYSTATUS_UNSUPPORTED		-1		// file is not supported by this plugin afterall (if guess made by GetMediaSupported was wrong). 
+                                        	//     Player will find alternate plugin to play track, or go to next track
+#define PLAYSTATUS_STOPPLAYBACK		-2		// play call did not succeed, and player should not go to next track
+
+// PlayStopped flags (plugin should pass one of these when calling PlayStopped())
+#define PLAYSTOPPED_DEFAULT			0		// decoding has permaturaly ceased, stop player playback
+#define PLAYSTOPPED_UNSUPPORTED		-1		// decoding has permaturaly ceased due to media being unsupported
 
 // Wave Marker flags
-#define WAVE_VIS_DATA_ONLY			-1	// set to WaveDataStruct.markerstart in OutputWrite() call have data only go to vis 
-										// and not to output plugin
+#define WAVE_VIS_DATA_ONLY			-1		// set to WaveDataStruct.markerstart in OutputWrite() call have data only go to vis 
+											// and not to output plugin
+// GetTrackExtents flags
+#define GETTRACKEXTENTS_DEFAULT		0x0		  // default flag, track extents need to be determined
+#define GETTRACKEXTENTS_VERIFY		0x100   // when passed to GetTrackExtents, indicates TrackExtents parameter has prepopulated values
+                                            // that the plug-in can either ignore, verify, and/or modify to its needs
 
-//-----------------------------------------------------------------------------
-// Input Module
-//-----------------------------------------------------------------------------
-typedef struct 
+
+// \Input plug-in initialization structure.
+struct QCDModInitIn
 {
-	unsigned int		size;			// size of init structure
-	unsigned int		version;		// plugin structure version (set to PLUGIN_API_VERSION)
-	PluginServiceFunc	Service;		// player supplied services callback
+	unsigned int		size;			// Size in bytes of QCDModInitIn structure.
+	unsigned int		version;		// Plug-in API version. Set to one of the PLUGIN_API_VERSION
+	            		        		// macros.
+	            		        		// See Also
+	            		        		// <link PLUGIN_API_VERSION, PLUGIN_API_VERSION Macro>      
+	PluginServiceFunc	Service;		// Player supplied Services callback.
+	                 	        		// See Also
+	                 	        		// <link Player Services>            
 
-	struct
+	// Set of functions defined by player that the plug-in can call.
+	struct _toPlayer
 	{
 		void (*PositionUpdate)(unsigned int position);
-		void (*PlayStopped)(const char* medianame);					// notify player of play stop
-		void (*PlayStarted)(const char* medianame);					// notify player of play start
+		void (*PlayStopped)(const char* medianame, int flags);		// notify player of play stop
+		void (*PlayStarted)(const char* medianame, int flags);		// notify player of play start
 		void (*PlayPaused)(const char* medianame, int flags);		// notify player of play pause
-		void (*PlayDone)(const char* medianame);					// notify player when play done
-		void (*PlayTrackChanged)(const char* medianame);			// notify player when playing track changes (cd audio relevant only)
-		void (*MediaEjected)(const char* medianame);				// notify player of media eject (cd audio relevant)
+		void (*PlayDone)(const char* medianame, int flags);			// notify player when play done
+		void (*PlayTrackChanged)(const char* medianame, int flags);	// notify player when playing track changes (cd audio relevant only)
+		void (*MediaEjected)(const char* medianame, int flags);		// notify player of media eject (cd audio relevant)
 		void (*MediaInserted)(const char* medianame, int flags);	// notify player of media insert (cd audio relevant)
 
 																	// output plugin calls
-		int  (*OutputOpen)(const char* medianame, WAVEFORMATEX*);	// open output for wave data
+		int  (*OutputOpen)(const char* medianame, WAVEFORMATEX* wf);// open output for wave data
 		int  (*OutputWrite)(WriteDataStruct*);						// send PCM audio data to output 
 																		// (blocks until write completes, thus if output is paused can 
 																		// block until unpaused)
@@ -96,32 +116,43 @@ typedef struct
 		int  (*OutputSetVol)(int levelleft, int levelright, int flags);
 		int  (*OutputGetCurrentPosition)(unsigned int *position, int flags);
 
-		void *Reserved[10];
+		int  (*OutputTestFormat)(WAVEFORMATEX* wf, int flags);		// test to see if waveformat is acceptable to output
+																		// will fail silently, return value will be one of TESTFORMAT_*
+		void *Reserved[9];
 	} toPlayer;
 
-	struct 
+	// Set of functions defined by plug-in that the player can call.
+	struct _toModule
 	{
 		int  (*Initialize)(QCDModInfo *modInfo, int flags);			// initialize plugin
 		void (*ShutDown)(int flags);								// shutdown plugin
 
 		int  (*Play)(const char* medianame, int playfrom, int playto, int flags);	// start playing playfrom->playto
 		int  (*Stop)(const char* medianame, int flags);				// stop playing
-		int  (*Pause)(const char* medianame, int flags);			// pause playback
-		int  (*Eject)(const char* medianame, int flags);			// eject media
+		int  (*Pause)(const char* medianame, int flags);			
+		int  (*Eject)(const char* medianame, int flags);			// Eject media
 		void (*SetEQ)(EQInfo*);										// update EQ settings
 
 		int  (*GetMediaSupported)(const char* medianame, MediaInfo *mediaInfo);			// does plugin support medianame (and provides info for media)
 		int  (*GetTrackExtents)(const char* medianame, TrackExtents *ext, int flags);	// get media start, end & units
-		int  (*GetCurrentPosition)(const char* medianame, long *track, long *offset);	// get playing media's position
+		int  (*GetCurrentPosition)(const char* medianame, long *track, long *offset);	// Get playing media's position
 
-		void (*Configure)(int flags);									// launch configuration
-		void (*About)(int flags);										// launch about info
+		// lLaunch or set configuration for plug-in.
+		void (*Configure)(int flags);
+		// Display 'Abut Plug-in' information.
+		void (*About)(int flags);										
 
 		void (*SetVolume)(int levelleft, int levelright, int flags);	// level 0 - 100
 
-		void *Reserved[10];
-	} toModule;
+		IQCDMediaDecoder* (*CreateDecoderInstance)(const WCHAR* medianame, int flags); // Create new instance of class that implementsIQCDMediaDecoder.
+		                                                                               // All instances of IQCDMediaDecoder must be independant and
+		                                                                               // thread safe.                                                 
 
-} QCDModInitIn;
+		// <copy Player_Plugin_Common_reserved>
+		// 
+		// \ \                                 
+		void *Reserved[9];
+	} toModule;
+};
 
 #endif //QCDMODINPUT_H

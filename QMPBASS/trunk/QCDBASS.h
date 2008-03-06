@@ -9,7 +9,7 @@
 #include <list>
 using namespace std;
 
-#define PLUGIN_VERSION "v1.01"
+#define PLUGIN_VERSION "v2.0.2"
 
 
 typedef struct

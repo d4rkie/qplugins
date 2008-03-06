@@ -226,7 +226,7 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	strAllExtensions.append(":");
 	strAllExtensions.append(strExtensions);
 
-	ModInfo->moduleString      = "BASS Sound System "PLUGIN_VERSION;
+	ModInfo->moduleString      = "QPlugins BASS Sound System "PLUGIN_VERSION;
 	ModInfo->moduleExtensions  = (LPSTR)strAllExtensions.c_str();
 	ModInfo->moduleCategory    = "AUDIO";
 
@@ -729,14 +729,14 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	if (decoderInfo->pDecoder->is_stream() && 
 		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
 		!decoderInfo->pDecoder->init()) ) { // stream should be initialized here
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 
 			return 0;
 	}
 
 	// OK, play it
 	if (!decoderInfo->pDecoder->play()) {
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 		return 0;
 	}
 
@@ -749,7 +749,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 		done = TRUE;
 	}
 
@@ -761,7 +761,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 
 		if (pVisData == NULL) {
 			show_error("Error: Out of memory!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 			done = TRUE;
 		}
 	}
@@ -881,7 +881,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
 		!decoderInfo->pDecoder->init()) ) { // stream should be initialized here
 
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 		return 0;
 	}
 
@@ -894,7 +894,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 		done = TRUE;
 	}
 
@@ -910,7 +910,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 		wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign;
 		if (!QCDCallbacks.toPlayer.OutputOpen(decoderInfo->playingFile, &wf)) {
 			show_error("Failed opening output device!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 			done = TRUE; // cannot open sound device
 		}
 	}	
@@ -928,7 +928,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
         
         if (hHeap == NULL || pRawData == NULL) {
 			show_error("Error: Out of memory!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, STOPFLAG_FORCESTOP);
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 			done = TRUE;
 		}
 	}
