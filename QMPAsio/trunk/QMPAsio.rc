@@ -190,7 +190,7 @@ END
 // Bitmap
 //
 
-IDB_ASIOLOGO            BITMAP                  "D:\\VSTi\\asiosdk2.1\\asio_logo.bmp"
+IDB_ASIOLOGO            BITMAP                  ".\\res\\asio_logo.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -43,7 +43,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="d:\qcdpdk\include;d:\vsti\asiosdk2.1\common;d:\vsti\asiosdk2.1\host;d:\vsti\asiosdk2.1\host\pc"
+				AdditionalIncludeDirectories="$(QCDPDK)\include;$(ASIOSDK)\common;$(ASIOSDK)\host;$(ASIOSDK)\host\pc"
 				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG;_USRDLL"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -130,7 +130,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="d:\qcdpdk\include;d:\vsti\asiosdk2.1\common;d:\vsti\asiosdk2.1\host;d:\vsti\asiosdk2.1\host\pc"
+				AdditionalIncludeDirectories="$(QCDPDK)\include;$(ASIOSDK)\common;$(ASIOSDK)\host;$(ASIOSDK)\host\pc"
 				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG;_USRDLL"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="false"
@@ -359,7 +359,7 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\asio_logo.bmp"
+				RelativePath=".\res\asio_logo.bmp"
 				>
 			</File>
 			<File
@@ -391,7 +391,7 @@
 			Name="ASIO"
 			>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\common\asio.cpp"
+				RelativePath="$(ASIOSDK)\common\asio.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -413,37 +413,11 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\common\asio.h"
+				RelativePath="$(ASIOSDK)\common\asio.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\host\asiodrivers.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
-						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\host\asiodrivers.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\host\pc\asiolist.cpp"
+				RelativePath="$(ASIOSDK)\host\asiodrivers.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -465,19 +439,45 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\host\pc\asiolist.h"
+				RelativePath="$(ASIOSDK)\host\asiodrivers.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\common\asiosys.h"
+				RelativePath="$(ASIOSDK)\host\pc\asiolist.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="$(ASIOSDK)\host\pc\asiolist.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\host\ginclude.h"
+				RelativePath="$(ASIOSDK)\common\asiosys.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\VSTi\asiosdk2.1\common\iasiodrv.h"
+				RelativePath="$(ASIOSDK)\host\ginclude.h"
+				>
+			</File>
+			<File
+				RelativePath="$(ASIOSDK)\common\iasiodrv.h"
 				>
 			</File>
 		</Filter>
