@@ -83,7 +83,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,84,92,50,14
-    CTEXT           "Version 1.5.2\nLast modified February 2008",IDC_STATIC,23,51,172,18
+    CTEXT           "Version 1.5.3\nLast modified March 2008",IDC_STATIC,23,51,172,18
     CTEXT           "Virtual Track support\nIt is an agent between virtual track && real image file.",IDC_STATIC,23,22,172,16
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,76,65,8
@@ -208,7 +208,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_INPUT_MODULE        "CUE Sheet Player v1.5.2"
+    IDS_INPUT_MODULE        "CUE Sheet Player v1.5.3"
     IDS_PLAYLIST_MODULE     "CUE Sheet Support v1.5.2"
     IDS_TAG_MODULE          "Virtual Track"
 END

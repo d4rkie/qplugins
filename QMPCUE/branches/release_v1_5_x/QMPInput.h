@@ -84,6 +84,10 @@ private:
 	static void PlayStopped(const char* medianame, int flags);
 	static void PlayDone(const char* medianame, int flags);
 
+	static int _play_on_seeking(const char* medianame, int playfrom, int playto, int flags);
+	static int _play_on_playback(const char* medianame, int playfrom, int playto, int flags);
+	static int _play_on_encoding(const char* medianame, int playfrom, int playto, int flags);
+
 	static QCDModInitIn * _create_input_instance(const CPath pathImageFile);
 	static void _release_input_instance(QCDModInitIn ** qcdcallbacks);
 
