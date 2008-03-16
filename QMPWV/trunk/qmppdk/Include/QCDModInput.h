@@ -65,6 +65,10 @@
                                         	//     Player will find alternate plugin to play track, or go to next track
 #define PLAYSTATUS_STOPPLAYBACK		-2		// play call did not succeed, and player should not go to next track
 
+// PlayStopped flags (plugin should pass one of these when calling PlayStopped())
+#define PLAYSTOPPED_DEFAULT			0		// decoding has permaturaly ceased, stop player playback
+#define PLAYSTOPPED_UNSUPPORTED		-1		// decoding has permaturaly ceased due to media being unsupported
+
 // Wave Marker flags
 #define WAVE_VIS_DATA_ONLY			-1		// set to WaveDataStruct.markerstart in OutputWrite() call have data only go to vis 
 											// and not to output plugin
@@ -90,7 +94,7 @@ struct QCDModInitIn
 	struct _toPlayer
 	{
 		void (*PositionUpdate)(unsigned int position);
-		void (*PlayStopped)(const char* medianame, int flags);			// notify player of play stop
+		void (*PlayStopped)(const char* medianame, int flags);		// notify player of play stop
 		void (*PlayStarted)(const char* medianame, int flags);		// notify player of play start
 		void (*PlayPaused)(const char* medianame, int flags);		// notify player of play pause
 		void (*PlayDone)(const char* medianame, int flags);			// notify player when play done

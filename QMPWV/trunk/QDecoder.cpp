@@ -14,7 +14,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.3"), _T("WV"))
+: QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.3.0"), _T("WV"))
 , m_wpc(NULL)
 , m_wvcreader(NULL)
 , m_bAbort(FALSE)
@@ -55,7 +55,7 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 	ZeroMemory( infilename, sizeof(infilename));
 	WideCharToMultiByte( CP_ACP, 0, mediaReader.GetName(), -1, infilename, sizeof(infilename), 0, 0);
 	if ( !(wpc = WavpackOpenFileInput( infilename, error, (g_bUseWVC & OPEN_WVC) | OPEN_2CH_MAX, 0)))
-		return E_FAIL;
+		return FALSE;
 
 	te.track = 1;
 	te.bytesize = mediaReader.GetSize();
@@ -65,7 +65,7 @@ int QDecoder::GetTrackExtents(QMediaReader & mediaReader, TrackExtents & te)
 
 	wpc = WavpackCloseFile( wpc);
 
-	return NOERROR;
+	return TRUE;
 }
 
 int QDecoder::Open(QMediaReader & mediaReader)
