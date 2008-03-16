@@ -226,9 +226,6 @@ int QMPInput::Initialize(QCDModInfo *ModInfo, int flags)
 	// load display name
 	ResInfo resInfo = { sizeof(ResInfo), g_hInstance, MAKEINTRESOURCE(IDS_INPUT_MODULE), 0, 0 };
 	QCDCallbacks.Service( opLoadResString, (void*)g_szInputModDisplayStr, (long)sizeof(g_szInputModDisplayStr), (long)&resInfo);
-#ifdef _DEBUG
-	lstrcat( g_szInputModDisplayStr, _T("(debug)"));
-#endif
 
 	// the unique player window handle
 	hwndPlayer = (HWND)QCDCallbacks.Service( opGetParentWnd, 0, 0, 0);
@@ -349,13 +346,6 @@ int QMPInput::GetTrackExtents(const char* medianame, TrackExtents *ext, int flag
 	if ( !ret)
 		return FALSE;
 
-#ifdef _DEBUG
-	QLogFile::GetInst().OutputLogStr( _T("input@GetTrackExtents")
-	                                 , _T("Image File: track: %d, start: %d, end: %d, unitpersec: %d, bytesize: %d")
-	                                 , ext->track, ext->start, ext->end, ext->unitpersec, ext->bytesize
-	                                 );
-#endif
-
 	ext->track = vtNum; // we can always get the track number.
 	ext->bytesize = 0; // always 0!
 	ext->start = (UINT)(ext->unitpersec * cueSheet.GetTrackStartIndex( ext->track));
@@ -363,13 +353,6 @@ int QMPInput::GetTrackExtents(const char* medianame, TrackExtents *ext, int flag
 		return FALSE;
 	double total_seconds = ext->end * 1.0 / ext->unitpersec;
 	ext->end = (UINT)(ext->unitpersec * cueSheet.GetTrackEndIndex( ext->track, total_seconds));
-
-#ifdef _DEBUG
-	QLogFile::GetInst().OutputLogStr( _T("input@GetTrackExtents")
-	                                 , _T("Virtual Track: track: %d, start: %d, end: %d, unitpersec: %d, bytesize: %d")
-	                                 , ext->track, ext->start, ext->end, ext->unitpersec, ext->bytesize
-	                                 );
-#endif
 
 	return TRUE;
 }
@@ -554,9 +537,6 @@ QCDModInitIn * QMPInput::_create_input_instance(const CPath pathImageFile)
 			// !! DO NOT MODIFY THE PLAYER'S CORE, JUST PEEK AND GRAB IT !!
 			// !! DO NOT RELEASE THE HANDLE WHEN WE FINISHED OUR JOB !!
 			hmod = GetModuleHandle( cache.path);
-#ifdef _DEBUG
-			if ( hmod) QLogFile::GetInst().OutputLogStr( _T("input"), _T("%d: %s has been loaded!"), hmod, cache.path);
-#endif
 			if ( hmod) break;
 		}
 	}
@@ -570,10 +550,6 @@ QCDModInitIn * QMPInput::_create_input_instance(const CPath pathImageFile)
 
 	// invoke plug-in's entry point function
 	QCDModInitIn * qcdcallbacks = ep();
-
-#ifdef _DEBUG
-	QLogFile::GetInst().OutputLogStr( _T("input"), _T("initialize %d %s!"), hmod, qcdcallbacks ? "successful" : "unsuccessfully");
-#endif
 
 	return qcdcallbacks;
 }
@@ -696,9 +672,9 @@ int QMPInput::_play_on_playback(const char* medianame, int playfrom, int playto,
 	int vtNum = cueSheet.GetVirtualTrackNumber();
 	CPath pathImageFile = cueSheet.GetImageFilePath(vtNum);
 
-	// a different/new image file -- init input plugin
-	if ( lstrcmpi( pathImageFile, g_pathImageFile)) {
-		if ( lstrlen( g_pathImageFile) > 0) { // close previous track
+	if ( lstrcmpi( pathImageFile, g_pathImageFile)) { // a different/new image file -- init input plugin
+		// close previous track
+		if ( lstrlen( g_pathImageFile) > 0) {
 			SetEvent( g_hPlayStartedEvent);
 
 			QCDCallbacks.toPlayer.OutputStop( STOPFLAG_PLAYDONE);
@@ -708,18 +684,10 @@ int QMPInput::_play_on_playback(const char* medianame, int playfrom, int playto,
 		// release the existent instance
 		_release_input_instance( &g_qcdCallbacks);
 
-#ifdef _DEBUG
-		QLogFile::GetInst().OutputLogStr( _T("input@PlayOnPlayback"), _T("loading plugin..."));
-#endif
-
 		// Load input plug-in, but NOT initializes it. QMP will do this.
 		g_qcdCallbacks = _create_input_instance( pathImageFile);
 		if ( !g_qcdCallbacks)
 			return PLAYSTATUS_UNSUPPORTED; // no supported plug-ins for decoding, so, return UNSUPPORTED to player.
-
-#ifdef _DEBUG
-		QLogFile::GetInst().OutputLogStr( _T("input@PlayOnPlayback"), _T("initializing plugin..."));
-#endif
 
 		// get the total length of the image file and send it to plug-in as "playto"
 		if ( !g_qcdCallbacks->toModule.GetTrackExtents( _gen_module_path( g_qcdCallbacks, pathImageFile), &g_tePlaying, 0))
@@ -732,29 +700,32 @@ int QMPInput::_play_on_playback(const char* medianame, int playfrom, int playto,
 		g_nTotalTracks = cueSheet.GetNumTracks();
 
 		g_hPlayStartedEvent = CreateEvent( NULL, TRUE, TRUE, NULL); // signaled state
-	} else {
-		// Seeking in the same image file
-		flags = PLAYFLAG_SEEKING;
-	}
 
-	g_lfStart = playfrom;
-	g_lfEnd = playto;
+		// save playback info.
+		g_lfStart = playfrom;
+		g_lfEnd = playto;
+		g_nCurTrack = vtNum;
+		g_pathImageFile = pathImageFile; // save new image file
+		g_pathVTrack = (LPCTSTR)medianame;
 
-	g_nCurTrack = vtNum;
-	g_pathImageFile = pathImageFile;
-	g_pathVTrack = (LPCTSTR)medianame;
+		// do playback
+		return g_qcdCallbacks->toModule.Play( _gen_module_path( g_qcdCallbacks, g_pathImageFile), playfrom, g_tePlaying.end, flags);
+	} else { // a different virtual track in the same image file -- actually, seeking
+		g_lfStart = playfrom;
+		g_lfEnd = playto;
+		g_pathVTrack = (LPCTSTR)medianame;
 
-#ifdef _DEBUG
-	QLogFile::GetInst().OutputLogStr( _T("input@PlayOnPlayback"), _T("Start playing/encoding: from %d, to %d"), playfrom, g_tePlaying.end);
-#endif
-
-	// Seamless Playback mode: notify playdone, then play new track
-	if ( WAIT_TIMEOUT == WaitForSingleObject( g_hPlayStartedEvent, 0)) { // Test state: OutputWrite ready to go to new VT.
+		// make sure we always in the signaled state
 		SetEvent( g_hPlayStartedEvent);
-		return PLAYSTATUS_SUCCESS; // return immediately when virtual track play done.
-	}
 
-	return g_qcdCallbacks->toModule.Play( _gen_module_path( g_qcdCallbacks, g_pathImageFile), playfrom, g_tePlaying.end, flags);
+		if ( (g_nCurTrack + 1) == vtNum) { // Seamless Playback mode
+			g_nCurTrack = vtNum;
+			return PLAYSTATUS_SUCCESS; // return immediately when virtual track play done.
+		} else {
+			g_nCurTrack = vtNum;
+			return g_qcdCallbacks->toModule.Play( _gen_module_path( g_qcdCallbacks, g_pathImageFile), playfrom, g_tePlaying.end, flags);
+		}
+	}
 }
 
 int QMPInput::_play_on_encoding(const char* medianame, int playfrom, int playto, int flags)
@@ -770,18 +741,10 @@ int QMPInput::_play_on_encoding(const char* medianame, int playfrom, int playto,
 	// release the existent instance
 	_release_input_instance( &g_qcdCallbacks);
 
-#ifdef _DEBUG
-	QLogFile::GetInst().OutputLogStr( _T("input@PlayOnEncoding"), _T("loading plugin..."));
-#endif
-
 	// Load input plug-in, but NOT initializes it. QMP will do this.
 	g_qcdCallbacks = _create_input_instance( pathImageFile);
 	if ( !g_qcdCallbacks)
 		return PLAYSTATUS_UNSUPPORTED; // no supported plug-ins for decoding, so, return UNSUPPORTED to player.
-
-#ifdef _DEBUG
-	QLogFile::GetInst().OutputLogStr( _T("input@PlayOnEncoding"), _T("initializing plugin..."));
-#endif
 
 	// get the total length of the image file and send it to plug-in as "playto"
 	if ( !g_qcdCallbacks->toModule.GetTrackExtents( _gen_module_path( g_qcdCallbacks, pathImageFile), &g_tePlaying, 0))
@@ -801,10 +764,6 @@ int QMPInput::_play_on_encoding(const char* medianame, int playfrom, int playto,
 	g_nCurTrack = vtNum;
 	g_pathImageFile = pathImageFile;
 	g_pathVTrack = (LPCTSTR)medianame;
-
-#ifdef _DEBUG
-	QLogFile::GetInst().OutputLogStr( _T("input@PlayOnEncoding"), _T("Start playing/encoding: from %d, to %d"), playfrom, g_tePlaying.end);
-#endif
 
 	return g_qcdCallbacks->toModule.Play( _gen_module_path( g_qcdCallbacks, g_pathImageFile), playfrom, g_tePlaying.end, flags);
 }

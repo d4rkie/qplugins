@@ -139,15 +139,6 @@ int QMPPlaylists::LoadEntries(void* plHandle, void* _plData, int flags)
 		vtname.Format( L"%s,%d.vt", plData->cueSheet->GetCUESheetFilePath(), i);
 
 		QCDCallbacks.toPlayer.LoadEntry( plHandle, (LPSTR)(LPCWSTR)vtname, &entryData, 0);
-
-#ifdef _DEBUG
-		QLogFile::GetInst().OutputLogStr( _T("playlist")
-		                                , _T("track: %d, start: %d, end: %d, title: %s, album: %s, artist: %s")
-		                                , entryData.trackExtents.track
-		                                , entryData.trackExtents.start, entryData.trackExtents.end
-		                                , entryData.title, entryData.album, entryData.artist
-		                                );
-#endif
 	}
 
 	QCDCallbacks.toPlayer.LoadComplete( plHandle, 0);
