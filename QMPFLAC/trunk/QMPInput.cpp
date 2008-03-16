@@ -212,7 +212,8 @@ int QMPInput::Stop(const char* medianame, int flags)
 	// trust we're always talking about whatever is
 	// currently playing
 
-	QCDCallbacks.toPlayer.OutputStop(flags);
+	if ( STOPFLAG_ALLDONE != flags)
+		QCDCallbacks.toPlayer.OutputStop(flags);
 
 	if ( g_hDecoderThread) {
 		if ( g_pThreadData) g_pThreadData->mediaReader.Reset();
