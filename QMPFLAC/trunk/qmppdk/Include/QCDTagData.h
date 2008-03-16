@@ -94,6 +94,7 @@ enum QTAGDATA_TYPE
 // these structure are byte aligned
 #include <pshpack1.h>
 
+// Header format for file tag artwork field
 struct QTAGDATA_HEADER_ARTWORK
 {
 	LPWSTR	pszMimeType;
@@ -104,6 +105,7 @@ struct QTAGDATA_HEADER_ARTWORK
 };
 
 
+// Header format for file tag comments field
 struct QTAGDATA_HEADER_COMMENT
 {
 	BYTE	bLang[3];
@@ -112,6 +114,7 @@ struct QTAGDATA_HEADER_COMMENT
 };
 
 
+// Header format for file tag lyrics field
 struct QTAGDATA_HEADER_LYRICS
 {
 	BYTE	bLang[3];

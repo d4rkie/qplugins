@@ -71,6 +71,15 @@
 #define		QCDInfo_Channels				L"Channels"
 #define		QCDInfo_BPM						L"BPM"
 
+#define     QCDInfo_Stream_StationURL       L"StationURL"
+#define     QCDInfo_Stream_ContentType      L"ContentType"
+#define     QCDInfo_Stream_FileFormat       L"FileFormat"
+#define     QCDInfo_Stream_StationName      QCDInfo_ArtistAlbum
+#define     QCDInfo_Stream_LastPlaying      QCDInfo_TitleTrack
+#define     QCDInfo_Stream_Genre            QCDInfo_GenreTrack
+#define     QCDInfo_Stream_Comment          QCDInfo_Comment
+#define     QCDInfo_Stream_Bitrate          QCDInfo_Bitrate
+
 #define		QCDInfo_ReplayGain_Album_Gain	L"ReplayGain_Album_Gain"
 #define		QCDInfo_ReplayGain_Track_Gain	L"ReplayGain_Track_Gain"
 #define		QCDInfo_ReplayGain_Album_Peak	L"ReplayGain_Album_Peak"

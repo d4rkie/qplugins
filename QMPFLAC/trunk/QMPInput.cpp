@@ -341,52 +341,6 @@ class MediaSourceStatus : public IQCDMediaSourceStatus
 	QMediaReader * m_pMediaReader;
 	PluginServiceFunc m_opService;
 
-	void _metadataAvailable()
-	{
-		IQCDMediaInfo* pMediaInfo = (IQCDMediaInfo*)m_opService( opGetIQCDMediaInfo, 0, 0, 0);
-		if ( pMediaInfo) {
-			if ( m_pMediaReader->GetAvailableMetadata( pMediaInfo) > 0) {
-				IQCDMediaInfo *pPlayerInfo = (IQCDMediaInfo*)m_opService( opGetIQCDMediaInfo, (void*)(LPCWSTR)m_pMediaReader->GetName(), DIGITAL_AUDIOSTREAM_MEDIA, 0);
-				if ( pPlayerInfo) {
-					WCHAR szName[1024], szValue[1024], szURL[1024] = {0};
-					long nameLen = 1024, valueLen = 1024, index = 0;
-
-					while ( pMediaInfo->GetInfoByIndex( index, szName, &nameLen, szValue, &valueLen)) {
-						if ( lstrcmpiW( szName, L"StreamTitle") == 0) {
-							pPlayerInfo->SetInfoByName( QCDInfo_TitleTrack, szValue, 0);
-						} else if ( (lstrcmpiW( szName, L"icy-name") == 0) ||
-						            (lstrcmpiW( szName, L"ice-name") == 0)
-						          ) {
-							pPlayerInfo->SetInfoByName( QCDInfo_ArtistAlbum, szValue, 0);
-						} else if ( lstrcmpiW( szName, L"StreamUrl") == 0) {
-							if ( wcsstr( szValue, L"://"))
-								lstrcpynW( szURL, szValue, 1024);
-						} else if ( (lstrcmpiW( szName, L"icy-url") == 0) ||
-						            (lstrcmpiW( szName, L"ice-url") == 0)
-						          ) {
-							if ( (szURL[0] == 0) && wcsstr( szValue, L"://"))
-								lstrcpynW( szURL, szValue, 1024);
-						}
-
-						index++;
-						nameLen = 1024;
-						valueLen = 1024;
-					}
-
-					// TODO: need to test that metadata changed before applying
-					// (saves all the effort)
-
-					pPlayerInfo->ApplyToAll(0);
-					pPlayerInfo->Release();
-
-					if ( szURL[0]) m_opService( opSetBrowserUrl, (void*)szURL, 0, 0);
-				}
-			}
-
-			pMediaInfo->Release();
-		}
-	};
-
 public:
 	MediaSourceStatus(QMediaReader & mediaReader, PluginServiceFunc opService)
 	{
@@ -397,11 +351,36 @@ public:
 
 	void __stdcall StatusMessage(long statusFlag, LPCWSTR statusMsg, long userData)
 	{
-		if ( statusFlag == MEDIASOURCE_STATUS_RECEIVEDMETADATA)
-			_metadataAvailable();
-		else if ( statusMsg && *statusMsg)
-			m_opService( opSetStatusMessage, (void*)statusMsg, TEXT_TOOLTIP|TEXT_UNICODE, 0);
+		m_opService( opSetStatusMessage, (void *)statusMsg, TEXT_TOOLTIP|TEXT_UNICODE, 0);
 	};
+
+	long __stdcall SetMetadataValue(LPCWSTR szValueName, LPCWSTR szValue, IQCDMediaInfo* pMetadata, long userData)
+	{
+		WCHAR szURL[1024] = {0};
+
+		if ( lstrcmpiW( szValueName, L"StreamTitle") == 0) {
+			pMetadata->SetInfoByName( QCDInfo_Stream_LastPlaying, szValue, 0);
+		} else if ( (lstrcmpiW( szValueName, L"icy-name") == 0) || (lstrcmpiW( szValueName, L"ice-name") == 0)) {
+			pMetadata->SetInfoByName( QCDInfo_Stream_StationName, szValue, 0);
+		} else if ( lstrcmpiW( szValueName, L"icy-genre") == 0) {
+			pMetadata->SetInfoByName( QCDInfo_Stream_Genre, szValue, 0);
+		} else if ( lstrcmpiW( szValueName, L"content-type") == 0) {
+			pMetadata->SetInfoByName( QCDInfo_Stream_ContentType, szValue, 0);
+		} else if ( lstrcmpiW( szValueName, L"icy-br") == 0) {
+			pMetadata->SetInfoByName( QCDInfo_Stream_Bitrate, szValue, 0);
+		} else if ( lstrcmpiW( szValueName, L"StreamUrl") == 0) {
+			pMetadata->SetInfoByName( QCDInfo_Stream_StationURL, szValue, 0);
+		} else if ( (lstrcmpiW( szValueName, L"icy-url") == 0) || (lstrcmpiW( szValueName, L"ice-url") == 0)) {
+			pMetadata->SetInfoByName( QCDInfo_Stream_StationURL, szValue, 0);
+		}
+
+		return pMetadata->ApplyToAll(0);
+	}
+
+	long __stdcall SourceMetadataUpdate(IQCDMediaInfo* pMetadata, long userData)
+	{
+		return 1;
+	}
 };
 
 //-----------------------------------------------------------------------------
@@ -412,6 +391,7 @@ UINT WINAPI __stdcall QMPInput::DecodeThread(void * b)
 	DecodeThreadData_t * threadData = *ppthreadData;
 	assert(threadData);
 
+	int stopFlag = PLAYSTOPPED_DEFAULT;
 	bool bOutputOpened = false;
 
 	MediaSourceStatus* pReaderStatus = new MediaSourceStatus(threadData->mediaReader, QCDCallbacks.Service);
@@ -426,8 +406,10 @@ UINT WINAPI __stdcall QMPInput::DecodeThread(void * b)
 		if ( !pQDecoder)
 			break;
 
-		if ( 0 >= pQDecoder->Open( threadData->mediaReader))
+		if ( 0 >= pQDecoder->Open( threadData->mediaReader)) {
+			stopFlag = PLAYSTOPPED_UNSUPPORTED;
 			break;
+		}
 
 		bSuccess = true;
 	} while (0);
@@ -445,7 +427,7 @@ UINT WINAPI __stdcall QMPInput::DecodeThread(void * b)
 		//HWND hwndPlayer = (HWND)QCDCallbacks.Service(opGetParentWnd, 0, 0, 0);
 		//MessageBox(hwndPlayer, msg, title, MB_ICONINFORMATION);
 
-		QCDCallbacks.toPlayer.PlayStopped( (LPCSTR)(LPCWSTR)threadData->mediaReader.GetName(), 0);
+		QCDCallbacks.toPlayer.PlayStopped( (LPCSTR)(LPCWSTR)threadData->mediaReader.GetName(), stopFlag);
 		g_bDecoderThreadKill = TRUE;
 		threadData->mediaReader.Reset();
 	} else {

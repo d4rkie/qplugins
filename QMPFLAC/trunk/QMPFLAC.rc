@@ -54,7 +54,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_DISPLAYNAME         "QPlugins FLAC Audio Decoder v3.5.2"
+    IDS_DISPLAYNAME         "QPlugins FLAC Audio Decoder v3.5.3"
 END
 
 #endif    // 中文(中华人民共和国) resources
@@ -108,7 +108,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",1,84,92,50,14
-    CTEXT           "Version 3.5.2\nLast modified December 2007",IDC_STATIC,23,51,172,18
+    CTEXT           "Version 3.5.3\nLast modified March 2008",IDC_STATIC,23,51,172,18
     CTEXT           "Free Lossless Audio Codec (FLAC) audio file support",IDC_STATIC,23,22,172,8
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,76,65,8
@@ -124,7 +124,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",1,84,92,50,14
-    CTEXT           "Version 3.5.2\nLast modified December 2007",IDC_STATIC,23,51,172,18
+    CTEXT           "Version 3.5.3\nLast modified March 2008",IDC_STATIC,23,51,172,18
     CTEXT           "FLAC Tag reading and writing support.",IDC_STATIC,23,22,172,8
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,105
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,76,65,8

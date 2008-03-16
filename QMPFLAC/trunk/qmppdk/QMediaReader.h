@@ -186,14 +186,14 @@ public:
 			return 0;
 		}
 	}
-	long GetAvailableMetadata(IQCDMediaInfo* pMediaInfo)
+	bool IsConnected()
 	{
 		if ( m_pms) {
 			m_LastError = MSERROR_SUCCESS;
-			return m_pms->GetAvailableMetadata( pMediaInfo);
+			return m_pms->IsConnected();
 		} else {
 			m_LastError = MSERROR_FAILED;
-			return 0;
+			return false;
 		}
 	}
 
