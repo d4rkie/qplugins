@@ -855,7 +855,6 @@ void UpdateSSBarStatus(HWND hwndDlg)
 
 	// Set button status
 	EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_SKIP_TITLE), bStreamSaving);
-	EnableWindow(GetDlgItem(hwndDlg, IDC_STREAM_SAVING_BAR_GO), bStreamSaving);
 
 	return;
 }
