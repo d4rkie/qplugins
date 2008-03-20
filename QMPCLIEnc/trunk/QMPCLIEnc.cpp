@@ -25,6 +25,8 @@
 #include "ParentDlg.h"
 #include "AboutDlg.h"
 
+#include "IQCDMediaSource.h"
+
 HINSTANCE		g_hInstance = NULL;
 HWND			g_hwndParent;
 QCDModInitEnc	QCDCallbacks;
@@ -258,63 +260,49 @@ BOOL Drain(int flags)
 
 BOOL Complete(int flags)
 {
-    g_cliEnc.Stop();
+	IQCDMediaInfo * piInfoSrc = NULL;
+	IQCDTagInfo * piTagDst = NULL;
+	BOOL ret = FALSE;
+
+	g_cliEnc.Stop();
 
 	if ( flags && g_bDoTag) { // trans-tag for normal complete only!
-		int i, count;
-		IQCDTagInfo * piTagSrc;
-		IQCDTagInfo * piTagDst;
-		BOOL ret;
 
-		ret = FALSE; // default is FALSE
-		do {
-			// Get IQCDTagInfo for source file
-			piTagSrc = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCWSTR)g_strSrc, 0, 0);
-			if ( !piTagSrc) break;
+		// Get media source context
+		piInfoSrc = (IQCDMediaInfo *)QCDCallbacks.Service( opGetIQCDMediaInfo, (void *)(LPCWSTR)g_strSrc, 0, 0);
+		if ( piInfoSrc) {
+			// Load MediaInfo from source
+			long res = piInfoSrc->LoadFullData();
+			if ( res) {
+				// Get target tag context
+				piTagDst = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCWSTR)g_strDst, 0, 0);
+				if ( piTagDst) {
+					//Determine track #
+					long idx = piInfoSrc->GetInfoIndexForMedia();
 
-			// Get IQCDTagInfo for destination file
-			piTagDst = (IQCDTagInfo *)QCDCallbacks.Service( opGetIQCDTagInfo, (void *)(LPCWSTR)g_strDst, 0, 0);
-			if ( !piTagDst) break;
-
-			// read tag from source file
-			if ( !piTagSrc->ReadFromFile( TAG_DEFAULT)) break;
-
-			count = piTagSrc->GetFieldCount();
-			for ( i = 0; i < count; ++i) {
-				LPWSTR lpwszName;
-				LPBYTE lpbData;
-				DWORD lenName, lenData;
-				QTAGDATA_TYPE type;
-				int ret;
-
-				// get length of tag name and tag data
-				ret = piTagSrc->GetTagDataByIndex( i, NULL, &lenName, &type, NULL, &lenData);
-
-				lpwszName = new WCHAR[++lenName];
-				lpbData = new BYTE[++lenData];
-
-				// read tag information from source file
-				ret = piTagSrc->GetTagDataByIndex( i, lpwszName, &lenName, &type, lpbData, &lenData);
-
-				// write tag information into destination file
-				ret = piTagDst->SetTagDataByName( lpwszName, type, lpbData, lenData, &i);
-
-				delete [] lpwszName;
-				delete [] lpbData;
+					// Set track tags from MediaInfo
+					res = piTagDst->SetTagDataFromMediaInfo( piInfoSrc, idx, MEDIAINFO_ALWAYSSET);
+					if ( res) {
+						// write tag information into destination file
+						res = piTagDst->WriteToFile( TAG_DEFAULT);
+						if ( res)
+							ret = TRUE;
+					}
+				}
 			}
-
-			if ( !piTagDst->WriteToFile( TAG_DEFAULT)) break;
-
-			ret = TRUE;
-		} while (0);
-
-		if ( piTagSrc) piTagSrc->Release();
-		if ( piTagDst) piTagDst->Release();
-
-		return ret;
+		}
 	} else {
+		// We did nothing
 		return TRUE;
 	}
+
+	// Cleanup refs
+	if ( piInfoSrc)
+		piInfoSrc->Release();
+	if ( piTagDst)
+		piTagDst->Release();
+
+	return ret;
 }
 
 //-----------------------------------------------------------------------------

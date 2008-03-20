@@ -11,6 +11,8 @@
 #define IDI_CLI                         107
 #define IDC_TAB                         1001
 #define IDC_URL_ENCODERS                1002
+#define IDC_BUTTON2                     1027
+#define IDC_ACKNOWLEDGE                 1027
 #define IDC_URL_VENDOR                  1101
 #define IDC_PATH                        5001
 #define IDC_BROWSE_PATH                 5002
@@ -40,7 +42,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        112
 #define _APS_NEXT_COMMAND_VALUE         40019
-#define _APS_NEXT_CONTROL_VALUE         1026
+#define _APS_NEXT_CONTROL_VALUE         1028
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
