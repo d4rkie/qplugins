@@ -31,6 +31,9 @@
 // Buffer szie := <ASIO preferred size> * SCALE * CONFIG
 #define BUFFER_SCALE	4
 
+// Max channels we handle (not sure if QMP does more than 2)
+#define MAX_CHNLS		8
+
 struct AsioFormatInfo
 {
 	DWORD	SampleRate;
@@ -79,7 +82,10 @@ public:
 	BOOL IsDeviceInited()	{ return m_bDeviceInited; };
 	BOOL IsPlaying()		{ return m_bPlaying; };
 
-	DWORD	m_nUnderruns;
+	long	GetBufferLatency()	{ return m_nBufferLatency; };
+	long	GetDeviceLatency()	{ return m_nDeviceLatency; };
+	DWORD	GetUnderrunCount()	{ return m_nUnderruns; };
+	DWORD	GetSampleRate()		{ return m_nPlayerSampleRate; };
 
 protected:
 	void	PlayerClose(void);
@@ -113,6 +119,8 @@ private:
 
 	long	m_nDeviceChannels;
 	long	m_nDeviceLatency;
+	long	m_nBufferLatency;
+	int		m_nOpenDevice;
 	long	m_nAsioBufferSize;			// ASIO device buffer size (samples)
 	long	m_nChannelBufferSize;		// Input channel buffer size (samples)
 	long	m_nChannelBufferLowWater;	// Trigger to wakeup writer
@@ -125,9 +133,13 @@ private:
 	DWORD	m_nPlayerBitsPerSample;
 	DWORD	m_nPlayerChannels;
 	DWORD	m_nPlayerSampleFormat;
-	long	m_nLeftVolume;
-	long	m_nRightVolume;
+
+	int		m_nVolume[MAX_CHNLS];
+	float	m_fVolume[MAX_CHNLS];
+
+	DWORD	m_nUnderruns;
 
 	friend void ClearAsioBuffer(CAsioHost *pHost, int BuferIdx, DWORD SampleOffset);
 	friend ASIOError StopAsio(CAsioHost *pHost);
+	friend long ASIOMessages(long selector, long value, void* message, double* opt);
 };

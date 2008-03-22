@@ -1,22 +1,3 @@
-//-----------------------------------------------------------------------------
-//
-// File:	QMPAsio.rc
-//
-// About:	ASIO Playback interface for QMP 5.0
-//
-// Authors:	Written by Ted Hess
-//
-//	QMP multimedia player application Software Development Kit Release 5.0.
-//
-//	This code is free.  If you redistribute it in any form, leave this notice 
-//	here.
-//
-//	This program is distributed in the hope that it will be useful,
-//	but WITHOUT ANY WARRANTY; without even the implied warranty of
-//	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-//
-//-----------------------------------------------------------------------------
-
 // Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
@@ -126,9 +107,11 @@ BEGIN
     PUSHBUTTON      "&CP Button...",IDC_ASIOCONTROLBUTTON,153,55,82,18
     RTEXT           "&ASIO Device",IDC_CHOOSEDEVICETEXT,21,33,45,12,SS_CENTERIMAGE
     RTEXT           "&Buffer Size",IDC_CHANNELBUFFERSIZETEXT,25,58,41,12,SS_CENTERIMAGE
-    GROUPBOX        "ASIO Playback Config",IDC_ASIOPLAYBACKCONFIG,7,10,257,92
+    GROUPBOX        "ASIO Playback Config",IDC_ASIOPLAYBACKCONFIG,7,10,257,95
     RTEXT           "Underruns:",IDC_UNDERRUNS,179,234,80,10
-    CONTROL         "Seamless",IDC_SEAMLESS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,81,110,10
+    CONTROL         "Seamless",IDC_SEAMLESS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,153,82,103,10
+    LTEXT           "ASIO latency",IDC_ASIOLATENCY,7,234,162,10
+    CONTROL         "Volume",IDC_VOLUMEENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,21,82,104,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 236, 123
@@ -220,7 +203,8 @@ BEGIN
     IDS_RATEERRORMSG        "Selected ASIO device does not support %d Hz sample rate."
     IDS_DEVICETYPEERROR     "ASIO device type %d not supported."
     IDS_SEAMLESSTEXT        "Enable seamless playback"
-    IDS_LATENCYMSG          "ASIO driver latency: %dms"
+    IDS_LATENCYMSG          "Device latency: %dms"
+    IDS_VOLUMEENABLETEXT    "Enable player volume control"
 END
 
 #endif    // English (U.S.) resources

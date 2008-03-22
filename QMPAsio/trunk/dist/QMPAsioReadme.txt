@@ -21,11 +21,10 @@ Notes
    
    http://www.microsoft.com/downloads/details.aspx?familyid=200B2FD9-AE1A-4A14-984D-389C36F85647
 
-2. No volume control other than the master volume control on your sound card is supported.
-   This decision was for performance and sound quality reasons.
+2. Player volume control enable is optional (default is enabled)
 
-3. No re-sampling support. Again, I didn't think this appropriate for performance and sound
-   quality reasons. If you are lucky enough (as I am) to have Creative sound card which does
+3. No re-sampling support. I didn't think this appropriate for performance and sound
+   quality reasons. If you are "lucky" enough (as I am) to have Creative sound card which does
    not support 44.1Khz audio, you can use ASIO4ALL (http://www.asio4all.com) to
    re-sample 44.1Khz to 48Khz.
 
@@ -39,6 +38,8 @@ Revision History
 
 1.0.5	Fix problem skipping tracks across 2 CD drives (seamless playback)
 	Force mono source to binaural output
+	Fix crash when switching ASIO devices
+	Added option to enable player volume control
 
 1.0.4	Initial release
 

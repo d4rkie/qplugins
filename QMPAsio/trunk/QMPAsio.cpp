@@ -296,7 +296,10 @@ BOOL Stop(int flags)
 
 	// Special handling of PLAYDONE for seamless playback
 	if (asioApp.m_pConfig->m_bSeamless && (flags == STOPFLAG_PLAYDONE))
-		return FALSE;
+	{
+		// Don't stop ASIO engine
+		return PLAYBACKSTOP_REMAININGOPEN;
+	}
 
 #if 0
 	// Get a bunch of player state information
@@ -332,9 +335,14 @@ BOOL Stop(int flags)
 #endif
 
 	// Stop ASIO driver or just stop processing buffers (checks flags)
-	asioApp.m_pAsioHost->DoStop(flags);
+	if (!asioApp.m_pAsioHost->DoStop(flags))
+	{
+		// ASIO engine still running
+		return PLAYBACKSTOP_REMAININGOPEN;
+	}
 
-	return TRUE;
+	// Must call open before playing again
+	return PLAYBACKSTOP_OUTPUTCLOSED;
 }
 
 //-----------------------------------------------------------------------------

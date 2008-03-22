@@ -43,11 +43,16 @@ CAsioHost::CAsioHost(void)
 	this->m_nChannelBufferSize = 0;
 	this->m_nChannelBufferLowWater = 0;
 	this->m_nUnderruns = 0;
+	this->m_nPlayerSampleRate = 44100;
+	this->m_nDeviceLatency = this->m_nBufferLatency = 0;
 
 	this->m_Callbacks.bufferSwitch = &BufferSwitch;
 	this->m_Callbacks.sampleRateDidChange = &SampleRateChanged;
 	this->m_Callbacks.asioMessage = &ASIOMessages;
 	this->m_Callbacks.bufferSwitchTimeInfo = NULL;		// Not used
+
+	memset(m_nVolume, 0, sizeof(m_nVolume));
+	memset(m_fVolume, 0, sizeof(m_fVolume));
 
 	// Use of spinlock can avoid costly kernel wait calls (best if low contention)
 	::InitializeCriticalSectionAndSpinCount(&this->AsioCritSec, QMPASIO_SPINCOUNT);
@@ -69,6 +74,13 @@ BOOL CAsioHost::DoOpen(DWORD SampleRate, DWORD BitsPerSample, DWORD nChannels, D
 {
 	if (!this->m_bDeviceInited)
 	{
+		// Check if driver needs to be switched
+		if (this->m_nOpenDevice != asioApp.m_pConfig->m_nDevice)
+		{
+			// Force driver removal (if loaded)
+			CloseDevice(TRUE);
+		}
+
 		if (this->m_bDriverLoaded)
 		{
 			DeviceSetup(asioApp.m_pConfig->m_nBufferSizeFactor);
@@ -124,6 +136,7 @@ BOOL CAsioHost::OpenDevice(void)
 					this->DeviceSetup(asioApp.m_pConfig->m_nBufferSizeFactor);
 
 				this->m_bDriverLoaded = TRUE;
+				this->m_nOpenDevice = asioApp.m_pConfig->m_nDevice;
 			}
 		}
 	}
@@ -180,10 +193,10 @@ void CAsioHost::DeviceSetup(long BufferSizeFactor)
 	ASIOGetChannels(&nInch, &nOutch);
 
 	//
-	// Only care about output channels
+	// Only care about output channels (limit to 8)
 	// Note: All channels treated equally
 	//
-	this->m_nDeviceChannels = nOutch;
+	this->m_nDeviceChannels = (nOutch > MAX_CHNLS) ? MAX_CHNLS : nOutch;
 
 	long	minSize;
 	long	maxSize;
@@ -192,7 +205,7 @@ void CAsioHost::DeviceSetup(long BufferSizeFactor)
 
 	ASIOGetBufferSize(&minSize, &maxSize, &preferredSize, &granularity);
 
-	// Set channel buffer to requested size
+	// Set channel buffer to requested size in samples
 	this->m_nChannelBufferSize = preferredSize * BUFFER_SCALE * BufferSizeFactor;
 	this->m_nAsioBufferSize = preferredSize;
 
@@ -487,8 +500,19 @@ void CAsioHost::DoDrainCancel(int flags)
 //
 void CAsioHost::DoSetVolume(int leftlevel, int rightlevel)
 {
-	this->m_nLeftVolume = leftlevel;
-	this->m_nRightVolume = rightlevel;
+	// Set first 2 channels to left and right volume respectively
+	this->m_nVolume[0] = leftlevel;
+	this->m_nVolume[1] = rightlevel;
+
+	this->m_fVolume[0] = (float)leftlevel / 100.0f;
+	this->m_fVolume[1] = (float)rightlevel / 100.0f;
+
+	// Remaining channels use average (balanced)
+	for (int idx = 2; idx < MAX_CHNLS; idx++)
+	{
+		this->m_nVolume[idx] = (leftlevel + rightlevel) / 2;
+		this->m_fVolume[idx] = ((float)leftlevel + (float)rightlevel) / 200.0f;
+	}
 
 	return;
 }
@@ -606,6 +630,7 @@ BOOL CAsioHost::SetFormatInfo(DWORD sampleRate, DWORD bitsPerSample, DWORD nChan
 		ASIOGetLatencies(&InputLatency, &OutputLatency);
 
 		this->m_nDeviceLatency = OutputLatency;
+		this->m_nBufferLatency = this->m_nChannelBufferSize / ChannelBytesPerSample;
 	}
 
 	this->m_FormatInfo.SampleRate = sampleRate;
@@ -648,6 +673,7 @@ void CAsioHost::DoWrite(WriteDataStruct* writeData)
 	int		bytesPerSample = this->m_FormatInfo.BytesPerSample;
 	int		samplesToSend = writeSamples;
 	BOOL	monoData = (writeData->nch == 1);
+	BOOL	applyVC = asioApp.m_pConfig->m_bVolumeEnable;
 
 	// Copy write data to channel buffers (conversion to ASIO happens in callbacks) 
 	while (this->m_bDeviceInited)
@@ -669,23 +695,60 @@ void CAsioHost::DoWrite(WriteDataStruct* writeData)
 					{
 					// 8-bit people
 					case 1:
-						*(BYTE *)(this->m_pChannelInfo[idx].pWriter) = *(BYTE *)inputPtr;
+						if (applyVC) 
+						{
+							unsigned sampl = (*(BYTE *)inputPtr * this->m_nVolume[idx]) / 100;
+							*(BYTE *)(this->m_pChannelInfo[idx].pWriter) = *(BYTE *)&sampl;
+						} else {
+							*(BYTE *)(this->m_pChannelInfo[idx].pWriter) = *(BYTE *)inputPtr;
+						}
+
 						break;
 					// Most MP3/CDA stuff
 					case 2:
-						*(WORD *)(this->m_pChannelInfo[idx].pWriter) = *(WORD *)inputPtr;
+						if (applyVC) 
+						{
+							int sampl =  (*(short *)inputPtr * this->m_nVolume[idx]) / 100;
+							*(WORD *)(this->m_pChannelInfo[idx].pWriter) = *(WORD *)&sampl;
+						} else {
+							*(WORD *)(this->m_pChannelInfo[idx].pWriter) = *(WORD *)inputPtr;
+						}
 						break;
 					// 24-bit converter output
 					case 3:
-						Copy3(this->m_pChannelInfo[idx].pWriter, inputPtr);
+						if (applyVC) 
+						{
+							int sampl = (Cvt24To32(inputPtr) * this->m_nVolume[idx]) / 100;
+							Copy3(this->m_pChannelInfo[idx].pWriter, (BYTE *)&sampl);
+						} else {
+							Copy3(this->m_pChannelInfo[idx].pWriter, inputPtr);
+						}
 						break;
-					// IEEE float among others
+					// IEEE float or 32-bit PCM among others
 					case 4:
-						*(DWORD *)(this->m_pChannelInfo[idx].pWriter) = *(DWORD *)inputPtr;
-						break;
+						if (applyVC)
+						{
+							if (m_nPlayerSampleFormat == WAVE_FORMAT_IEEE_FLOAT)
+							{
+								float sampl = *(float *)inputPtr * this->m_fVolume[idx];
+								*(DWORD *)(this->m_pChannelInfo[idx].pWriter) = *(DWORD *)&sampl;
+							} else {
+								int sampl =  (*(int *)inputPtr * this->m_nVolume[idx]) / 100;
+								*(DWORD *)(this->m_pChannelInfo[idx].pWriter) = *(DWORD *)&sampl;
+							}
+						} else {
+							*(DWORD *)(this->m_pChannelInfo[idx].pWriter) = *(DWORD *)inputPtr;
+						}
+					break;
 					// Just in case we have 64-bit samples!
 					case 8:
-						*(DWORDLONG *)(this->m_pChannelInfo[idx].pWriter) = *(DWORDLONG *)inputPtr;
+						if (applyVC) 
+						{
+							__int64 sampl = (*(__int64 *)inputPtr * this->m_nVolume[idx]) / 100LL;
+							*(DWORDLONG *)(this->m_pChannelInfo[idx].pWriter) = *(DWORDLONG *)&sampl;
+						} else {
+							*(DWORDLONG *)(this->m_pChannelInfo[idx].pWriter) = *(DWORDLONG *)inputPtr;
+						}
 						break;
 					}
 					this->m_pChannelInfo[idx].pWriter += bytesPerSample;
@@ -697,28 +760,70 @@ void CAsioHost::DoWrite(WriteDataStruct* writeData)
 				{
 				// 8-bit people
 				case 1:
-					*(BYTE *)(this->m_pChannelInfo[0].pWriter) = *(BYTE *)inputPtr;
-					*(BYTE *)(this->m_pChannelInfo[1].pWriter) = *(BYTE *)inputPtr;
+					if (applyVC) 
+					{
+						unsigned sampl = (*(BYTE *)inputPtr * this->m_nVolume[0]) / 100;
+						*(BYTE *)(this->m_pChannelInfo[0].pWriter) = *(BYTE *)&sampl;
+						*(BYTE *)(this->m_pChannelInfo[1].pWriter) = *(BYTE *)&sampl;
+					} else {
+						*(BYTE *)(this->m_pChannelInfo[0].pWriter) = *(BYTE *)inputPtr;
+						*(BYTE *)(this->m_pChannelInfo[1].pWriter) = *(BYTE *)inputPtr;
+					}
 					break;
 				// Most MP3/CDA stuff
 				case 2:
-					*(WORD *)(this->m_pChannelInfo[0].pWriter) = *(WORD *)inputPtr;
-					*(WORD *)(this->m_pChannelInfo[1].pWriter) = *(WORD *)inputPtr;
+					if (applyVC) 
+					{
+						int sampl =  (*(short *)inputPtr * this->m_nVolume[0]) / 100;
+						*(WORD *)(this->m_pChannelInfo[0].pWriter) = *(WORD *)&sampl;
+						*(WORD *)(this->m_pChannelInfo[1].pWriter) = *(WORD *)&sampl;
+					} else {
+						*(WORD *)(this->m_pChannelInfo[0].pWriter) = *(WORD *)inputPtr;
+						*(WORD *)(this->m_pChannelInfo[1].pWriter) = *(WORD *)inputPtr;
+					}
 					break;
 				// 24-bit converter output
 				case 3:
-					Copy3(this->m_pChannelInfo[0].pWriter, inputPtr);
-					Copy3(this->m_pChannelInfo[1].pWriter, inputPtr);
+					if (applyVC) 
+					{
+						int sampl = (Cvt24To32(inputPtr) * this->m_nVolume[0]) / 100;
+						Copy3(this->m_pChannelInfo[0].pWriter, (BYTE *)&sampl);
+						Copy3(this->m_pChannelInfo[1].pWriter, (BYTE *)&sampl);
+					} else {
+						Copy3(this->m_pChannelInfo[0].pWriter, inputPtr);
+						Copy3(this->m_pChannelInfo[1].pWriter, inputPtr);
+					}
 					break;
-				// IEEE float among others
+				// IEEE float or 32-bit PCM among others
 				case 4:
-					*(DWORD *)(this->m_pChannelInfo[0].pWriter) = *(DWORD *)inputPtr;
-					*(DWORD *)(this->m_pChannelInfo[1].pWriter) = *(DWORD *)inputPtr;
+					if (applyVC) 
+					{
+						if (m_nPlayerSampleFormat == WAVE_FORMAT_IEEE_FLOAT)
+						{
+							float sampl = *(float *)inputPtr * this->m_fVolume[0];
+							*(DWORD *)(this->m_pChannelInfo[0].pWriter) = *(DWORD *)&sampl;
+							*(DWORD *)(this->m_pChannelInfo[1].pWriter) = *(DWORD *)&sampl;
+						} else {
+							int sampl =  (*(int *)inputPtr * this->m_nVolume[0]) / 100;
+							*(DWORD *)(this->m_pChannelInfo[0].pWriter) = *(DWORD *)&sampl;
+							*(DWORD *)(this->m_pChannelInfo[1].pWriter) = *(DWORD *)&sampl;
+						}
+					} else {
+						*(DWORD *)(this->m_pChannelInfo[0].pWriter) = *(DWORD *)inputPtr;
+						*(DWORD *)(this->m_pChannelInfo[1].pWriter) = *(DWORD *)inputPtr;
+					}
 					break;
 				// Just in case we have 64-bit samples!
 				case 8:
-					*(DWORDLONG *)(this->m_pChannelInfo[0].pWriter) = *(DWORDLONG *)inputPtr;
-					*(DWORDLONG *)(this->m_pChannelInfo[1].pWriter) = *(DWORDLONG *)inputPtr;
+					if (applyVC) 
+					{
+						__int64 sampl = (*(__int64 *)inputPtr * this->m_nVolume[0]) / 100LL;
+						*(DWORDLONG *)(this->m_pChannelInfo[0].pWriter) = *(DWORDLONG *)&sampl;
+						*(DWORDLONG *)(this->m_pChannelInfo[1].pWriter) = *(DWORDLONG *)&sampl;
+					} else {
+						*(DWORDLONG *)(this->m_pChannelInfo[0].pWriter) = *(DWORDLONG *)inputPtr;
+						*(DWORDLONG *)(this->m_pChannelInfo[1].pWriter) = *(DWORDLONG *)inputPtr;
+					}
 					break;
 				}
 				this->m_pChannelInfo[0].pWriter += bytesPerSample;

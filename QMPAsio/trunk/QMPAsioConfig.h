@@ -61,4 +61,6 @@ public:
 
 	// Seamless (no drain or stop processed)
 	BOOL	m_bSeamless;
+	// Enable player volume control (optional)
+	BOOL	m_bVolumeEnable;
 };

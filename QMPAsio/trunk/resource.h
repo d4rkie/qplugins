@@ -37,7 +37,10 @@
 #define IDS_RATEERRORMSG                1015
 #define IDS_DEVICETYPEERROR             1016
 #define IDS_SEAMLESSTEXT                1017
+#define IDC_ASIOLATENCY                 1017
 #define IDS_LATENCYMSG                  1018
+#define IDC_VOLUMEENABLE                1018
+#define IDS_VOLUMEENABLETEXT            1019
 
 // Next default values for new objects
 // 
@@ -45,7 +48,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        1007
 #define _APS_NEXT_COMMAND_VALUE         32772
-#define _APS_NEXT_CONTROL_VALUE         1016
+#define _APS_NEXT_CONTROL_VALUE         1019
 #define _APS_NEXT_SYMED_VALUE           1000
 #endif
 #endif

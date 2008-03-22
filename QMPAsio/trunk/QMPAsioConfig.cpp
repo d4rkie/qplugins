@@ -39,6 +39,7 @@ CQMPAsioConfig::CQMPAsioConfig(CWnd* pParent /*=NULL*/)
 	, m_nChannelBufferSize(BUFSIZE_DEFAULT)
 	, m_nBufferSizeIndex(BUFSIZE_INDEX_DEFAULT)
 	, m_bSeamless(FALSE)
+	, m_bVolumeEnable(TRUE)
 {
 	m_nBufferSizeFactor = 0;
 }
@@ -55,6 +56,7 @@ void CQMPAsioConfig::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BUFFERSIZECOMBO, m_pBufferSizeCombo);
 	DDX_CBIndex(pDX, IDC_BUFFERSIZECOMBO, m_nBufferSizeIndex);
 	DDX_Check(pDX, IDC_SEAMLESS, m_bSeamless);
+	DDX_Check(pDX, IDC_VOLUMEENABLE, m_bVolumeEnable);
 }
 
 
@@ -88,6 +90,9 @@ BOOL CQMPAsioConfig::OnInitDialog()
 
 	asioApp.LoadResString(IDS_SEAMLESSTEXT, strBuf, 128);
 	this->SetDlgItemText(IDC_SEAMLESS, strBuf);
+
+	asioApp.LoadResString(IDS_VOLUMEENABLETEXT, strBuf, 128);
+	this->SetDlgItemText(IDC_VOLUMEENABLE, strBuf);
 
 	const int nMaxDevice = asioApp.m_pAsioDrivers->asioGetNumDev();
 
@@ -127,8 +132,13 @@ void CQMPAsioConfig::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 
 	CString	fmtMsg((LPCTSTR)IDS_UNDERRUNSMSG);
 	CString msgBuf;
-	msgBuf.Format(fmtMsg, asioApp.m_pAsioHost->m_nUnderruns);
+	msgBuf.Format(fmtMsg, asioApp.m_pAsioHost->GetUnderrunCount());
 	this->SetDlgItemText(IDC_UNDERRUNS, msgBuf);
+
+	fmtMsg.LoadString(IDS_LATENCYMSG);
+	// Calc ms from samples
+	msgBuf.Format(fmtMsg, (1000 * asioApp.m_pAsioHost->GetDeviceLatency()) / asioApp.m_pAsioHost->GetSampleRate());
+	this->SetDlgItemText(IDC_ASIOLATENCY, msgBuf);
 
 	// Update dialog with current info
 	this->UpdateData(FALSE);
@@ -147,6 +157,7 @@ void CQMPAsioConfig::LoadSettings(void)
 	this->m_nDevice = GetPrivateProfileInt(appname, _T("ASIODevice"), 0, IniName);
 	this->m_nChannelBufferSize = GetPrivateProfileInt(appname, _T("BufferSize"), BUFSIZE_DEFAULT, IniName);
 	this->m_bSeamless = GetPrivateProfileInt(appname, _T("EnableSeamless"), 0, IniName);
+	this->m_bVolumeEnable = GetPrivateProfileInt(appname, _T("EnableVolumeControl"), 1, IniName);
 
 	// Lookup in table for index
 	for (int k = 0; k < BUFSIZE_CHOICES; k++)
@@ -180,6 +191,9 @@ void CQMPAsioConfig::SaveSettings(void)
 
 	_itot_s(this->m_bSeamless, buf, 2, 10);
 	WritePrivateProfileString(appname, _T("EnableSeamless"), buf, IniName);
+
+	_itot_s(this->m_bVolumeEnable, buf, 2, 10);
+	WritePrivateProfileString(appname, _T("EnableVolumeControl"), buf, IniName);
 
 	return;
 }
