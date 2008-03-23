@@ -34,6 +34,9 @@ public:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	virtual BOOL OnInitDialog();
+	virtual void PostNcDestroy();
+	virtual void OnOK();
+	virtual void OnCancel();
 
 	DECLARE_MESSAGE_MAP()
 public:

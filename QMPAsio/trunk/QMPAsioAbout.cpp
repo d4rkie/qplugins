@@ -70,3 +70,28 @@ BOOL CQMPAsioAbout::OnInitDialog()
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
+
+void CQMPAsioAbout::PostNcDestroy()
+{
+	// Poof!
+	delete this;
+	asioApp.m_pAbout = NULL;
+
+	return;
+}
+
+void CQMPAsioAbout::OnCancel()
+{
+	// Don't leak window handles
+	this->DestroyWindow();
+
+	return;
+}
+
+void CQMPAsioAbout::OnOK()
+{
+	// Don't leak window handles
+	this->DestroyWindow();
+
+	return;
+}
