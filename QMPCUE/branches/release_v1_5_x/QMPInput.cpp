@@ -715,14 +715,18 @@ int QMPInput::_play_on_playback(const char* medianame, int playfrom, int playto,
 		g_lfEnd = playto;
 		g_pathVTrack = (LPCTSTR)medianame;
 
-		// make sure we always in the signaled state
-		SetEvent( g_hPlayStartedEvent);
-
-		if ( (g_nCurTrack + 1) == vtNum) { // Seamless Playback mode
+		if ( (g_nCurTrack + 1) == vtNum) { // Play Next Track
 			g_nCurTrack = vtNum;
-			return PLAYSTATUS_SUCCESS; // return immediately when virtual track play done.
+			if ( WAIT_TIMEOUT == WaitForSingleObject( g_hPlayStartedEvent, 0)) { // Seamless Playback mode
+				SetEvent( g_hPlayStartedEvent);
+				return PLAYSTATUS_SUCCESS; // return immediately when virtual track play done.
+			} else { // Force play next
+				SetEvent( g_hPlayStartedEvent);
+				return g_qcdCallbacks->toModule.Play( _gen_module_path( g_qcdCallbacks, g_pathImageFile), playfrom, g_tePlaying.end, flags);
+			}
 		} else {
 			g_nCurTrack = vtNum;
+			SetEvent( g_hPlayStartedEvent);
 			return g_qcdCallbacks->toModule.Play( _gen_module_path( g_qcdCallbacks, g_pathImageFile), playfrom, g_tePlaying.end, flags);
 		}
 	}
