@@ -39,7 +39,16 @@ void load_addons(const char * fldr)
 					for (DWORD i = 0; i < info->formatc; i++)
 					{
 						std::string ext = info->formats[i].exts;
-						ext = ext.substr(2, ext.length()-2);
+						// Remove all occurances of '*.' and replace ';' with ':'
+						while (true)
+						{
+							size_t pos = ext.find("*.");
+							if (pos == ext.npos)
+								break;
+							ext.erase(pos, 2);
+							if (pos > 0)
+								ext.replace(pos - 1, 1, ":");
+						}
 						std::transform(ext.begin(), ext.end(), ext.begin(), std::toupper);
 						strAddonExtensions.append( ext );
 						strAddonExtensions.append(":");
@@ -173,15 +182,15 @@ bool bass::seek(double ms)
 
 	bool ret;
 	if (ChannelInfo.ctype & BASS_CTYPE_MUSIC_MOD) {
-		ret = BASS_ChannelSetPosition(m_hBass, MAKELONG((unsigned int)(ms/1000), 0xffff)) ? true : false;
+		ret = BASS_ChannelSetPosition(m_hBass, MAKELONG((unsigned int)(ms/1000), 0xffff), BASS_POS_BYTE) ? true : false;
 		starttime = timeGetTime() - (DWORD)ms;
 	} else {
-		ret = BASS_ChannelSetPosition(m_hBass, BASS_ChannelSeconds2Bytes(m_hBass, (float)(ms/1000))) ? true : false;
+		ret = BASS_ChannelSetPosition(m_hBass, BASS_ChannelSeconds2Bytes(m_hBass, (float)(ms/1000)), BASS_POS_BYTE) ? true : false;
 	}
 
 
 	if (!is_decode) {
-		ret = BASS_ChannelPreBuf(m_hBass, 0) ? true : false;
+		ret = BASS_ChannelUpdate(m_hBass, 0) ? true : false;
 
 		// then, fade-in
 		fade_volume(QCDCallbacks.Service(opGetVolume, NULL, 0, 0), uFadeIn);
@@ -195,12 +204,13 @@ double bass::get_current_time()
 	if (ChannelInfo.ctype & BASS_CTYPE_MUSIC_MOD)
 		return (double)(timeGetTime() - starttime);
 	else
-		return (double)(BASS_ChannelBytes2Seconds( m_hBass, BASS_ChannelGetPosition(m_hBass) )*1000);
+		return (double)(BASS_ChannelBytes2Seconds( m_hBass, BASS_ChannelGetPosition(m_hBass, BASS_POS_BYTE))*1000);
 }
 
-bool bass::set_stream_buffer_length(DWORD ms)
+void bass::set_stream_buffer_length(DWORD ms)
 {
-	return ms == BASS_SetConfig(BASS_CONFIG_NET_BUFFER, ms);
+	BASS_SetConfig(BASS_CONFIG_NET_BUFFER, ms);
+	return;
 }
 
 void bass::update_stream_title(char* meta, bass* pBass)
@@ -262,12 +272,12 @@ void bass::update_stream_title(char* meta, bass* pBass)
 	}
 }
 
-void CALLBACK bass::stream_title_sync(HSYNC handle, DWORD channel, DWORD data, DWORD user)
+void CALLBACK bass::stream_title_sync(HSYNC handle, DWORD channel, DWORD data, void *user)
 {
 	update_stream_title((char *)data, (bass*) user);
 }
 
-void CALLBACK bass::stream_status_proc(const void *buffer, DWORD length, DWORD user)
+void CALLBACK bass::stream_status_proc(const void *buffer, DWORD length, void *user)
 {
 	bass* pBass = (bass*)user;
 	if (!pBass) {
@@ -334,7 +344,7 @@ DWORD bass::get_bitrate(void)
 {
 	if (!is_url && ChannelInfo.ctype & 0x1007 && r) { // VBR for mp1, mp2, mp3 local files
 		DWORD framehead;
-		DWORD fpos = BASS_StreamGetFilePosition(m_hBass, BASS_FILEPOS_DECODE) + BASS_StreamGetFilePosition(m_hBass, BASS_FILEPOS_START);
+		QWORD fpos = BASS_StreamGetFilePosition(m_hBass, BASS_FILEPOS_DECODE) + BASS_StreamGetFilePosition(m_hBass, BASS_FILEPOS_START);
 		r->seek(fpos);
 		r->read(&framehead, sizeof(framehead));
 		framehead=((framehead&0xff)<<24)|((framehead&0xff00)<<8)
@@ -398,7 +408,7 @@ void bass::init_rg()
 }
 
 // Static function
-void CALLBACK bass::rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD length, DWORD user)
+void CALLBACK bass::rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD length, void *user)
 {
 	bass* pBass = (bass*)user;
 	if (!pBass) {
@@ -439,7 +449,7 @@ int bass::init ( bool fullinit )
 				BASS_STREAM_STATUS | BASS_STREAM_BLOCK | 
 				(is_decode ? BASS_STREAM_DECODE : 0) | 
 				(use_32fp ? BASS_SAMPLE_FLOAT : 0), 
-				stream_status_proc, (DWORD)this)) ) {
+				stream_status_proc, this)) ) {
 					const char *icy = BASS_ChannelGetTags(m_hBass, BASS_TAG_ICY);
 					if (icy) {
 						for (;*icy;icy+=strlen(icy)+1) {
@@ -456,13 +466,13 @@ int bass::init ( bool fullinit )
 					_strlwr_s(stream_type, strlen(stream_type) + 1);
 
 					update_stream_title((char *)BASS_ChannelGetTags(m_hBass, BASS_TAG_META), this);
-					BASS_ChannelSetSync(m_hBass, BASS_SYNC_META, 0, &stream_title_sync, (DWORD)this);
+					BASS_ChannelSetSync(m_hBass, BASS_SYNC_META, 0, &stream_title_sync, this);
 					//QCDCallbacks.Service(opSetTrackArtist, "", (long)path, DIGITAL_STREAM_MEDIA); // no artist name is need any more
 
 					init_rg(); // init replaygain
 
 					if (!is_decode)
-						BASS_ChannelSetDSP(m_hBass, &rg_dsp_proc, (DWORD)this, 1 ); // set our replaygain dsp for playback mode
+						BASS_ChannelSetDSP(m_hBass, &rg_dsp_proc, this, 1 ); // set our replaygain dsp for playback mode
 
 					return 1;
 				} else
@@ -474,7 +484,7 @@ int bass::init ( bool fullinit )
 			(is_decode ? BASS_STREAM_DECODE : 0) | 
 			(use_32fp ? BASS_SAMPLE_FLOAT : 0))) ) { // for mp* and wav files
 				size = BASS_StreamGetFilePosition(m_hBass, BASS_FILEPOS_END);
-				length = (DWORD)BASS_ChannelBytes2Seconds( m_hBass, BASS_ChannelGetLength(m_hBass) );
+				length = (DWORD)BASS_ChannelBytes2Seconds( m_hBass, BASS_ChannelGetLength(m_hBass, BASS_POS_BYTE) );
 
 				BASS_ChannelGetInfo(m_hBass, &ChannelInfo);
 
@@ -484,7 +494,7 @@ int bass::init ( bool fullinit )
 					init_rg(); // init replaygain
 
 					if (!is_decode)
-						BASS_ChannelSetDSP( m_hBass, &rg_dsp_proc, (DWORD)this, 1 ); // set our replaygain dsp for playback mode
+						BASS_ChannelSetDSP( m_hBass, &rg_dsp_proc, this, 1 ); // set our replaygain dsp for playback mode
 				}
 
 				return 1;
@@ -492,7 +502,7 @@ int bass::init ( bool fullinit )
 			BASS_MUSIC_RAMPS | BASS_MUSIC_CALCLEN | 
 			(is_decode ? BASS_MUSIC_DECODE : 0) | 
 			(use_32fp ? BASS_SAMPLE_FLOAT : 0), 0)) ) { // for mod files
-				size = BASS_ChannelGetLength(m_hBass);
+				size = BASS_ChannelGetLength(m_hBass, BASS_POS_BYTE);
 				length = (DWORD)BASS_ChannelBytes2Seconds(m_hBass, size);
 
 				BASS_ChannelGetInfo(m_hBass, &ChannelInfo);
@@ -501,7 +511,7 @@ int bass::init ( bool fullinit )
 					init_rg(); // init replaygain
 
 					if (!is_decode)
-						BASS_ChannelSetDSP( m_hBass, &rg_dsp_proc, (DWORD)this, 1 ); // set our replaygain dsp for playback mode
+						BASS_ChannelSetDSP( m_hBass, &rg_dsp_proc, this, 1 ); // set our replaygain dsp for playback mode
 				}
 
 				return 1;
@@ -612,7 +622,7 @@ bool bass::play(void)
 	// Set BASS volume level from player
 	set_volume(QCDCallbacks.Service(opGetVolume, NULL, 0, 0));
 
-	return BASS_ChannelPreBuf(m_hBass, 0) && BASS_ChannelPlay(m_hBass, FALSE) ? true : false;
+	return BASS_ChannelUpdate(m_hBass, 0) && BASS_ChannelPlay(m_hBass, FALSE) ? true : false;
 }
 
 //-----------------------------------------------------------------------------
@@ -687,17 +697,17 @@ bool bass::set_volume(int level)
 {
 	if (is_decode) return false;
 
-	return BASS_ChannelSetAttributes(m_hBass, -1, level, -101) ? true : false;
+	return BASS_ChannelSetAttribute(m_hBass, BASS_ATTRIB_MUSIC_VOL_GLOBAL, (float)level) ? true : false;
 }
 
 //-----------------------------------------------------------------------------
 
 bool bass::fade_volume(int dst_volume, unsigned int elapse)
 {
-	bool ret = BASS_ChannelSlideAttributes(m_hBass, -1, dst_volume, -101, elapse) ? true : false;
+	bool ret = BASS_ChannelSlideAttribute(m_hBass, BASS_ATTRIB_MUSIC_VOL_GLOBAL, (float)dst_volume, elapse) ? true : false;
 	if (!ret) return false;
 
-	while (BASS_ChannelIsSliding(m_hBass)) Sleep(1);
+	while (BASS_ChannelIsSliding(m_hBass, BASS_ATTRIB_MUSIC_VOL_GLOBAL)) Sleep(1);
 
 	return true;
 }
@@ -711,9 +721,9 @@ bool bass::set_eq(bool enabled, char const * bands) // default 10 bands for QCD
 	if (enabled) {
 		int i = 0; // Moved here to preserve VC++ 6.0 compability
 		for (i = 0; i < 10; i++)
-            if (!eqfx[i]) eqfx[i] = BASS_ChannelSetFX(m_hBass, BASS_FX_PARAMEQ, 0);
+            if (!eqfx[i]) eqfx[i] = BASS_ChannelSetFX(m_hBass, BASS_FX_DX8_PARAMEQ, 0);
 
-		BASS_FXPARAMEQ eq[10];
+		BASS_DX8_PARAMEQ eq[10];
 		eq[0].fCenter = 80;
 		eq[1].fCenter = 120;
 		eq[2].fCenter = 250;

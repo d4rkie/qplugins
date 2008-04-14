@@ -42,7 +42,7 @@ public:
 	int decode( void *out_buffer, int *out_size );
 	bool seek(double ms);
 	double get_current_time(void);
-	bool set_stream_buffer_length(DWORD ms);
+	void set_stream_buffer_length(DWORD ms);
 
 	DWORD get_length(void) const { return length; }
 	QWORD get_size(void) const { return size; }
@@ -171,7 +171,7 @@ private:
 	bool replaygain;
 
 	void init_rg(void);	
-	static void CALLBACK rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD length, DWORD user);
+	static void CALLBACK rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD length, void *user);
 
 	// Streaming
 	static char stream_type[16];
@@ -179,6 +179,6 @@ private:
 
 	// static void update_stream_title(char * meta);
 	static void update_stream_title(char* meta, bass* pBass);
-	static void CALLBACK stream_title_sync(HSYNC handle, DWORD channel, DWORD data, DWORD user);
-	static void CALLBACK stream_status_proc(const void *buffer, DWORD length, DWORD user);
+	static void CALLBACK stream_title_sync(HSYNC handle, DWORD channel, DWORD data, void *user);
+	static void CALLBACK stream_status_proc(const void *buffer, DWORD length, void *user);
 };

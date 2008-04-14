@@ -148,18 +148,18 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	case WM_INITDIALOG:
 		{
 			int i;
-			LPTSTR p;
+			BASS_DEVICEINFO	devinfo;
 
 			SetDlgItemText(hwndDlg, IDC_EXTENSIONS, strExtensions);
 
 			// init device list
 			SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_RESETCONTENT, 0, 0);
 			SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)_T("Decoding")); // add decoding first
-			p = NULL;
-			for ( i = 1; p = (LPTSTR)BASS_GetDeviceDescription(i); ++i) {
-				SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)p);
+			for ( i = 1; BASS_GetDeviceInfo(i, &devinfo); ++i) {
+				SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_ADDSTRING, 0, (LPARAM)devinfo.name);
 			}
 			SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_SETCURSEL, uDeviceNum, 0);
+			EnableWindow( GetDlgItem(hwndDlg, IDC_GET_INFO), (uDeviceNum > 0) ? true : false); 
 
 			// init resolution list
 			SendDlgItemMessage(hwndDlg, IDC_RESOLUTION, CB_RESETCONTENT, 0, 0);
@@ -209,6 +209,15 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 
 			break;
 		case IDC_DEVICE:
+			{
+				if (CBN_SELCHANGE == HIWORD(wParam)) {
+					UINT devnum = SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
+					EnableWindow( GetDlgItem(hwndDlg, IDC_GET_INFO), (devnum > 0) ? true : false);
+					PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
+				}
+			}
+
+			break;
 		case IDC_NOISE_SHAPING:
 			{
 				if (CBN_SELCHANGE == HIWORD(wParam))
@@ -262,7 +271,11 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 		case IDC_GET_INFO:
 			{
 				BASS_INFO info;
-				if (BASS_GetInfo(&info)) {
+				BASS_DEVICEINFO devinfo;
+
+				UINT devnum = SendDlgItemMessage(hwndDlg, IDC_DEVICE, CB_GETCURSEL, 0, 0);
+				if (BASS_GetInfo(&info) && BASS_GetDeviceInfo(uDeviceNum, &devinfo))
+				{
 					TCHAR buf1[2*MAX_PATH], buf2[2*MAX_PATH];
 					TCHAR buf3[10], buf4[10], buf5[10];
 
@@ -270,6 +283,7 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 					LoadResString(hInstance, IDS_DEVICE_SUPPORT_YES, buf3, sizeof(buf3));
 					LoadResString(hInstance, IDS_DEVICE_SUPPORT_NO, buf4, sizeof(buf4));
 					LoadResString(hInstance, IDS_DEVICE_UNKNOWN, buf5, sizeof(buf5));
+
 
                     wsprintf(buf1, buf2, 
 						info.hwsize, 
@@ -282,7 +296,7 @@ INT_PTR CALLBACK GeneralDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 						info.dsver, 
 						info.latency, 
 						info.speakers, 
-						info.driver ? info.driver : buf5);
+						devinfo.driver ? devinfo.driver : buf5);
 					LoadResString(hInstance, IDS_DEVICE_INFO_TITLE, buf2, sizeof(buf2));
 					MessageBox(hwndDlg, buf1, buf2, MB_OK | MB_ICONINFORMATION);
 				} else {
@@ -843,6 +857,10 @@ void InitStreamSavingBar(HWND hwndDlg)
 void UpdateSSBarStatus(HWND hwndDlg)
 {
 	TCHAR buf1[20], buf2[20];
+
+	// Avoid shutdown race
+	if (!hwndDlg)
+		return;
 
 	LoadResString(hInstance, IDS_STREAM_SAVING_ON, buf1, sizeof(buf1));
 	LoadResString(hInstance, IDS_STREAM_SAVING_OFF, buf2, sizeof(buf2));

@@ -27,6 +27,8 @@
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 04-13-08 : Updated to BASS v2.4. Fix crash on exit, cleanup add-on exts
+// 03-22-08 : Stream Saver UI rework and fixes. Fixed some minor bugs
 // 09-21-06 : Getting ready for last release for QCD
 //              - Code cleaning, configuration dialog cleaning
 //              - Automatic import of addons extension support
@@ -117,7 +119,7 @@ HWND hwndStreamSavingBar = NULL;	// stream saving bar
 list<std::string> listAddons;
 list<std::string> listExtensions;
 
-UINT uCurDeviceNum = uDeviceNum;
+UINT uCurDeviceNum = -1;		// None selected yet
 
 
 
@@ -289,12 +291,12 @@ void ShutDown(int flags)
 		hwndAbout = NULL;
 	}
 
+	destroy_bass();
+
 	if(hwndStreamSavingBar) {
 		DestroyWindow(hwndStreamSavingBar);
 		hwndStreamSavingBar = NULL;
 	}
-
-	destroy_bass();
 }
 
 //-----------------------------------------------------------------------------
@@ -726,12 +728,16 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	DecoderInfo_t *decoderInfo = (DecoderInfo_t*)b;
 	BOOL done = FALSE, updatePos = FALSE;
 
-	if (decoderInfo->pDecoder->is_stream() && 
-		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
-		!decoderInfo->pDecoder->init()) ) { // stream should be initialized here
+	if (decoderInfo->pDecoder->is_stream())
+	{ 
+		decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000);
+		if (!decoderInfo->pDecoder->init())
+		{ 
+			// stream should be initialized here
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
 
 			return 0;
+		}
 	}
 
 	// OK, play it
@@ -877,12 +883,16 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	//if (WaitForSingleObject(hThreadMutex, 0) != WAIT_OBJECT_0) // WAIT_TIMEOUT
 	//	show_error("Mutex did not return WAIT_OBJECT_0");
 
-	if (decoderInfo->pDecoder->is_stream() && 
-		(!decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000) || 
-		!decoderInfo->pDecoder->init()) ) { // stream should be initialized here
+	if (decoderInfo->pDecoder->is_stream())
+	{ 
+		decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000);
+		if (!decoderInfo->pDecoder->init())
+		{
+			// stream should be initialized here
 
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
-		return 0;
+			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
+			return 0;
+		}
 	}
 
 	// audio specs
