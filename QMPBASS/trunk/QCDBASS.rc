@@ -320,7 +320,7 @@ IDB_STREAM_SAVING_BAR   BITMAP                  "ss_bar.bmp"
 STRINGTABLE 
 BEGIN
     IDS_CONFIG_SHEET_TITLE  "Config BASS Sound System Plug-in"
-    IDS_DEVICE_INFO         "Total hardware memory: %ld\nFree hardware memory: %ld\nFree sample slot: %ld\nFree 3D sample slot: %ld\nMin. sample rate supported: %ld Hz\nMax. sample rate supported: %ld Hz\nEAX supported: %s\nMin. buffer length: %ld milliseconds\nDirectX version: %ld\nPlayback delay: %ld milliseconds\nSpeakers supported: %ld\nUsing driver file: %s"
+    IDS_DEVICE_INFO         "Total hardware memory: %d\nFree hardware memory: %d\nFree sample slot: %d\nFree 3D sample slot: %d\nMin. sample rate supported: %d Hz\nMax. sample rate supported: %d Hz\nEAX supported: %s\nMin. buffer length: %d milliseconds\nDirectX version: %d\nPlayback delay: %d milliseconds\nSpeakers supported: %d\nUsing driver file: %s"
     IDS_DEVICE_UNKNOWN      "Unknown"
     IDS_DEVICE_SUPPORT_YES  "YES"
     IDS_DEVICE_SUPPORT_NO   "NO"
