@@ -91,41 +91,31 @@ inline __int64 __fastcall SwapLongLong(__int64 val)
 }
 
 // Convert double to int (rounded)
-inline int __fastcall RInt32(double Num)
-{
-	int sign = (*((BYTE *)&Num + 7) >> 7) | 0x01;
-
-	*((BYTE *)&Num + 7) &= 0x7f;
-
-	int intNum = (int)Num;
-
-	if ((Num - intNum) == 0.5)
-	{
-		if (intNum & 1) intNum++;
-	} else {
-		intNum = (int)(Num + 0.5);
-	}
-
-	return sign * intNum;
-}
-
-// Convert double to int64 (rounded)
 inline __int64 __fastcall RInt64(double Num)
 {
-	 __int64 sign = (*((BYTE *)&Num + 7) >> 7) | 0x01;
+	__int64 intNum;
 
-	*((BYTE *)&Num + 7) &= 0x7f;
+	_asm
+	{	
+		fld Num
+		fistp intNum
+	};
 
-	__int64	intNum = (__int64)Num;
+	return intNum;
+}
 
-	if((Num - intNum) == 0.5)
-	{
-		if(intNum & 1) intNum++;
-	} else {
-		intNum = (__int64)(Num + 0.5);
-	}
+// Convert double to int (rounded)
+inline int __fastcall RInt32(double Num)
+{
+	int intNum;
 
-	return sign * intNum;
+	_asm
+	{	
+		fld Num
+		fistp intNum
+	};
+
+	return intNum;
 }
 
 //
