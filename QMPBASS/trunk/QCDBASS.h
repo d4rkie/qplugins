@@ -9,8 +9,13 @@
 #include <list>
 using namespace std;
 
-#define PLUGIN_VERSION "v2.0.2"
+#define PLUGIN_VERSION "v2.1"
 
+// Debug stuff
+#if !defined(DEBUG)
+#undef OutputDebugString
+#define OutputDebugString(str)
+#endif
 
 typedef struct
 {

@@ -4,11 +4,11 @@
 //
 // About:	BASS Sound System Plug-in for Quintessential Player
 //
-// Authors: Shao Hao, Toke Noer
+// Authors: Shao Hao, Toke Noer, Ted Hess
 //
-//	QCD multimedia player application Software Development Kit Release 1.0.
+//  Quintessential Player Plugin Development Kit
 //
-//	Copyright (C) 1997-2002 Quinnware
+//	Copyright (C) 1997-2008 Quinnware
 //
 //	This code is free.  If you redistribute it in any form, leave this notice 
 //	here.
@@ -27,6 +27,7 @@
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 04-14-08 : Fix support of QMP Library import. Added QCDFileInfo interface
 // 04-13-08 : Updated to BASS v2.4. Fix crash on exit, cleanup add-on exts
 // 03-22-08 : Stream Saver UI rework and fixes. Fixed some minor bugs
 // 09-21-06 : Getting ready for last release for QCD
@@ -269,18 +270,26 @@ void ShutDown(int flags)
 	bHardLimiter.save(inifile);
 	uReplayGainMode.save(inifile);
 	uBufferLen.save(inifile);
+	strAddonsDir.save(inifile);
 	bStreamTitle.save(inifile);
 	bStreamSaving.save(inifile);
 	bStreamSaveBarVisible.save(inifile);
 	strStreamSavingPath.save(inifile);
 	bAutoShowStreamSavingBar.save(inifile);
 	bSaveStreamsBasedOnTitle.save(inifile);
+
+	if(hwndStreamSavingBar) {
+		DestroyWindow(hwndStreamSavingBar);
+		hwndStreamSavingBar = NULL;
+	}
+
 	xStreamSavingBar.save(inifile);
 	yStreamSavingBar.save(inifile);
-	strAddonsDir.save(inifile);
 
 	// remove plug-in menu
 	remove_menu();
+
+	destroy_bass();
 
 	if(hwndConfig) {
 		DestroyWindow(hwndConfig);
@@ -289,13 +298,6 @@ void ShutDown(int flags)
 	if(hwndAbout) {
 		DestroyWindow(hwndAbout);
 		hwndAbout = NULL;
-	}
-
-	destroy_bass();
-
-	if(hwndStreamSavingBar) {
-		DestroyWindow(hwndStreamSavingBar);
-		hwndStreamSavingBar = NULL;
 	}
 }
 
@@ -339,7 +341,7 @@ bool IsExtensionSupported(const char* strExt)
 	for(it = listExtensions.begin(); it != listExtensions.end(); ++it)
 	{
 		//OutputDebugString(((std::string)*it).c_str());
-		if (!lstrcmpi(((std::string)*it).c_str(), strExt))
+		if (lstrcmpi(((std::string)*it).c_str(), strExt) == 0)
 			return TRUE;		
 	}
 	
@@ -358,8 +360,12 @@ int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 		return FALSE;
 
 	if (PathIsURL(medianame)) {
-		if (!StrNCmpI(medianame, "uvox://", 7))
-			return FALSE; // no support for AAC stream - Plug-ins can support them though?
+		if (!StrNCmpI(medianame, "uvox://", 7)) {
+			// Check if AAC support is loaded
+			if (IsExtensionSupported("AAC"))
+				return TRUE;
+			return FALSE; // no support for AAC stream
+		}
 		mediaInfo->mediaType = DIGITAL_STREAM_MEDIA;
 		mediaInfo->op_canSeek = strrchr(medianame, '.') > strrchr(medianame, '/'); // internet files are also seekable
 		return TRUE;
@@ -369,7 +375,7 @@ int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 			return FALSE;
 
 		if (IsExtensionSupported(PathFindExtension(medianame)+1)) {
-			mediaInfo->mediaType = DIGITAL_FILE_MEDIA;
+			mediaInfo->mediaType = DIGITAL_AUDIOFILE_MEDIA;
 			mediaInfo->op_canSeek = true;
 			return TRUE;
 		}

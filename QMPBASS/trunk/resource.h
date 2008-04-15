@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by QCDBASS.rc
 //
+#define VS_VERSION_INFO                 1
 #define ID_PLUGINMENU_SETTINGS          101
 #define ID_PLUGINMENU_ENABLE_STREAM_SAVING 102
 #define ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR 103
