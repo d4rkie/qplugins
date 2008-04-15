@@ -1,4 +1,4 @@
-QMPAsio V1.0.5
+QMPAsio V1.0.6
 
 Contents
 ========
@@ -35,6 +35,8 @@ Notes
 
 Revision History
 ================
+
+1.0.6	Faster float-to-integer conversion
 
 1.0.5	Fix problem skipping tracks across 2 CD drives (seamless playback)
 	Force mono source to binaural output
