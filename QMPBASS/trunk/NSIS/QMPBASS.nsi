@@ -10,7 +10,7 @@ SetCompressor /SOLID lzma
 InstallColors /WINDOWS
 Icon "qmp.ico"
 XPStyle on
-BrandingText "QCD/QMP Plug-in Installer"
+BrandingText "QPlug-in installer for QMP"
 
 ; The name of the installer
 Name "BASS Sound System Plug-in"
@@ -20,35 +20,20 @@ OutFile "QMPBASS.exe"
 InstallDir "$PROGRAMFILES\Quintessential Media Player"
 
 ; Select dir text
-DirText "Select QCD/QMP install folder:"
+DirText "Select QMP install folder:"
 
 ;**********************
-; Get QCD Plugin Folder
-;**********************
-Var QIsQMP ; is QMP or QCD?
-
-;**********************
-; Get QCD Plugin Folder
+; Get QMP Plugin Folder
 ;**********************
 Function SetPluginPath
   ${If} ${FileExists} "$INSTDIR\QMPlayer.exe" ; is QMP avaliable
-    StrCpy $QIsQMP "True"
     StrCpy $1 "$INSTDIR\Plugins"
     ReadINIStr $9 "$INSTDIR\QMP.ini" "Folders" "PluginFolder"
-	${If} ${FileExists} $9
-      ;if setting not empty, and is valid, set as folder
-	  StrCpy $1 $9
-	${EndIf}
-  ${ElseIf} ${FileExists} "$INSTDIR\QCDPlayer.exe" ; is QCD avaliable
-	StrCpy $QIsQMP "False"
-    StrCpy $1 "$INSTDIR\Plugins"
-    ReadINIStr $9 "$INSTDIR\QCD.ini" "QCD Player" "PluginFolder"
-	${If} ${FileExists} $9
-      ;if setting not empty, and is valid, set as folder
-	  StrCpy $1 $9
-	${EndIf}
+    ${If} ${FileExists} $9
+        ;if setting not empty, and is valid, set as folder
+	StrCpy $1 $9
+    ${EndIf}
   ${Else} ; set default when nothing
-	StrCpy $QIsQMP "True";
     StrCpy $1 "$INSTDIR"
   ${EndIf}
 
@@ -58,9 +43,9 @@ FunctionEnd
 Function .onInit
   ; Fill default install path to Quinn Player
   ReadRegStr $INSTDIR HKLM "Software\Quinnware\Quintessential Media Player" ""
-  ${Unless} ${FileExists} "$INSTDIR\QMPlayer.exe" ; no QMP
+  ${Unless} ${FileExists} "$INSTDIR\QMPlayer.exe"
     ReadRegStr $INSTDIR HKLM "Software\Quinnware\Quintessential Player" ""
-    ${Unless} ${FileExists} "$INSTDIR\QCDPlayer.exe" ; no QCD
+    ${Unless} ${FileExists} "$INSTDIR\QMPlayer.exe" ;Check here too
       Strcpy $INSTDIR "$PROGRAMFILES\Quintessential Media Player" ; set to default
     ${EndUnless}
   ${EndUnless}
