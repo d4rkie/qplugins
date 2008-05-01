@@ -67,7 +67,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_DISPLAYNAME         "QPlugins Commandline Encoder v1.7.2"
+    IDS_DISPLAYNAME         "QPlugins Commandline Encoder v1.7.3"
     IDS_DISPLAYEXT          "CLI Encoder"
 END
 
@@ -168,7 +168,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,147,91,50,14
-    CTEXT           "Version 1.7.2\r\nLast modified March 2008",IDC_STATIC,47,54,126,16
+    CTEXT           "Version 1.7.3\r\nLast modified May 2008",IDC_STATIC,47,54,126,16
     CTEXT           "Ability to write audio data to various media formats with command line encoders.",IDC_STATIC,24,22,172,26
     GROUPBOX        "This plugin provides:",IDC_STATIC,7,7,205,104
     LTEXT           "Author: Shao Hao",IDC_STATIC,57,77,65,8

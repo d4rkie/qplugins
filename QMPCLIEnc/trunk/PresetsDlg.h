@@ -278,6 +278,8 @@ public:
 
 	LRESULT OnTvnSelChanging(LPNMHDR pNMHDR)
 	{
+		// Make sure the tree focus
+		m_ctrlEPTree.SetFocus();
 		if ( m_ctrlUpdate.IsWindowEnabled()) {
 			if ( MessageBox( _T("A preset has been modified!\nUpdate it now?"), _T("QMPCLIEnc"), MB_YESNO|MB_ICONINFORMATION) == IDYES)
 				_doUpdate();
