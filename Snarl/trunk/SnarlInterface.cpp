@@ -22,9 +22,9 @@
 //   USE AT YOUR OWN RISK
 //-----------------------------------------------------------------------------
 
-// Last Update: 2007/03/25
-
 // History
+//  2008/04/14 : Updated to follow (what should be) the final Snarl 2.0 API
+//  2008/03/28 : Few fixes for Snarl 2.0
 //  2007/05/23 : snGetGlobalMsg & snGetSnarlWindow made static
 //  2007/03/25 : 1.6 RC1 fixup
 //  2007/03/04 : Added - snGetAppPath, snGetIconsPath, snGetVersionEx, 
@@ -62,6 +62,7 @@ SnarlInterface::~SnarlInterface()
 /// message is displayed for (in seconds) (omitting this value means the message
 /// is displayed indefinately). IconPath specifies the location of a PNG image
 /// which will be displayed alongside the message text.
+/// <returns>Message Id on success or M_RESULT on failure</returns>
 
 LONG32 SnarlInterface::snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeout, LPCSTR szIconPath, HWND hWndReply, WPARAM uReplyMsg)
 {
@@ -88,7 +89,7 @@ LONG32 SnarlInterface::snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeo
 /// snRegisterAlert() and SoundFile can optionally specify a WAV sound to play
 /// when the notification is displayed on screen.
 
-/// @Returns: M_FAILED, M_TIMED_OUT, M_BAD_HANDLE, M_NOT_FOUND, M_ACCESS_DENIED
+/// <returns>Message Id on success or M_RESULT on failure</returns>
 
 LONG32 SnarlInterface::snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR szText, LONG32 timeout, LPCSTR szIconPath, HWND hWndReply, WPARAM uReplyMsg, LPCSTR szSoundFile)
 {
@@ -158,19 +159,19 @@ BOOL SnarlInterface::snIsMessageVisible(LONG32 Id)
 /// snShowMessage() or snShowMessageEx() when the notification was originally
 /// created. To change the timeout parameter of a notification, use snSetTimeout()
 
-BOOL SnarlInterface::snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath)
+SnarlInterface::M_RESULT SnarlInterface::snUpdateMessage(LONG32 id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath)
 {
 	SNARLSTRUCT ss;
+	ZeroMemory((void*)&ss, sizeof(ss));
+
 	ss.Cmd = SNARL_UPDATE;
 	ss.Id = id;
-
+	
 	StringCbCopyA((LPSTR)&ss.Title, SNARL_STRING_LENGTH, szTitle);
 	StringCbCopyA((LPSTR)&ss.Text,  SNARL_STRING_LENGTH, szText);
 	StringCbCopyA((LPSTR)&ss.Icon,  SNARL_STRING_LENGTH, szIconPath);
 
-	if (uSend(ss) == M_OK)
-		return TRUE;
-	return FALSE;
+	return static_cast<M_RESULT>(uSend(ss));
 }
 
 
@@ -226,7 +227,7 @@ SnarlInterface::M_RESULT SnarlInterface::snRegisterConfig2(HWND hWnd, LPCSTR szA
 /// Removes the application previously registered using snRegisterConfig() or
 /// snRegisterConfig2(). hWnd should be the same as that used during registration.
 
-BOOL SnarlInterface::snRevokeConfig(HWND hWnd)
+SnarlInterface::M_RESULT SnarlInterface::snRevokeConfig(HWND hWnd)
 {
 	SNARLSTRUCT ss;
 	
@@ -235,9 +236,7 @@ BOOL SnarlInterface::snRevokeConfig(HWND hWnd)
 	ss.Cmd = SNARL_REVOKE_CONFIG_WINDOW;
 	ss.LngData2 = reinterpret_cast<LONG32>(hWnd);
 
-	if (uSend(ss) == M_OK)
-		return TRUE;
-	return FALSE;
+	return static_cast<M_RESULT>(uSend(ss));
 }
 
 
@@ -338,7 +337,7 @@ HWND SnarlInterface::snGetSnarlWindow()
 // snGetAppPath()
 
 /// Returns a pointer to the path.
-/// delete [] when finished !
+/// ** Remember to delete [] when finished with the string !
 
 LPCTSTR SnarlInterface::snGetAppPath()
 {
@@ -364,7 +363,7 @@ LPCTSTR SnarlInterface::snGetAppPath()
 // snGetIconsPath()
 
 /// Returns a pointer to the iconpath.
-/// ** delete [] when finished !
+/// ** Remember to delete [] when finished with the string !
 
 LPCTSTR SnarlInterface::snGetIconsPath()
 {
@@ -397,6 +396,7 @@ LPCTSTR SnarlInterface::snGetIconsPath()
 LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 {
 	DWORD nReturn = M_FAILED;
+
 	HWND hWnd = snGetSnarlWindow();
 	if (IsWindow(hWnd))
 	{
@@ -404,16 +404,16 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 		cds.dwData = 2;
 		cds.cbData = sizeof(ss);
 		cds.lpData = &ss;
-		if (!SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn))
-		{
-			nReturn = M_TIMED_OUT;
-			//OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
-		}
-		/*CHAR strDbg[MAX_PATH];
-		sprintf(strDbg, "Snarl >> uSend >> nReturn: %u", nReturn);
-		OutputDebugStringA(strDbg);*/
 
+		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn) == 0)
+		{
+			if (GetLastError() == ERROR_TIMEOUT)
+				nReturn = M_TIMED_OUT;
+		}
+		else
+			nReturn = M_OK;
 	}
+
 	return nReturn;
 }
 
@@ -423,6 +423,7 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 LONG32 SnarlInterface::uSendEx(SNARLSTRUCTEX ssex)
 {
 	DWORD nReturn = M_FAILED;
+
 	HWND hWnd = snGetSnarlWindow();
 	if (IsWindow(hWnd))
 	{
@@ -430,12 +431,16 @@ LONG32 SnarlInterface::uSendEx(SNARLSTRUCTEX ssex)
 		cds.dwData = 2;
 		cds.cbData = sizeof(ssex);
 		cds.lpData = &ssex;
-		if (!SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn))
+
+		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn) == 0)
 		{
-			nReturn = M_TIMED_OUT;
-			//OutputDebugString(_T("QMPSnarl: uSend::SendMessageTimeout"));
+			if (GetLastError() == ERROR_TIMEOUT)
+				nReturn = M_TIMED_OUT;
 		}
+		else
+			nReturn = M_OK;		
 	}
+
 	return nReturn;
 }
 

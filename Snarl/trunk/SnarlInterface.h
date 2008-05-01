@@ -95,8 +95,8 @@ class SnarlInterface {
 		LONG32  snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0);
 		LONG32  snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0, LPCSTR szSoundFile = "");
 
-		LPCTSTR snGetAppPath();
-		LPCTSTR snGetIconsPath();
+		LPCTSTR snGetAppPath();    // ** Remember to delete [] when finished with the string !
+		LPCTSTR snGetIconsPath();  // ** Remember to delete [] when finished with the string !
 		
 		static HWND   snGetSnarlWindow();		
 		static LONG32 snGetGlobalMsg();
@@ -108,9 +108,9 @@ class SnarlInterface {
 		M_RESULT  snRegisterAlert(LPCSTR szAppName, LPCSTR szClass);
 		M_RESULT  snRegisterConfig(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg);
 		M_RESULT  snRegisterConfig2(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg, LPCSTR szIcon);
-		BOOL      snRevokeConfig(HWND hWnd);
+		M_RESULT  snRevokeConfig(HWND hWnd);
 		M_RESULT  snSetTimeout(LONG32 Id, LONG32 Timeout);
-		BOOL      snUpdateMessage(LONG32 Id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
+		M_RESULT  snUpdateMessage(LONG32 Id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
 		
 		
 
