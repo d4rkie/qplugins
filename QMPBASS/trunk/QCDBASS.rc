@@ -96,7 +96,7 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "Advanced"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    GROUPBOX        "For Playback Only",IDC_STATIC,6,6,268,45
+    GROUPBOX        "For BASS Playback Only",IDC_STATIC,6,6,268,45
     LTEXT           "Fade-In: ",IDC_STATIC,16,20,37,8
     EDITTEXT        IDC_FADE_IN,60,18,38,13,ES_CENTER | ES_AUTOHSCROLL | ES_NUMBER
     CONTROL         "",IDC_FADE_IN_UD,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS | UDS_HOTTRACK,88,20,10,13
@@ -105,19 +105,19 @@ BEGIN
     EDITTEXT        IDC_FADE_OUT,60,33,38,13,ES_CENTER | ES_AUTOHSCROLL | ES_NUMBER
     CONTROL         "",IDC_FADE_OUT_UD,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS | UDS_HOTTRACK,88,36,10,13
     LTEXT           "ms",IDC_STATIC,102,39,9,8
-    GROUPBOX        "For Decoding Only",IDC_STATIC,6,54,268,100
+    GROUPBOX        "For Decoding Only",IDC_STATIC,6,54,268,34
     LTEXT           "&Preamp: ",IDC_STATIC,17,69,33,8
     CONTROL         "",IDC_PREAMP,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,44,65,100,15
     CTEXT           "+24 dB",IDC_PA,146,69,25,8,0,WS_EX_STATICEDGE
     CONTROL         "6dB &hard limiter",IDC_HARD_LIMITER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,192,69,80,10
-    COMBOBOX        IDC_REPLAYGAIN_MODE,123,99,104,100,CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Replaygain mode: ",IDC_STATIC,51,100,69,8
+    GROUPBOX        "Replaygain Settings",IDC_STATIC,6,92,268,55
+    LTEXT           "Replaygain mode: ",IDC_STATIC,51,110,69,8
+    COMBOBOX        IDC_REPLAYGAIN_MODE,123,109,104,100,CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Preamp: ",IDC_STATIC,59,129,33,8
+    CONTROL         "",IDC_RG_PREAMP,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,90,125,100,15
+    CTEXT           "+24 dB",IDC_RG_PA,192,129,25,8,0,WS_EX_STATICEDGE
     LTEXT           "Speakers: ",IDC_STATIC,146,36,41,8,NOT WS_VISIBLE
     COMBOBOX        IDC_SPEAKERS,192,34,48,200,CBS_DROPDOWNLIST | NOT WS_VISIBLE | WS_VSCROLL | WS_TABSTOP
-    GROUPBOX        "Replaygain",IDC_STATIC,10,85,260,51
-    LTEXT           "&Preamp: ",IDC_STATIC,59,119,33,8
-    CONTROL         "",IDC_RG_PREAMP,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,90,115,100,15
-    CTEXT           "+24 dB",IDC_RG_PA,192,119,25,8,0,WS_EX_STATICEDGE
 END
 
 IDD_STREAMING DIALOGEX 0, 0, 280, 160
@@ -267,8 +267,8 @@ IDB_STREAM_SAVING_BAR   BITMAP                  "ss_bar.bmp"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,1,0,0
- PRODUCTVERSION 2,1,0,0
+ FILEVERSION 2,1,2,0
+ PRODUCTVERSION 2,1,2,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -284,12 +284,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "QPlugins BASS Sound System"
-            VALUE "FileVersion", "2.1.0.0"
+            VALUE "FileVersion", "2.1.2.0"
             VALUE "InternalName", "QMPBASS"
             VALUE "LegalCopyright", "Copyright (C) QPlugins 2006-2008"
             VALUE "OriginalFilename", "QMPBASS.dll"
             VALUE "ProductName", "QPlugins BASS Sound System"
-            VALUE "ProductVersion", "2.1.0.0"
+            VALUE "ProductVersion", "2.1.2.0"
         END
     END
     BLOCK "VarFileInfo"

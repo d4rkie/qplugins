@@ -27,6 +27,11 @@
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 04-26-08 : General cleanup, including:
+//				- Tighter thread control and Window destruction 
+//				- Fixed volume control in BASS playback.
+//				- Added ASCII comments tag parsing
+//				- Fixed crash on unload - really!
 // 04-14-08 : Fix support of QMP Library import. Added QCDFileInfo interface
 // 04-13-08 : Updated to BASS v2.4. Fix crash on exit, cleanup add-on exts
 // 03-22-08 : Stream Saver UI rework and fixes. Fixed some minor bugs
@@ -56,8 +61,6 @@
 #include <memory>
 #include "BASSCfgUI.h"
 
-
-
 HINSTANCE		hInstance;
 HWND			hwndPlayer;
 QCDModInitIn	QCDCallbacks;
@@ -68,8 +71,6 @@ DOUBLE	seek_to			= -1;
 BOOL	encoding		= FALSE;
 BOOL	paused			= FALSE;
 INT64	decode_pos_ms	= 0;
-
-// HANDLE hThreadMutex = INVALID_HANDLE_VALUE;
 
 DWORD WINAPI __stdcall DecodeThread(void *b);		// decoding thread only for decode mode
 DWORD WINAPI __stdcall PlayThread(void *b);			// playing thread only for system mode
@@ -87,8 +88,8 @@ cfg_int bEqEnabled("QCDBASS", "EQEnabled", TRUE);	// enable internal equalizer
 cfg_int bShowVBR("QCDBASS", "ShowVBR", TRUE);		// display VBR bitrate
 cfg_int nSampleRate("QCDBASS", "SampleRate", 44100);// Output sample rate
 
-cfg_int uFadeIn("QCDBASS", "FadeIn", 1000);			// fade-in sound
-cfg_int uFadeOut("QCDBASS", "FadeOut", 3000);		// fade-out sound
+cfg_int uFadeIn("QCDBASS", "FadeIn", 100);			// fade-in sound
+cfg_int uFadeOut("QCDBASS", "FadeOut", 300);		// fade-out sound
 
 cfg_int nPreAmp("QCDBASS", "PreAmp", 0);			// preamp
 cfg_int nRGPreAmp("QCDBASS", "RGPreAmp", 0);		// preamp
@@ -122,7 +123,7 @@ list<std::string> listExtensions;
 
 UINT uCurDeviceNum = -1;		// None selected yet
 
-
+void reset_decoder();
 
 //-----------------------------------------------------------------------------
 
@@ -130,6 +131,20 @@ int WINAPI DllMain(HINSTANCE hInst, DWORD fdwReason, LPVOID pRes)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH) {
 		hInstance = hInst;
+		DisableThreadLibraryCalls(hInst);
+	}
+
+	if (fdwReason == DLL_PROCESS_DETACH) {
+		_ASSERTE(hwndConfig == NULL);
+		_ASSERTE(hwndStreamSavingBar == NULL);
+
+		while (hwndStreamSavingBar) {
+			MSG msg;
+			if (!PeekMessage(&msg, hwndStreamSavingBar, 0, 0, PM_REMOVE))
+				break;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
 	return TRUE;
 }
@@ -152,11 +167,6 @@ PLUGIN_API QCDModInitIn* INPUTDLL_ENTRY_POINT(QCDModInitIn *ModInit, QCDModInfo 
 	QCDCallbacks.toModule.Configure			= Configure;
 	QCDCallbacks.toModule.SetEQ				= bEqEnabled ? SetEQ : NULL;;
 	QCDCallbacks.toModule.SetVolume			= SetVolume;
-
-	// Testing
-	//hThreadMutex = CreateMutex(NULL, FALSE, 0);
-	//if (hThreadMutex == NULL)
-	//	show_error("CreateMutex error: %d\n", GetLastError());
 
 	return &QCDCallbacks;
 }
@@ -216,14 +226,10 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 
 
 	// Init BASS
-	if (create_bass(uDeviceNum))
+	if (create_bass(uDeviceNum, hwndPlayer))
 		uCurDeviceNum = uDeviceNum;
 	else
 		return FALSE;
-
-	// insert plug-in menu
-	insert_menu();
-
 
 	strAllExtensions = strAddonExtensions;
 	strAllExtensions.append(":");
@@ -234,9 +240,11 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 	ModInfo->moduleCategory    = "AUDIO";
 
 	// Create stream saving bar
-	hwndStreamSavingBar = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_STREAM_SAVING_BAR), hwndPlayer, (DLGPROC)StreamSavingBarProc);
-	InitStreamSavingBar(hwndStreamSavingBar);
+	hwndStreamSavingBar = CreateDialogIndirect(hInstance, LoadResDialog(hInstance, IDD_STREAM_SAVING_BAR), NULL, (DLGPROC)StreamSavingBarProc);
 	ShowStreamSavingBar(bStreamSaveBarVisible);
+
+	// insert plug-in menu
+	insert_menu();
 
 	return TRUE;
 }
@@ -246,6 +254,22 @@ int Initialize(QCDModInfo *ModInfo, int flags)
 void ShutDown(int flags)
 {
 	Stop(decoderInfo.playingFile, STOPFLAG_SHUTDOWN);
+
+	// Remove About dialog if active
+	if(hwndAbout) {
+		DestroyWindow(hwndAbout);
+		hwndAbout = NULL;
+	}
+
+	// Close config window to update pref/location vars
+	if(hwndConfig) {
+		SendMessage(hwndConfig, WM_CLOSE, 0, 0);
+	}
+
+	// Remove SSBar and get location, etc.
+	if(hwndStreamSavingBar) {
+		SendMessage(hwndStreamSavingBar, WM_CLOSE, 0, 0);
+	}
 
 	// save config
 	char inifile[MAX_PATH];
@@ -277,12 +301,6 @@ void ShutDown(int flags)
 	strStreamSavingPath.save(inifile);
 	bAutoShowStreamSavingBar.save(inifile);
 	bSaveStreamsBasedOnTitle.save(inifile);
-
-	if(hwndStreamSavingBar) {
-		DestroyWindow(hwndStreamSavingBar);
-		hwndStreamSavingBar = NULL;
-	}
-
 	xStreamSavingBar.save(inifile);
 	yStreamSavingBar.save(inifile);
 
@@ -290,15 +308,6 @@ void ShutDown(int flags)
 	remove_menu();
 
 	destroy_bass();
-
-	if(hwndConfig) {
-		DestroyWindow(hwndConfig);
-		hwndConfig = NULL;
-	}
-	if(hwndAbout) {
-		DestroyWindow(hwndAbout);
-		hwndAbout = NULL;
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -353,31 +362,30 @@ bool IsExtensionSupported(const char* strExt)
 
 int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 {
-	OutputDebugString(":GetMediaSupported()");
-	OutputDebugString(medianame);
+	OutputDebugString(":GetMediaSupported(): ");
+	if (medianame) {
+		OutputDebugString(medianame);
 
-	if (!medianame || !*medianame)
-		return FALSE;
-
-	if (PathIsURL(medianame)) {
-		if (!StrNCmpI(medianame, "uvox://", 7)) {
-			// Check if AAC support is loaded
-			if (IsExtensionSupported("AAC"))
-				return TRUE;
-			return FALSE; // no support for AAC stream
-		}
-		mediaInfo->mediaType = DIGITAL_STREAM_MEDIA;
-		mediaInfo->op_canSeek = strrchr(medianame, '.') > strrchr(medianame, '/'); // internet files are also seekable
-		return TRUE;
-	}
-	else {
 		if (lstrlen(medianame) < 3) // No support for CD drives etc.
 			return FALSE;
 
-		if (IsExtensionSupported(PathFindExtension(medianame)+1)) {
-			mediaInfo->mediaType = DIGITAL_AUDIOFILE_MEDIA;
-			mediaInfo->op_canSeek = true;
+		if (PathIsURL(medianame)) {
+			if (!StrNCmpI(medianame, "uvox://", 7)) {
+				// Check if AAC support is loaded
+				if (!IsExtensionSupported("AAC"))
+					return FALSE; // no support for AAC stream
+			}
+
+			mediaInfo->mediaType = DIGITAL_STREAM_MEDIA;
+			mediaInfo->op_canSeek = strrchr(medianame, '.') > strrchr(medianame, '/'); // internet files are also seekable
 			return TRUE;
+		}
+		else {
+			if (IsExtensionSupported(PathFindExtension(medianame)+1)) {
+				mediaInfo->mediaType = DIGITAL_AUDIOFILE_MEDIA;
+				mediaInfo->op_canSeek = true;
+				return TRUE;
+			}
 		}
 	}
 
@@ -389,16 +397,18 @@ int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 
 int GetTrackExtents(const char* medianame, TrackExtents *ext, int flags)
 {
-	bass p_info(medianame);
-	if ( p_info.init(false) )
-	{
-		ext->track = 1;
-		ext->start = 0;
-		ext->end = (UINT)p_info.get_length() * 1000;
-		ext->bytesize = (UINT)p_info.get_size();
-		ext->unitpersec = 1000;
+	if (medianame) {
+		bass p_info(medianame);
+		if ( p_info.init(false) )
+		{
+			ext->track = 1;
+			ext->start = 0;
+			ext->end = (UINT)p_info.get_length() * 1000;
+			ext->bytesize = (UINT)p_info.get_size();
+			ext->unitpersec = 1000;
 
-		return TRUE;
+			return TRUE;
+		}
 	}
 
 	return FALSE;
@@ -410,13 +420,13 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 {
 	encoding = flags & PLAYFLAG_ENCODING;
 
-	if (decoderInfo.playingFile && lstrcmpi(decoderInfo.playingFile, medianame)) {
+	if (medianame && decoderInfo.playingFile && lstrcmpi(decoderInfo.playingFile, medianame)) {
 		Stop(decoderInfo.playingFile, STOPFLAG_PLAYSKIP);
 	}
 
 	if (!decoderInfo.playingFile) {
 		if (uCurDeviceNum != uDeviceNum) { // reinitialization our bass when device number changed
-			if ( destroy_bass() && create_bass(uDeviceNum) )
+			if ( destroy_bass() && create_bass(uDeviceNum, hwndPlayer) )
 				uCurDeviceNum = uDeviceNum;
 			else
 				return PLAYSTATUS_FAILED;
@@ -432,14 +442,14 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 		// local file should be initialized now, but stream should do this in thread later avoiding blocking
 		if (!decoderInfo.pDecoder->is_stream()) {
 			int ret = decoderInfo.pDecoder->init();
-
+			// init returns 1 on success
 			if ( ret != 1 ) {
 				if (decoderInfo.pDecoder) {
 					delete decoderInfo.pDecoder;
 					decoderInfo.pDecoder = NULL;
 				}
-
-				return ret;
+				// init returns -1 if BASS_ERROR_FILEFORM (unsupported media)
+				return (ret == 0) ? PLAYSTATUS_FAILED : PLAYSTATUS_UNSUPPORTED;
 			}
 		}
 
@@ -458,12 +468,7 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 		return PLAYSTATUS_SUCCESS;
 
 	if ( (decode_pos_ms != seek_to) && !decoderInfo.pDecoder->seek(seek_to) ) {
-		delete decoderInfo.pDecoder; decoderInfo.pDecoder = NULL;
-		if (decoderInfo.playingFile) {
-			free(decoderInfo.playingFile);
-			decoderInfo.playingFile = NULL;
-		}
-
+		reset_decoder();
 		return PLAYSTATUS_FAILED;
 	}
 
@@ -485,35 +490,28 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 
 int Stop(const char* medianame, int flags)
 {
-	if ( medianame && *medianame && !lstrcmpi(decoderInfo.playingFile, medianame) ) {
+	if ( medianame && decoderInfo.playingFile && !lstrcmpi(decoderInfo.playingFile, medianame) ) {
 		if (decoderInfo.pDecoder->is_decode) // stop output first for decoding
 			QCDCallbacks.toPlayer.OutputStop(flags);
 
 		// destroy play/decoding thread
 		decoderInfo.killThread = 1;
 		if (decoderInfo.thread_handle != INVALID_HANDLE_VALUE) {
-			if (WaitForSingleObject(decoderInfo.thread_handle, 2000) == WAIT_TIMEOUT) {
+			if (WaitForSingleObject(decoderInfo.thread_handle, 5000) == WAIT_TIMEOUT) {
+				OutputDebugString("*** Forced thread termination!\n");
 				TerminateThread(decoderInfo.thread_handle, 0);
-				CloseHandle(decoderInfo.thread_handle);
-				decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
 			}
+			CloseHandle(decoderInfo.thread_handle);
+			decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
 		}
 
 		decoderInfo.pDecoder->stop(flags); // stop all
 
-		// clear & reset all
-		if (decoderInfo.playingFile) {
-			free(decoderInfo.playingFile);
-			decoderInfo.playingFile = NULL;
-		}
-		if (decoderInfo.pDecoder) {
-			delete decoderInfo.pDecoder;
-			decoderInfo.pDecoder = NULL;
-		}
-		decoderInfo.info.reset();
+		reset_decoder();
 
 		seek_to = -1;
 		decode_pos_ms = 0;
+		paused = FALSE;
 	}
 
 	return TRUE;
@@ -560,7 +558,7 @@ void SetEQ(EQInfo *eqinfo)
 
 void SetVolume(int levelleft, int levelright, int flags)
 {
-	if ( !decoderInfo.pDecoder->set_volume((levelleft+levelright)/2) )
+	if ( decoderInfo.pDecoder && !decoderInfo.pDecoder->set_volume((levelleft+levelright)/2) )
         QCDCallbacks.toPlayer.OutputSetVol(levelleft, levelright, flags);
 }
 
@@ -587,7 +585,7 @@ void Configure(int flags)
 			UpdateSSBarStatus(hwndStreamSavingBar);
 
 			// modify our menu item status
-			reset_menu();
+			set_menu_state();
 		}
 
 		break;
@@ -597,7 +595,7 @@ void Configure(int flags)
 
 			ShowStreamSavingBar(bStreamSaveBarVisible);
 
-			reset_menu();
+			set_menu_state();
 		}
 
 		break;
@@ -629,9 +627,8 @@ void insert_menu(void)
 	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, 0, (long)("BASS Plug-in"));
 	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SETTINGS, (long)("Settings"));
 	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, (long)("Enable stream saving"));
-	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, bStreamSaving ? MF_CHECKED : MF_UNCHECKED);
 	QCDCallbacks.Service(opSetPluginMenuItem,  (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, (long)("Show stream saving bar"));
-	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, bStreamSaveBarVisible ? MF_CHECKED : MF_UNCHECKED);
+	set_menu_state();
 }
 
 void remove_menu(void)
@@ -639,10 +636,10 @@ void remove_menu(void)
 	QCDCallbacks.Service(opSetPluginMenuItem, (void *)hInstance, 0, 0);
 }
 
-void reset_menu(void)
+void set_menu_state(void)
 {
-	remove_menu();
-	insert_menu();
+	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_ENABLE_STREAM_SAVING, bStreamSaving ? MF_CHECKED : MF_UNCHECKED);
+	QCDCallbacks.Service(opSetPluginMenuState, (void *)hInstance, ID_PLUGINMENU_SHOW_STREAM_SAVING_BAR, bStreamSaveBarVisible ? MF_CHECKED : MF_UNCHECKED);
 }
 
 
@@ -658,6 +655,27 @@ void show_error(const char *message,...)
 	vsprintf(foo, message, args);
 	va_end(args);
 	MessageBox(hwndPlayer, foo, "BASS Sound System Error", MB_ICONSTOP);
+}
+
+void reset_decoder()
+{
+	if (decoderInfo.thread_handle != INVALID_HANDLE_VALUE) {
+		CloseHandle(decoderInfo.thread_handle);
+		decoderInfo.thread_handle = INVALID_HANDLE_VALUE;
+	}
+
+	// clear & reset all
+	if (decoderInfo.playingFile) {
+		free(decoderInfo.playingFile);
+		decoderInfo.playingFile = NULL;
+	}
+	if (decoderInfo.pDecoder) {
+		delete decoderInfo.pDecoder;
+		decoderInfo.pDecoder = NULL;
+	}
+	decoderInfo.info.reset();
+
+	return;
 }
 
 // used for convert 32-bit floating-data to 16-bit data. For Vis only now
@@ -735,13 +753,14 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	BOOL done = FALSE, updatePos = FALSE;
 
 	if (decoderInfo->pDecoder->is_stream())
-	{ 
+	{
+		// init streams here
 		decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000);
-		if (!decoderInfo->pDecoder->init())
+		if (decoderInfo->pDecoder->init() != 1)
 		{ 
-			// stream should be initialized here
+			// BASS failed to recognize stream
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
-
+			reset_decoder();
 			return 0;
 		}
 	}
@@ -749,6 +768,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	// OK, play it
 	if (!decoderInfo->pDecoder->play()) {
 		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
+		reset_decoder();
 		return 0;
 	}
 
@@ -761,21 +781,21 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
-		done = TRUE;
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_UNSUPPORTED);
+		reset_decoder();
+		return 0;
 	}
 
 	const DWORD VIS_BUFFER_SIZE = 2048*numchannels*(bitspersample/8); // get 576 samples as winamp does, maybe safest^_^
 	// alloc decoding buffer
 	LPBYTE pVisData = NULL;
-	if (!done) {
-		pVisData = new BYTE[VIS_BUFFER_SIZE];
+	pVisData = new BYTE[VIS_BUFFER_SIZE];
 
-		if (pVisData == NULL) {
-			show_error("Error: Out of memory!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
-			done = TRUE;
-		}
+	if (pVisData == NULL) {
+		show_error("Error: Out of memory!");
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
+		reset_decoder();
+		return 0;
 	}
 
 	while (!decoderInfo->killThread) {
@@ -859,22 +879,20 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 
 			if (decoderInfo->pDecoder->is_playing()) {
 				QCDCallbacks.toPlayer.PositionUpdate((unsigned int)decode_pos_ms);
-
-				Sleep(50); // slow down, not to fast:)
+				Sleep(50); // There ought to be a better way to conserve CPU!
 			}
 			else
 				done = TRUE;
 		}
-		// catch pause
-		while (paused && !decoderInfo->killThread) Sleep(50);
+
+		// catch pause ( Should be a semaphore )
+		while (paused && !decoderInfo->killThread)
+			Sleep(50);
 	}
 
 	// Clean up
 	if (pVisData)
 		delete [] pVisData;
-
-	CloseHandle(decoderInfo->thread_handle);
-	decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
 
 	return 0;
 }
@@ -885,18 +903,15 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	DecoderInfo_t *decoderInfo = (DecoderInfo_t*)b;
 	BOOL done = FALSE, updatePos = FALSE;
 
-    // Check mutex
-	//if (WaitForSingleObject(hThreadMutex, 0) != WAIT_OBJECT_0) // WAIT_TIMEOUT
-	//	show_error("Mutex did not return WAIT_OBJECT_0");
-
 	if (decoderInfo->pDecoder->is_stream())
 	{ 
+		// streams initialized here
 		decoderInfo->pDecoder->set_stream_buffer_length(uBufferLen * 1000);
-		if (!decoderInfo->pDecoder->init())
+		if (decoderInfo->pDecoder->init() != 1)
 		{
-			// stream should be initialized here
-
+			// BASS rejected stream
 			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
+			reset_decoder();
 			return 0;
 		}
 	}
@@ -910,43 +925,38 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 	if ( numchannels <= 0 || samplerate <= 0 /*|| bitrate <= 0 */) {
 		show_error("Error: invalid media format!");
-		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
-		done = TRUE;
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_UNSUPPORTED);
+		reset_decoder();
+		return 0;
 	}
 
 	// open output
-	if (!done) {
-		WAVEFORMATEX wf;
-		wf.wFormatTag = decoderInfo->pDecoder->get_format();
-		wf.cbSize = 0;
-		wf.nChannels = numchannels;
-		wf.wBitsPerSample = uResolution;
-		wf.nSamplesPerSec = samplerate;
-		wf.nBlockAlign = wf.nChannels * wf.wBitsPerSample / 8;
-		wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign;
-		if (!QCDCallbacks.toPlayer.OutputOpen(decoderInfo->playingFile, &wf)) {
-			show_error("Failed opening output device!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
-			done = TRUE; // cannot open sound device
-		}
-	}	
+	WAVEFORMATEX wf;
+	wf.wFormatTag = decoderInfo->pDecoder->get_format();
+	wf.cbSize = 0;
+	wf.nChannels = numchannels;
+	wf.wBitsPerSample = uResolution;
+	wf.nSamplesPerSec = samplerate;
+	wf.nBlockAlign = wf.nChannels * wf.wBitsPerSample / 8;
+	wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign;
+	if (!QCDCallbacks.toPlayer.OutputOpen(decoderInfo->playingFile, &wf)) {
+		show_error("Failed opening output device!");
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
+		reset_decoder();
+		return 0; // cannot open sound device
+	}
 
 	const DWORD BUFFER_SIZE = 576*numchannels*((uResolution > 16 ? 32 : 16)/8); // get 576 samples as winamp does, maybe safest^_^
 
 	// alloc decoding buffer
-	HANDLE hHeap = NULL;
-	HANDLE pRawData = NULL;
-	if (!done) {
-		// Only this thread allocates/frees from this heap, so safe to HEAP_NO_SERIALIZE
-		hHeap = HeapCreate(HEAP_NO_SERIALIZE, BUFFER_SIZE, BUFFER_SIZE);
-		if (hHeap)
-			pRawData = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
-        
-        if (hHeap == NULL || pRawData == NULL) {
-			show_error("Error: Out of memory!");
-			QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
-			done = TRUE;
-		}
+	BYTE *pRawData = NULL;
+	pRawData = new BYTE[BUFFER_SIZE];
+    
+    if (pRawData == NULL) {
+		show_error("Error: Out of memory!");
+		QCDCallbacks.toPlayer.PlayStopped(decoderInfo->playingFile, PLAYSTOPPED_DEFAULT);
+		reset_decoder();
+		return 0;
 	}
 
 	while (!decoderInfo->killThread) {
@@ -1046,21 +1056,15 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				updatePos = 0;
 			}
 		}
-		// catch pause
+
+		// catch pause (use semaphore?)
 		while (paused && !decoderInfo->killThread)
 			Sleep(50);
-
-		Sleep(encoding ? 0 : 5);
 	}
 
 	// Clean up
-	if (pRawData) HeapFree(hHeap, 0, pRawData);
-	if (hHeap) HeapDestroy(hHeap);
-
-	CloseHandle(decoderInfo->thread_handle);
-	decoderInfo->thread_handle = INVALID_HANDLE_VALUE;
-
-	// ReleaseMutex(hThreadMutex);
+	if (pRawData) 
+		delete []pRawData;
 
 	return 0;
 }

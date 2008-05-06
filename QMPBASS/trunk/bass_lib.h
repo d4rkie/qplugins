@@ -9,11 +9,30 @@
 #include "qcdhelper.h"
 #include "replaygain_synthesis.h"
 
+//
+// ChannelInfo types from addons
+//
+#define BASS_CTYPE_STREAM_CD		0x10200
+#define BASS_CTYPE_STREAM_WMA		0x10300
+#define BASS_CTYPE_STREAM_WMA_MP3	0x10301
+#define BASS_CTYPE_STREAM_FLAC		0x10900
+#define BASS_CTYPE_STREAM_FLAC_OGG	0x10901
+#define BASS_CTYPE_STREAM_OFR		0x10600
+#define BASS_CTYPE_STREAM_APE		0x10700
+#define BASS_CTYPE_STREAM_MPC		0x10a00
+#define BASS_CTYPE_STREAM_AAC		0x10b00
+#define BASS_CTYPE_STREAM_MP4		0x10b01
+#define BASS_CTYPE_STREAM_SPX		0x10c00
+#define BASS_CTYPE_STREAM_ALAC		0x10e00
+#define BASS_CTYPE_STREAM_TTA		0x10f00
+#define BASS_CTYPE_STREAM_AC3		0x11000
+#define BASS_CTYPE_STREAM_WV		0x10500
+#define BASS_CTYPE_STREAM_WV_LH		0x10503
 
 //-- command functions
 void load_addons(const char * fldr);
 void free_addons(HPLUGIN handle);
-bool create_bass (DWORD device);
+bool create_bass (DWORD device, HWND hPlayer);
 bool destroy_bass (void);
 
 
@@ -51,6 +70,7 @@ public:
 	DWORD get_srate(void) const { return ChannelInfo.freq; }
 	DWORD get_bps(void) const { return ChannelInfo.flags & BASS_SAMPLE_FLOAT ? 32 : (ChannelInfo.flags & BASS_SAMPLE_8BITS) ? 8 : 16; }
 	WORD get_format(void) const { return ChannelInfo.flags & BASS_SAMPLE_FLOAT ? 0x0003 : 1; } // 1=WAVE_FORMAT_PCM, 0x0003=WAVE_FORMAT_IEEE_FLOAT
+
 	const char * get_type(void) const {
 		switch (ChannelInfo.ctype)
 		{
@@ -77,49 +97,39 @@ public:
 		case BASS_CTYPE_MUSIC_IT:
 			return "IT";
 		// check add-ons...
-#define BASS_CTYPE_STREAM_CD	0x10200
 		case BASS_CTYPE_STREAM_CD:
 			return "CDA";
-#define BASS_CTYPE_STREAM_WMA	0x10300
 		case BASS_CTYPE_STREAM_WMA:
 			return "WMA";
-#define BASS_CTYPE_STREAM_FLAC	0x10900
+		case BASS_CTYPE_STREAM_WMA_MP3:
+			return "WMA/MP3";
 		case BASS_CTYPE_STREAM_FLAC:
 			return "FLAC";
-#define BASS_CTYPE_STREAM_OFR	0x10600
+		case BASS_CTYPE_STREAM_FLAC_OGG:
+			return "FLAC/OGG";
 		case BASS_CTYPE_STREAM_OFR:
-			return "OFR/OFS";//"Optimfrog";
-#define BASS_CTYPE_STREAM_APE	0x10700
+			return "OFR/OFS";	//"Optimfrog";
 		case BASS_CTYPE_STREAM_APE:
 			return "APE";
-#define BASS_CTYPE_STREAM_MPC	0x10a00
 		case BASS_CTYPE_STREAM_MPC:
 			return "MPC";
-#define BASS_CTYPE_STREAM_AAC	0x10b00
 		case BASS_CTYPE_STREAM_AAC:
 			return "AAC";
-#define BASS_CTYPE_STREAM_MP4	0x10b01
 		case BASS_CTYPE_STREAM_MP4:
 			return "MP4";
-#define BASS_CTYPE_STREAM_SPX	0x10c00
 		case BASS_CTYPE_STREAM_SPX:
 			return "Speex";
-#define BASS_CTYPE_STREAM_ALAC	0x10e00
 		case BASS_CTYPE_STREAM_ALAC:
 			return "ALAC";
-#define BASS_CTYPE_STREAM_TTA	0x10f00
 		case BASS_CTYPE_STREAM_TTA:
 			return "TTA";
-#define BASS_CTYPE_STREAM_AC3	0x11000
 		case BASS_CTYPE_STREAM_AC3:
 			return "AC3";
 		default:
-#define BASS_CTYPE_STREAM_WV	0x10500
-#define BASS_CTYPE_STREAM_WV_LH	0x10503
 			if (ChannelInfo.ctype >= BASS_CTYPE_STREAM_WV && ChannelInfo.ctype <= BASS_CTYPE_STREAM_WV_LH)
 				return "Wavpack";
 			else
-				return NULL;
+				return "Unknown";
 		}
 	}
 

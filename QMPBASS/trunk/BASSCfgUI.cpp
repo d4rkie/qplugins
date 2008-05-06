@@ -50,13 +50,19 @@ HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
     psp[0].pfnDlgProc = (DLGPROC)GeneralDlgProc;
     psp[0].lParam = 0;
     psp[0].pfnCallback = NULL;
-    psp[1].dwSize = sizeof(PROPSHEETPAGE);
+	psp[0].hIcon = NULL;
+	psp[0].pszIcon = NULL;
+
+	psp[1].dwSize = sizeof(PROPSHEETPAGE);
     psp[1].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[1].hInstance = hInstance;
     psp[1].pResource = LoadResDialog(hInstance, IDD_ADVANCED);
     psp[1].pfnDlgProc = (DLGPROC)AdvancedDlgProc;
     psp[1].lParam = 0;
     psp[1].pfnCallback = NULL;
+	psp[1].hIcon = NULL;
+	psp[1].pszIcon = NULL;
+
     psp[2].dwSize = sizeof(PROPSHEETPAGE);
     psp[2].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[2].hInstance = hInstance;
@@ -64,6 +70,9 @@ HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
     psp[2].pfnDlgProc = (DLGPROC)StreamingDlgProc;
     psp[2].lParam = 0;
     psp[2].pfnCallback = NULL;
+	psp[2].hIcon = NULL;
+	psp[2].pszIcon = NULL;
+
     psp[3].dwSize = sizeof(PROPSHEETPAGE);
     psp[3].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[3].hInstance = hInstance;
@@ -71,6 +80,9 @@ HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
     psp[3].pfnDlgProc = (DLGPROC)StreamSavingDlgProc;
     psp[3].lParam = 0;
     psp[3].pfnCallback = NULL;
+	psp[3].hIcon = NULL;
+	psp[3].pszIcon = NULL;
+
     psp[4].dwSize = sizeof(PROPSHEETPAGE);
     psp[4].dwFlags = PSP_DEFAULT | PSP_DLGINDIRECT | PSP_PREMATURE;
     psp[4].hInstance = hInstance;
@@ -78,10 +90,14 @@ HWND DoConfigSheet(HINSTANCE hInstance, HWND hwndParent)
     psp[4].pfnDlgProc = (DLGPROC)AddonsDlgProc;
     psp[4].lParam = 0;
     psp[4].pfnCallback = NULL;
+	psp[4].hIcon = NULL;
+	psp[4].pszIcon = NULL;
 
     psh.dwSize = sizeof(PROPSHEETHEADER);
     psh.dwFlags = PSH_DEFAULT | PSH_MODELESS | PSH_PROPSHEETPAGE | PSH_USECALLBACK;
     psh.hwndParent = hwndParent;
+	psh.hIcon = NULL;
+	psh.pszIcon = NULL;
     psh.hInstance = hInstance;
 	LoadResString(hInstance, IDS_CONFIG_SHEET_TITLE, buf, sizeof(buf));
     psh.pszCaption = buf;
@@ -110,7 +126,6 @@ LRESULT CALLBACK NewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			yPrefPos = rc.top;
 
 			DestroyWindow(hwndConfig);
-			hwndConfig = NULL;
 		}
 
 		return lRet;
@@ -126,6 +141,12 @@ LRESULT CALLBACK NewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		SetWindowPos( hwnd, NULL, xPrefPos, yPrefPos, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
 		firstShow = FALSE;
+	}
+
+	// Synchronize with DLL unload
+	if ( uMsg == WM_NCDESTROY ) {
+		// Signal we are done
+		hwndConfig = NULL;
 	}
 
     return CallWindowProc(oldProc, hwnd, uMsg, wParam, lParam);
@@ -651,7 +672,7 @@ INT_PTR CALLBACK StreamSavingDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 
 					UpdateSSBarStatus(hwndStreamSavingBar);
 
-					reset_menu();
+					set_menu_state();
 
 					bSaveStreamsBasedOnTitle = IsDlgButtonChecked(hwndDlg, IDC_SAVE_STREAMS_BASED_ON_TITLE);
 
@@ -856,10 +877,10 @@ void InitStreamSavingBar(HWND hwndDlg)
 
 void UpdateSSBarStatus(HWND hwndDlg)
 {
-	TCHAR buf1[20], buf2[20];
+	TCHAR buf1[32], buf2[32];
 
 	// Avoid shutdown race
-	if (!hwndDlg)
+	if (!bStreamSaveBarVisible)
 		return;
 
 	LoadResString(hInstance, IDS_STREAM_SAVING_ON, buf1, sizeof(buf1));
@@ -898,6 +919,7 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 		return TRUE;
 	case WM_INITDIALOG:
 		{
+			InitStreamSavingBar(hwndDlg);
 			// fix our size and pos for better UI
 			// enlarge the whole bar
 			SetWindowPos(hwndDlg, 0, 0, 0, 268, 39, SWP_NOMOVE | SWP_NOZORDER);
@@ -924,11 +946,11 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 							decoderInfo.pDecoder->m_strCurTitle &&
 							*decoderInfo.pDecoder->m_strCurTitle)
 						{
-							TCHAR buf[50];
+							TCHAR buf[64];
 							LoadResString(hInstance, IDS_STREAM_SAVING_TOOLTIP, buf, sizeof(buf));
 							wsprintf(szToolTip, buf, decoderInfo.pDecoder->m_strCurTitle, (LPCTSTR)strStreamSavingPath);
 						} else {
-							TCHAR buf[50];
+							TCHAR buf[64];
 							LoadResString(hInstance, IDS_STREAM_SAVING_TOOLTIP_STATUS, buf, sizeof(buf));
 							lstrcpy(szToolTip, buf);
 						}
@@ -983,7 +1005,7 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 
 						UpdateSSBarStatus(hwndDlg);
 
-						reset_menu();
+						set_menu_state();
 					}
 
 					break;
@@ -1016,7 +1038,7 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 						bStreamSaveBarVisible = FALSE;
 						ShowStreamSavingBar(bStreamSaveBarVisible);
 
-						reset_menu();
+						set_menu_state();
 					}
 
 					break; 
@@ -1025,6 +1047,26 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 		}
 
 		return TRUE;
+
+	case WM_CLOSE:
+		{
+			RECT rc;
+			GetWindowRect(hwndDlg, &rc);
+
+			xStreamSavingBar = rc.left;
+			yStreamSavingBar = rc.top;
+
+			DestroyWindow(hwndStreamSavingBar);
+		}
+
+		return TRUE;
+
+	case WM_NCDESTROY:
+		// We are done - signal waiter if DLL unload
+		hwndStreamSavingBar = NULL;
+
+		return TRUE;
+
 	case WM_DESTROY:
 		{
 			if (himlStreamSavingBar) {
@@ -1036,12 +1078,6 @@ INT_PTR CALLBACK StreamSavingBarProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 				DestroyWindow(hwndToolTip);
 				hwndToolTip = NULL;
 			}
-
-			RECT rc;
-			GetWindowRect(hwndDlg, &rc);
-
-			xStreamSavingBar = rc.left;
-			yStreamSavingBar = rc.top;
 		}
 
 		return TRUE;

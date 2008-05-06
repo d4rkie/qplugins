@@ -9,10 +9,10 @@
 #include <list>
 using namespace std;
 
-#define PLUGIN_VERSION "v2.1"
+#define PLUGIN_VERSION "v2.1.2"
 
 // Debug stuff
-#if !defined(DEBUG)
+#if !defined(_DEBUG)
 #undef OutputDebugString
 #define OutputDebugString(str)
 #endif
@@ -76,13 +76,10 @@ extern list<std::string> listAddons; // Pointer to a buffer containing pairs of 
 extern list<std::string> listExtensions; // List of supported extensions
 
 // for plug-in menu
-extern void reset_menu(void);
-
+void insert_menu(void);
+void remove_menu(void);
+extern void set_menu_state(void);
 
 // common function
 extern int browse_folder(LPTSTR pszFolder, LPCTSTR lpszTitle, HWND hwndOwner);
 extern void show_error(const char *message,...);
-
-void insert_menu(void);
-void remove_menu(void);
-void reset_menu(void);

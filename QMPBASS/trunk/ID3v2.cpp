@@ -174,8 +174,11 @@ void ID3v2::Convert16BitEndian(void* pData, const int iSize)
 //////////////////////////////////////////////////////////////////////
 void ID3v2::GetFrameTXXX(BYTE* pData, DWORD nFrameSize, BYTE** _pRtnField, BYTE** _pRtnValue, BYTE* nEncoding)
 {
-	// Frame layout: |E|FE|FF| ... string ..|L'\0'|FE|FF| ... string ...
+	// Frame layout (unicode): |E|FE|FF| ... string ..|L'\0'|FE|FF| ... string ...
 	DWORD nSize = 0;
+	BYTE* pField	= 0;
+	BYTE* pDevide	= 0;
+	BYTE* pValue	= 0;
 
 	BYTE* pRtnField = *_pRtnField;
 	BYTE* pRtnValue = *_pRtnValue;
@@ -184,10 +187,6 @@ void ID3v2::GetFrameTXXX(BYTE* pData, DWORD nFrameSize, BYTE** _pRtnField, BYTE*
 	pData++;					// Move to start of data
 
 	if (*nEncoding == 1) { // Strings are unicode
-		BYTE* pField	= 0;
-		BYTE* pDevide	= 0;
-		BYTE* pValue	= 0;
-		
 		// Find devider between field and value
 		pDevide = (BYTE*)wcschr((const WCHAR*)pData, L'\0');
 		if (!pDevide) return;
@@ -226,8 +225,23 @@ void ID3v2::GetFrameTXXX(BYTE* pData, DWORD nFrameSize, BYTE** _pRtnField, BYTE*
 		lstrcpynW((WCHAR*)pRtnValue, (WCHAR*)pValue, nSize / 2 + 1);
 		pRtnValue[nSize - 1] = 0;
 		pRtnValue[nSize] = 0;
-	}
+	} else if (*nEncoding == 0) {		// ASCII text
+		// Find divider between field and value
+		pDevide = (BYTE*)strchr((char *)pData, '\0');
+		if (!pDevide) return;
 
+		nSize = pDevide - pData;
+		pRtnField = new BYTE[nSize + 1];	// + '\0'
+		memcpy(pRtnField, pData, nSize + 1);
+
+		// Get value
+		pValue = pDevide + 1;			// skip '\0'
+		nSize = nFrameSize - (pValue - (pData - 1));	// Size + BOM
+
+		pRtnValue = new BYTE[nSize + 1];
+		memcpy(pRtnValue, pValue, nSize);
+		pRtnValue[nSize] = '\0';
+	}
 
 	*_pRtnField = pRtnField;
 	*_pRtnValue = pRtnValue;

@@ -69,18 +69,20 @@ void free_addons(HPLUGIN handle)
 	BASS_PluginFree(handle);
 }
 
-bool create_bass (DWORD device)
+bool create_bass (DWORD device, HWND hPlayer)
 {
+	load_addons(strAddonsDir); // load add-ons
+
 	if (device == 0)
 		BASS_SetConfig(BASS_CONFIG_UPDATEPERIOD, 0);
 	else
 		BASS_SetConfig(BASS_CONFIG_UPDATEPERIOD, 100); // should be reset to default value!!
 
 	BASS_SetConfig(BASS_CONFIG_NET_TIMEOUT, 10000);
+	BASS_SetConfig(BASS_CONFIG_GVOL_STREAM, 10000);
+	BASS_SetConfig(BASS_CONFIG_GVOL_MUSIC, 10000);
 
-	BOOL ret = BASS_Init(device, nSampleRate, 0, NULL, NULL);
-
-	load_addons(strAddonsDir); // load add-ons
+	BOOL ret = BASS_Init(device, nSampleRate, 0, hPlayer, NULL);
 
 	return !!ret;
 }
@@ -88,6 +90,7 @@ bool create_bass (DWORD device)
 bool destroy_bass (void)
 {
 	free_addons(0); // free all addons
+
 	return BASS_Free() ? true : false;
 }
 
@@ -301,7 +304,7 @@ void CALLBACK bass::stream_status_proc(const void *buffer, DWORD length, void *u
 					if (bAutoShowStreamSavingBar) {
 						bStreamSaveBarVisible = TRUE;
 						ShowStreamSavingBar(bStreamSaveBarVisible);
-						reset_menu();
+						set_menu_state();
 					}
 
 					// finally, create our file
@@ -421,7 +424,7 @@ void CALLBACK bass::rg_dsp_proc(HDSP handle, DWORD channel, void *buffer, DWORD 
 
 	// calculate rg scale factor dynamically
 	pBass->hard_limiter = !!bHardLimiter;
-	pBass->rg_scale_factor = FLAC__replaygain_synthesis__compute_scale_factor(pBass->rg_peak, pBass->rg_gain, (double)nPreAmp, !(pBass->hard_limiter));
+	pBass->rg_scale_factor = FLAC__replaygain_synthesis__compute_scale_factor(pBass->rg_peak, pBass->rg_gain, (double)nRGPreAmp, !(pBass->hard_limiter));
 	FLAC__replaygain_synthesis__apply_gain_normal(
 		(FLAC__byte *)buffer, 
 		(FLAC__byte *)buffer, 
@@ -527,16 +530,21 @@ int bass::get_data(void *out_buffer, int *out_size)
 	int todo = *out_size;
 	while (todo && BASS_ChannelIsActive(m_hBass)) {
 		int rt = BASS_ChannelGetData(m_hBass, p, todo);
-
 		if (rt == -1) { // Decode error
-			if (BASS_ErrorGetCode() == BASS_ERROR_NOPLAY) // The channel is not playing, or is stalled. When handle is a "decoding channel", this indicates that it has reached the end.
+			// The channel is not playing, or is stalled. When handle is a "decoding channel", this indicates that it has reached the end.
+			if (BASS_ErrorGetCode() == BASS_ERROR_ENDED)
 				break;	// break while loop
 			show_error("Decode error in %s line %d", __FILE__, __LINE__);
 		}
+
+		// If no data available, wait and try again
+		if (rt == 0) {
+			Sleep(20);
+			continue;
+		}
+
 		p += rt;
 		todo -= rt;
-		
-		if (todo > 0 && is_url) Sleep(50);
 	}
 
 	*out_size -= todo;
@@ -697,17 +705,19 @@ bool bass::set_volume(int level)
 {
 	if (is_decode) return false;
 
-	return BASS_ChannelSetAttribute(m_hBass, BASS_ATTRIB_MUSIC_VOL_GLOBAL, (float)level) ? true : false;
+	BOOL ret = BASS_ChannelSetAttribute(m_hBass, BASS_ATTRIB_VOL, (float)level / 100.0f);
+
+	return !!ret;
 }
 
 //-----------------------------------------------------------------------------
 
 bool bass::fade_volume(int dst_volume, unsigned int elapse)
 {
-	bool ret = BASS_ChannelSlideAttribute(m_hBass, BASS_ATTRIB_MUSIC_VOL_GLOBAL, (float)dst_volume, elapse) ? true : false;
+	BOOL ret = BASS_ChannelSlideAttribute(m_hBass, BASS_ATTRIB_VOL, (float)dst_volume / 100.0f, elapse);
 	if (!ret) return false;
 
-	while (BASS_ChannelIsSliding(m_hBass, BASS_ATTRIB_MUSIC_VOL_GLOBAL)) Sleep(1);
+	while (BASS_ChannelIsSliding(m_hBass, BASS_ATTRIB_VOL)) Sleep(1);
 
 	return true;
 }
