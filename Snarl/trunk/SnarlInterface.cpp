@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 
 // History
+//  2008/05/19 : uSend and uSendEx would always set return value to M_OK on successfull call
 //  2008/04/14 : Updated to follow (what should be) the final Snarl 2.0 API
 //  2008/03/28 : Few fixes for Snarl 2.0
 //  2007/05/23 : snGetGlobalMsg & snGetSnarlWindow made static
@@ -125,9 +126,7 @@ BOOL SnarlInterface::snHideMessage(LONG32 Id)
 	ss.Cmd = SNARL_HIDE;
 	ss.Id = Id;
 
-	if (uSend(ss) == M_OK)
-		return TRUE;
-	return FALSE;
+	return (bool)uSend(ss);
 }
 
 
@@ -144,10 +143,7 @@ BOOL SnarlInterface::snIsMessageVisible(LONG32 Id)
 	ss.Cmd = SNARL_IS_VISIBLE;
 	ss.Id = Id;
 
-	if (uSend(ss) != 0)
-		return TRUE;
-	else
-		return FALSE;
+	return (bool)uSend(ss);
 }
 
 
@@ -410,8 +406,6 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 			if (GetLastError() == ERROR_TIMEOUT)
 				nReturn = M_TIMED_OUT;
 		}
-		else
-			nReturn = M_OK;
 	}
 
 	return nReturn;
@@ -437,8 +431,6 @@ LONG32 SnarlInterface::uSendEx(SNARLSTRUCTEX ssex)
 			if (GetLastError() == ERROR_TIMEOUT)
 				nReturn = M_TIMED_OUT;
 		}
-		else
-			nReturn = M_OK;		
 	}
 
 	return nReturn;
