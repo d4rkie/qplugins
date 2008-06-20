@@ -23,6 +23,9 @@
 //-----------------------------------------------------------------------------
 
 // History
+//  2008/06/20 : Fixed snShowMessageEx so it actually sends the extended version - oops
+//             : Fixed compiler warning C4800: forcing value to bool 'true' or 'false' (performance warning)
+
 //  2008/05/19 : uSend and uSendEx would always set return value to M_OK on successfull call
 //  2008/04/14 : Updated to follow (what should be) the final Snarl 2.0 API
 //  2008/03/28 : Few fixes for Snarl 2.0
@@ -97,7 +100,7 @@ LONG32 SnarlInterface::snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR sz
 	SNARLSTRUCTEX ssex;
 	ZeroMemory((void*)&ssex, sizeof(ssex));
 
-	ssex.Cmd = SNARL_SHOW;
+	ssex.Cmd = SNARL_EX_SHOW;
 	ssex.Timeout = timeout;
 	ssex.LngData2 = reinterpret_cast<LONG32>(hWndReply);
 	ssex.Id = uReplyMsg;
@@ -126,7 +129,7 @@ BOOL SnarlInterface::snHideMessage(LONG32 Id)
 	ss.Cmd = SNARL_HIDE;
 	ss.Id = Id;
 
-	return (bool)uSend(ss);
+	return uSend(ss) != 0;
 }
 
 
@@ -143,7 +146,7 @@ BOOL SnarlInterface::snIsMessageVisible(LONG32 Id)
 	ss.Cmd = SNARL_IS_VISIBLE;
 	ss.Id = Id;
 
-	return (bool)uSend(ss);
+	return uSend(ss) != 0;
 }
 
 
