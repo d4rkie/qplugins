@@ -14,7 +14,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 QDecoder::QDecoder()
-: QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.3.0"), _T("WV"))
+: QDecoderBase(_T("QPlugins WavPack decoder"), _T("4.3.1"), _T("WV"))
 , m_wpc(NULL)
 , m_wvcreader(NULL)
 , m_bAbort(FALSE)
