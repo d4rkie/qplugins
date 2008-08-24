@@ -92,32 +92,43 @@ class SnarlInterface {
 		SnarlInterface();
 		~SnarlInterface();
 
-		LONG32  snShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0);
-		LONG32  snShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0, LPCSTR szSoundFile = "");
+		static HWND   GetSnarlWindow();		
+		static LONG32 GetGlobalMsg();
 
-		LPCTSTR snGetAppPath();    // ** Remember to delete [] when finished with the string !
-		LPCTSTR snGetIconsPath();  // ** Remember to delete [] when finished with the string !
 		
-		static HWND   snGetSnarlWindow();		
-		static LONG32 snGetGlobalMsg();
+		LPTSTR AllocateString(size_t n) { return new TCHAR[n]; }
+		void FreeString(LPCTSTR str)    { delete [] str; str = NULL; }
+		
 
-		BOOL      snGetVersion(WORD* Major, WORD* Minor);
-		LONG32    snGetVersionEx();
-		BOOL      snHideMessage(LONG32 Id);
-		BOOL      snIsMessageVisible(LONG32 Id);
-		M_RESULT  snRegisterAlert(LPCSTR szAppName, LPCSTR szClass);
-		M_RESULT  snRegisterConfig(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg);
-		M_RESULT  snRegisterConfig2(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg, LPCSTR szIcon);
-		M_RESULT  snRevokeConfig(HWND hWnd);
-		M_RESULT  snSetTimeout(LONG32 Id, LONG32 Timeout);
-		M_RESULT  snUpdateMessage(LONG32 Id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
+		LONG32  ShowMessage(LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0);
+		LONG32  ShowMessageEx(LPCSTR szClass, LPCSTR szTitle, LPCSTR szText, LONG32 timeout = 0, LPCSTR szIconPath = "", HWND hWndReply = NULL, WPARAM uReplyMsg = 0, LPCSTR szSoundFile = "");
+
+		LPCTSTR GetAppPath();    // ** Remember to FreeString when finished with the string !
+		LPCTSTR GetIconsPath();  // ** Remember to FreeString when finished with the string !
+
+		BOOL      GetVersion(WORD* Major, WORD* Minor);
+		LONG32    GetVersionEx();
+		BOOL      HideMessage();
+		BOOL      HideMessage(LONG32 Id);
+		BOOL      IsMessageVisible();
+		BOOL      IsMessageVisible(LONG32 Id);
+		M_RESULT  RegisterAlert(LPCSTR szAppName, LPCSTR szClass);
+		M_RESULT  RegisterConfig(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg);
+		M_RESULT  RegisterConfig2(HWND hWnd, LPCSTR szAppName, LONG32 replyMsg, LPCSTR szIcon);
+		M_RESULT  RevokeConfig(HWND hWnd);
+		M_RESULT  SetTimeout(LONG32 Timeout);
+		M_RESULT  SetTimeout(LONG32 Id, LONG32 Timeout);
+		M_RESULT  UpdateMessage(LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
+		M_RESULT  UpdateMessage(LONG32 Id, LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath = "");
 		
-		
+		LONG32    GetLastMessageId() { return m_nLastMessageId; }
 
 	private:
 		LONG32 uSend(SNARLSTRUCT ss);
 		LONG32 uSendEx(SNARLSTRUCTEX ssex);
-		HWND m_hwndFrom; // set during snRegisterConfig() or snRegisterConfig2()
+		
+		LONG32 m_nLastMessageId;
+		HWND   m_hwndFrom; // set during snRegisterConfig() or snRegisterConfig2()
 };
 
 #endif // SNARL_INTERFACE
