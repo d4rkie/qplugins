@@ -24,6 +24,8 @@
 //-----------------------------------------------------------------------------
 
 // History
+//  2008/08/27 : Fixed return value of IsMessageVisible and HideMessage (returns false on failure now)
+//             : Fixed critical error in the new overloaded UpdateMessage() function
 //  2008/08/27 : x64 compiler fix
 //  2008/08/24 : Renamed all functions to not have prepended "sn".
 //             : Memory allocation functions added. (Use FreeString to free strings returned by Snarl)
@@ -139,7 +141,7 @@ BOOL SnarlInterface::HideMessage(LONG32 Id)
 	ss.Cmd = SNARL_HIDE;
 	ss.Id = Id;
 
-	return uSend(ss) != 0;
+	return (uSend(ss) == 1) ? true : false;
 }
 
 BOOL SnarlInterface::HideMessage()
@@ -160,7 +162,7 @@ BOOL SnarlInterface::IsMessageVisible(LONG32 Id)
 	ss.Cmd = SNARL_IS_VISIBLE;
 	ss.Id = Id;
 
-	return uSend(ss) != 0;
+	return (uSend(ss) == 1) ? true : false;
 }
 
 BOOL SnarlInterface::IsMessageVisible()
@@ -193,7 +195,7 @@ SnarlInterface::M_RESULT SnarlInterface::UpdateMessage(LONG32 id, LPCSTR szTitle
 
 SnarlInterface::M_RESULT SnarlInterface::UpdateMessage(LPCSTR szTitle, LPCSTR szText, LPCSTR szIconPath)
 {
-	return UpdateMessage(szTitle, szText, szIconPath);
+	return UpdateMessage(m_nLastMessageId, szTitle, szText, szIconPath);
 }
 
 //-----------------------------------------------------------------------------
@@ -267,7 +269,7 @@ BOOL SnarlInterface::GetVersion(WORD* Major, WORD* Minor)
 	SNARLSTRUCT ss;
 	ss.Cmd = SNARL_GET_VERSION;
 	LONG32 versionInfo = uSend(ss);
-	if (versionInfo != M_FAILED && versionInfo != M_TIMED_OUT) {
+	if (versionInfo > 0 && versionInfo != M_FAILED && versionInfo != M_TIMED_OUT) {
 		*Major = HIWORD(versionInfo);
 		*Minor = LOWORD(versionInfo);
 		return TRUE;
@@ -425,7 +427,7 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 		cds.cbData = sizeof(ss);
 		cds.lpData = &ss;
 
-		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn) == 0)
+		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_ABORTIFHUNG | SMTO_NOTIMEOUTIFNOTHUNG, 1000, &nReturn) == 0)
 		{
 			if (GetLastError() == ERROR_TIMEOUT)
 				nReturn = M_TIMED_OUT;
@@ -450,7 +452,7 @@ LONG32 SnarlInterface::uSendEx(SNARLSTRUCTEX ssex)
 		cds.cbData = sizeof(ssex);
 		cds.lpData = &ssex;
 
-		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_NORMAL, 1000, &nReturn) == 0)
+		if (SendMessageTimeout(hWnd, WM_COPYDATA, (WPARAM)m_hwndFrom, (LPARAM)&cds, SMTO_ABORTIFHUNG | SMTO_NOTIMEOUTIFNOTHUNG, 1000, &nReturn) == 0)
 		{
 			if (GetLastError() == ERROR_TIMEOUT)
 				nReturn = M_TIMED_OUT;
