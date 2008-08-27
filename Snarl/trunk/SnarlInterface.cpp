@@ -24,6 +24,7 @@
 //-----------------------------------------------------------------------------
 
 // History
+//  2008/08/27 : x64 compiler fix
 //  2008/08/24 : Renamed all functions to not have prepended "sn".
 //             : Memory allocation functions added. (Use FreeString to free strings returned by Snarl)
 //             : Added m_nLastMessageId to the class. (Use GetLastMessageId() to get it)
@@ -414,7 +415,7 @@ LPCTSTR SnarlInterface::GetIconsPath()
 
 LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 {
-	DWORD nReturn = M_FAILED;
+	DWORD_PTR nReturn = M_FAILED;
 
 	HWND hWnd = GetSnarlWindow();
 	if (IsWindow(hWnd))
@@ -439,7 +440,7 @@ LONG32 SnarlInterface::uSend(SNARLSTRUCT ss)
 
 LONG32 SnarlInterface::uSendEx(SNARLSTRUCTEX ssex)
 {
-	DWORD nReturn = M_FAILED;
+	DWORD_PTR nReturn = M_FAILED;
 
 	HWND hWnd = GetSnarlWindow();
 	if (IsWindow(hWnd))

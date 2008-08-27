@@ -10,7 +10,7 @@ class SnarlInterface {
 	public:
 		static const LPCTSTR SNARL_GLOBAL_MSG;
 
-        static const int SNARL_STRING_LENGTH = 1024;
+		static const int SNARL_STRING_LENGTH = 1024;
 
 		static const LONG32 SNARL_LAUNCHED = 1;                // Snarl has just started running
 		static const LONG32 SNARL_QUIT = 2;                    // Snarl is about to stop running
