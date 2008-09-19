@@ -141,7 +141,8 @@ BOOL SnarlInterface::HideMessage(LONG32 Id)
 	ss.Cmd = SNARL_HIDE;
 	ss.Id = Id;
 
-	return (uSend(ss) == 1) ? true : false;
+	LONG32 n = uSend(ss);
+	return (n == -1 || n == 1) ? TRUE : FALSE;
 }
 
 BOOL SnarlInterface::HideMessage()
@@ -162,11 +163,16 @@ BOOL SnarlInterface::IsMessageVisible(LONG32 Id)
 	ss.Cmd = SNARL_IS_VISIBLE;
 	ss.Id = Id;
 
-	return (uSend(ss) == 1) ? true : false;
+	// We are getting -1 when true, checking for 1 just in case. We don't want to return true for the other M_RESULT returns
+	LONG32 n = uSend(ss);	
+	return (n == -1 || n == 1) ? TRUE : FALSE;
 }
 
 BOOL SnarlInterface::IsMessageVisible()
 {
+	if (m_nLastMessageId == 0)
+		return FALSE;
+
 	return IsMessageVisible(m_nLastMessageId);
 }
 
