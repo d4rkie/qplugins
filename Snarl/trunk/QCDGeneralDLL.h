@@ -23,8 +23,14 @@
 #ifndef QCDGeneralDLL_H
 #define QCDGeneralDLL_H
 
+#pragma once
+
+
 #include <QCDModGeneral2.h>
 #include <QCDCtrlMsgs.h>
+#include <QString.h>
+
+
 #include "SnarlInterface.h"
 
 struct _Settings
@@ -50,15 +56,16 @@ extern HWND              hwndPlayer;
 extern QCDModInitGen2    QCDCallbacks;
 extern PluginServiceFunc Service;
 extern _Settings         Settings;
+extern QString           g_strDefaultIcon;
 
-extern void            DisplaySongInfo();
-extern bool            IsPlaying();
+extern LONG32            g_nSnarlGlobalMessage;
+extern LONG32            g_nSnarlVersion;
 
-extern SnarlInterface* snarl;
+extern SnarlInterface*   snarlInterface;
 
 
 // Calls from the Player
-int Initialize(QCDModInfo *modInfo, int flags);
+int  Initialize(QCDModInfo *modInfo, int flags);
 void Configure(int flags);
 void About(int flags);
 void ShutDown(int flags);
@@ -66,16 +73,6 @@ void ShutDown(int flags);
 
 // Helper functions
 void OutputDebugInfo(const WCHAR* strDisplay, ...);
-void LoadSettings();
-void SaveSettings();
-void DisplaySongInfo();
-bool IsPlaying();
-// void GetCoverArt(long nIndex, LPSTR strIcon);
-
-void StartSnarl();
-void CloseSnarl();
-BOOL GetSnarlPath(QString* strPath, QString* strDir);
-
 void Test();
 
 // Subclassing

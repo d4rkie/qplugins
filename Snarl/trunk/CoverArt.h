@@ -37,21 +37,27 @@ std::deque<QString*> g_listTempFiles;
 
 void CoverArtInitialize()
 {
-	g_strTempPath.assign(_wgetenv(L"TEMP"));
-	g_strTempPath.append(L"\\");
+	size_t nReturnSize = 0;
+	WCHAR szTmp[MAX_PATH] = {0};
+
+	if (_wgetenv_s(&nReturnSize, szTmp, sizeof(szTmp)/sizeof(WCHAR), L"TEMP") == 0)
+	{ // Success
+		g_strTempPath.SetUnicode(szTmp);
+		g_strTempPath.AppendUnicode(L"\\");
+	}
 }
 
 //-----------------------------------------------------------------------------
 
 void CoverArtShutdown()
 {
-	QString strTmp;
 	// Clean up the files we created
 	for (std::deque<QString*>::iterator aiIter = g_listTempFiles.begin(); aiIter != g_listTempFiles.end( ); aiIter++)
 	{
-		strTmp = g_strTempPath;
-		strTmp.append(**aiIter);
-		DeleteFile(strTmp);
+		QString strTmp;
+		strTmp.SetUnicode(g_strTempPath);
+		strTmp.AppendUnicode(**aiIter);
+		DeleteFile(strTmp.GetUnicode());
 		delete *aiIter;
 	}
 }
@@ -78,7 +84,8 @@ BOOL GetCoverArtFromML(long nIndex, QString* strIcon)
 	IQCDTagInfo* pTagInfo = (IQCDTagInfo*)Service(opGetIQCDTagInfo, strFile, 0, 0);
 	if (pTagInfo)
 	{
-		try {
+		try
+		{
 			if (!pTagInfo->ReadFromFile(TAG_ALL))
 				throw L"Failed on: pTagInfo->ReadFromFile(TAG_ALL)";
 
@@ -97,35 +104,37 @@ BOOL GetCoverArtFromML(long nIndex, QString* strIcon)
 
 				// Create filename
 				QString* strFilename = new QString();
-				strFilename->append(_GetInfo(opGetArtistName, nIndex));
-				strFilename->append(L" - ");
-				strFilename->append(_GetInfo(opGetAlbumName, nIndex));
-				strFilename->append(L".");
+				strFilename->AppendUnicode(_GetInfo(opGetArtistName, nIndex));
+				strFilename->AppendUnicode(L" - ");
+				strFilename->AppendUnicode(_GetInfo(opGetAlbumName, nIndex));
+				strFilename->AppendUnicode(L".");
 				
 				if (wcscmp(pArtwork->pszMimeType, L"image/jpeg") == 0)
-					strFilename->append(L"jpg");
+					strFilename->AppendUnicode(L"jpg");
 
 				QString strFullPath;
-				strFullPath = g_strTempPath;
-				strFullPath.append(*strFilename);
+				strFullPath.SetUnicode(g_strTempPath);
+				strFullPath.AppendUnicode(strFilename->GetUnicode());
 
 				// Output to temp file
 				HANDLE hFile = CreateFile(strFullPath.GetUnicode(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-				if (hFile != INVALID_HANDLE_VALUE) {
+				if (hFile != INVALID_HANDLE_VALUE)
+				{
 					DWORD nWritten = 0;
 					if (WriteFile(hFile, pArtwork->pbData, pArtwork->dwDataLen, &nWritten, NULL)) {
-						strIcon->assign(strFullPath);
+						strIcon->SetUnicode(strFullPath);
 						g_listTempFiles.push_back(strFilename);
 					}
 					else
 						delete strFilename;
 					CloseHandle(hFile);
 				}
-				else {
+				else
+				{
 					DWORD nErr = GetLastError();
 					
 					if (nErr == ERROR_FILE_EXISTS)
-						strIcon->assign(strFullPath);
+						strIcon->SetUnicode(strFullPath);
 					else {
 						LPVOID lpMsgBuf;
 						FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, nErr, 0, (LPTSTR)&lpMsgBuf, 0, NULL);
@@ -145,7 +154,7 @@ BOOL GetCoverArtFromML(long nIndex, QString* strIcon)
 		pTagInfo->Release();
 	}
 
-	if (strIcon->length() > 0)
+	if (strIcon->Length() > 0)
 		return TRUE;
 	else
 		return FALSE;
@@ -155,28 +164,25 @@ BOOL GetCoverArtFromML(long nIndex, QString* strIcon)
 
 BOOL GetCoverArtFromFile(long nIndex, QString* strIcon)
 {
-	QString::size_type nPos = 0;
+	size_t nPos = 0;
 	QString strFinal;
 	
-	QString strRoot = Settings.strCoverArtRoot;
-	QString strTemplate = Settings.strCoverArtTemplate;
+	std::wstring strRoot = Settings.strCoverArtRoot;
+	std::wstring strTemplate = Settings.strCoverArtTemplate;
 	
 	if (!strIcon)
 		return FALSE;
 	
-	// Do approx. memory reservation up front
-	strFinal.reserve(Settings.strCoverArtRoot.size() + strTemplate.size() + 32);
-
 	//-----------------------------------------------------------------------------
 	// Parse root
 	// %CURRENT_DIR
 	if (strRoot.substr(0, 12) == L"%CURRENT_DIR")
 	{
-		strFinal.assign(_GetFileFolder(nIndex));
+		strFinal.SetUnicode(_GetFileFolder(nIndex));
 	}
 	else
 	{
-		strFinal.assign(strRoot);
+		strFinal.SetUnicode(strRoot.c_str());
 	}
 
 	
@@ -194,7 +200,7 @@ BOOL GetCoverArtFromFile(long nIndex, QString* strIcon)
 		return FALSE;
 
 	// Parse template up to .
-	for (QString::size_type i = 0; i < nPos; i++)
+	for (std::wstring::size_type i = 0; i < nPos; i++)
 	{
 		if (strTemplate[i] == '%')
 		{
@@ -202,21 +208,24 @@ BOOL GetCoverArtFromFile(long nIndex, QString* strIcon)
 			switch (strTemplate[i])
 			{
 			case 'A' :
-				strFinal.append(_GetInfo(opGetArtistName, nIndex));
+				strFinal.AppendUnicode(_GetInfo(opGetArtistName, nIndex));
 				break;
 			case 'D' :
-				strFinal.append(_GetInfo(opGetAlbumName, nIndex));
+				strFinal.AppendUnicode(_GetInfo(opGetAlbumName, nIndex));
 				break;
 			case 'F' :
-				strFinal.append(_GetFilename(nIndex));
+				strFinal.AppendUnicode(_GetFilename(nIndex));
 				break;
 			case 'T' :
-				strFinal.append(_GetInfo(opGetTrackName, nIndex));
+				strFinal.AppendUnicode(_GetInfo(opGetTrackName, nIndex));
 				break;
 			}
 		}
 		else
-			strFinal.push_back(strTemplate[i]);
+		{
+			WCHAR w[2]; w[0] = strTemplate[i]; w[1] = 0;
+			strFinal.AppendUnicode(w);
+		}
 	}
 
 	// OutputDebugString(strFinal);
@@ -234,7 +243,7 @@ BOOL GetCoverArtFromFile(long nIndex, QString* strIcon)
 	arrExtensions[2] = L"gif";
 	arrExtensions[3] = L"bmp";
 
-	strFinal.push_back(L'.');
+	strFinal.AppendUnicode(L".");
 
 	if (strTemplate.substr(nPos+1, 2) == L"%E")
 	{
@@ -242,27 +251,27 @@ BOOL GetCoverArtFromFile(long nIndex, QString* strIcon)
 		// Check if one of the files exist
 		for (int i = 0; i < NUM_OF_EXT; i++)
 		{
-			strFileTest = strFinal;
-			strFileTest.append(arrExtensions[i]);
+			strFileTest.SetUnicode(strFinal);
+			strFileTest.AppendUnicode(arrExtensions[i]);
 			HANDLE hFile = CreateFile(strFileTest, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, 
 										NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hFile != INVALID_HANDLE_VALUE) {
 				CloseHandle(hFile);
-				strIcon->assign(strFileTest);
+				strIcon->SetUnicode(strFileTest);
 				break;
 			}
 		}
 	}
 	else
 	{
-		strFinal.append(strTemplate.substr(nPos+1));
+		strFinal.AppendUnicode(strTemplate.substr(nPos+1).c_str());
 		HANDLE hFile = CreateFile(strFinal, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (hFile != INVALID_HANDLE_VALUE) {
 			CloseHandle(hFile);
-			strIcon->assign(strFinal);
+			strIcon->SetUnicode(strFinal);
 		}		
 	}
-	if (strIcon->length() > 0)
+	if (strIcon->Length() > 0)
 		return TRUE;
 	else
 		return FALSE;
@@ -274,24 +283,30 @@ BOOL GetCoverArtFromFile(long nIndex, QString* strIcon)
 
 QString _GetInfo(PluginServiceOp op, long nIndex)
 {
-	QString strReturn;
+	/*QString strReturn;
 	WCHAR strUCS2[MAX_PATH];
 	
 	Service(op, strUCS2, MAX_PATH*sizeof(WCHAR), nIndex);
-	strReturn = strUCS2;
-	return strReturn;
+	strReturn.SetUnicode(strUCS2);
+	return strReturn;*/
+
+	WCHAR strUCS2[MAX_PATH];
+	
+	Service(op, strUCS2, MAX_PATH*sizeof(WCHAR), nIndex);
+	return strUCS2;
 }
 
 //-----------------------------------------------------------------------------
 
 QString _GetFilename(long nIndex)
 {
-	QString strReturn;
+	std::wstring strTmp;
 	WCHAR strUCS2[MAX_PATH];
 	
 	Service(opGetPlaylistFile, strUCS2, MAX_PATH*sizeof(WCHAR), nIndex);
-	strReturn = strUCS2;
-	return strReturn.substr(0, strReturn.find_last_of('.')).c_str();
+	strTmp = strUCS2;
+	QString strRet = strTmp.substr(0, strTmp.find_last_of('.')).c_str();
+	return strRet;
 }
 
 //-----------------------------------------------------------------------------

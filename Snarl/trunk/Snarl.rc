@@ -27,8 +27,8 @@ LANGUAGE LANG_DANISH, SUBLANG_DEFAULT
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,1,4,5
- PRODUCTVERSION 0,1,4,0
+ FILEVERSION 2,0,0,7
+ PRODUCTVERSION 2,0,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -44,13 +44,13 @@ BEGIN
         BLOCK "000904b0"
         BEGIN
             VALUE "CompanyName", "Noer.it"
-            VALUE "FileDescription", "Snarl"
-            VALUE "FileVersion", "0, 1, 4, 5"
+            VALUE "FileDescription", "Quintessential Media Player plug-in for Snarl"
+            VALUE "FileVersion", "2, 0, 0, 7"
             VALUE "InternalName", "Snarl"
-            VALUE "LegalCopyright", "Copyright (C) 2007"
+            VALUE "LegalCopyright", "Copyright (C) 2008"
             VALUE "OriginalFilename", "Snarl.dll"
-            VALUE "ProductName", " Snarl Dynamic Link Library"
-            VALUE "ProductVersion", "0, 1, 4, 0"
+            VALUE "ProductName", "Quintessential Media Player plug-in for Snarl"
+            VALUE "ProductVersion", "2, 0, 0, 0"
         END
     END
     BLOCK "VarFileInfo"
@@ -135,8 +135,8 @@ BEGIN
     CONTROL         "Wordwrap",IDC_HEADLINE_WRAP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,141,22,46,10
     CONTROL         "Wordwrap",IDC_TEXT1_WRAP,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_DISABLED | WS_TABSTOP,141,38,47,10
     CONTROL         "Wordwrap",IDC_TEXT2_WRAP,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_DISABLED | WS_TABSTOP,141,54,46,10
-    LTEXT           "Text1",IDC_STATIC,63,38,20,8
-    LTEXT           "Text2",IDC_STATIC,63,54,20,8
+    LTEXT           "Line 1",IDC_STATIC,63,38,20,8
+    LTEXT           "Line 2",IDC_STATIC,63,54,20,8
     RTEXT           "Message timeout",IDC_STATIC,8,77,75,8
     CONTROL         "Cascade popups",IDC_CASCADE_POPUPS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,178,77,84,10
     LTEXT           "Version",IDC_SNARL_VERSION,52,195,119,8

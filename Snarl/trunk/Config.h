@@ -16,6 +16,7 @@
 #include <TCHAR.h>
 #include <QString.h>
 #include "QCDGeneralDLL.h"
+#include "SnarlComThread.h"
 #include "Help.h"
 #include "resource.h"
 
@@ -89,10 +90,11 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 
 		// Snarl version
-		if (snarl->snGetVersion(&nHi, &nLo))
+		SnarlInterface snarl;
+		if (snarl.GetVersion(&nHi, &nLo))
 			_stprintf_s(str, 64, _T("%u.%u"), nHi, nLo);
 		else { // Try again, might have timeout
-			if (snarl->snGetVersion(&nHi, &nLo))
+			if (snarl.GetVersion(&nHi, &nLo))
 				_stprintf_s(str, 64, _T("%u.%u"), nHi, nLo);
 			else
 				StringCbCopy(str, 64, _T("Failed to get Snarl version"));
@@ -100,7 +102,7 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 		SetDlgItemText(hwndDlg, IDC_SNARL_VERSION, str);
 
 		// Snarl build
-		nBuild = snarl->snGetVersionEx();
+		nBuild = snarl.GetVersionEx();
 		if (nBuild != SnarlInterface::M_TIMED_OUT && nBuild != SnarlInterface::M_FAILED) {
 			if (nBuild < 37)
 				_stprintf_s(str, 64, _T("%u ***You need to upgrade Snarl***"), nBuild);
@@ -203,10 +205,12 @@ BOOL CALLBACK ConfigDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 void CheckRootFolder()
 {
-	if (Settings.strCoverArtRoot.substr(0, 12) == L"%CURRENT_DIR")
+	std::wstring str = Settings.strCoverArtRoot.GetUnicode();
+
+	if (str.substr(0, 12) == L"%CURRENT_DIR")
 		return;
-	if (Settings.strCoverArtRoot.at(Settings.strCoverArtRoot.length() - 1))
-		Settings.strCoverArtRoot.push_back('\\');
+	if (str.at(str.length() - 1))
+		Settings.strCoverArtRoot.AppendUnicode(L"\\");
 }
 
 
@@ -232,8 +236,8 @@ void BrowseForRootFolder()
 	{
 		TCHAR szPath[MAX_PATH];
 		if (SHGetPathFromIDList(pidl, szPath)) {
-			Settings.strCoverArtRoot.assign(szPath);
-			Settings.strCoverArtRoot.push_back('\\');
+			Settings.strCoverArtRoot.SetTStr(szPath);
+			Settings.strCoverArtRoot.AppendUnicode(L"\\");
 		}
 
         // free memory used

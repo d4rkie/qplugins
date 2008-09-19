@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8,00"
+	Version="9,00"
 	Name="Snarl"
 	ProjectGUID="{E235CF1D-36BA-4FFC-96A8-BD2704751B35}"
 	RootNamespace="Snarl"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -39,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\QMP_Includes"
+				AdditionalIncludeDirectories="..\qmppdk\Include;..\QMP_Includes"
 				WarningLevel="3"
 				DebugInformationFormat="4"
 			/>
@@ -54,12 +55,14 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(QMPPATH)\Plugins\$(ProjectName).dll"
+				OutputFile="$(QMPPATH)\Plugins\AMyOwn\$(ProjectName).dll"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(QMPPATH)\Plugins\$(ProjectName).pdb"
+				ProgramDatabaseFile="$(QMPPATH)\Plugins\AMyOwn\$(ProjectName).pdb"
 				GenerateMapFile="false"
 				MapExports="true"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -78,9 +81,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -111,10 +111,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="3"
+				Optimization="2"
 				InlineFunctionExpansion="2"
-				AdditionalIncludeDirectories="..\QMP_Includes"
+				AdditionalIncludeDirectories="..\qmppdk\Include;..\QMP_Includes;"
 				StringPooling="true"
+				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="0"
 			/>
@@ -135,8 +136,11 @@
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="false"
 				ProgramDatabaseFile="$(QMPPATH)\Plugins\$(ProjectName).pdb"
-				OptimizeForWindows98="1"
+				OptimizeForWindows98="0"
 				BaseAddress="0x30010000"
+				RandomizedBaseAddress="2"
+				FixedBaseAddress="1"
+				DataExecutionPrevention="2"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -155,9 +159,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -181,7 +182,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\QString.cpp"
+				RelativePath="..\QMP_Includes\QString.cpp"
 				>
 			</File>
 			<File
@@ -207,19 +208,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
-				>
-			</File>
-			<File
 				RelativePath=".\QCDGeneralDLL.h"
 				>
 			</File>
 			<File
-				RelativePath="..\qmppdk\Include\QCDModDefs.h"
-				>
-			</File>
-			<File
-				RelativePath=".\QString.h"
+				RelativePath="..\QMP_Includes\QString.h"
 				>
 			</File>
 			<File
@@ -227,9 +220,33 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Settings.h"
+				>
+			</File>
+			<File
+				RelativePath=".\SnarlComThread.h"
+				>
+			</File>
+			<File
+				RelativePath=".\SnarlHelper.h"
+				>
+			</File>
+			<File
 				RelativePath=".\SnarlInterface.h"
 				>
 			</File>
+			<Filter
+				Name="QMP"
+				>
+				<File
+					RelativePath="..\qmppdk\Include\QCDCtrlMsgs.h"
+					>
+				</File>
+				<File
+					RelativePath="..\qmppdk\Include\QCDModDefs.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Resource Files"
