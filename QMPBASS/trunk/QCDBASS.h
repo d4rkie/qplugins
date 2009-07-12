@@ -9,7 +9,7 @@
 #include <list>
 using namespace std;
 
-#define PLUGIN_VERSION "v2.1.2"
+#define PLUGIN_VERSION "v2.1.3"
 
 // Debug stuff
 #if !defined(_DEBUG)

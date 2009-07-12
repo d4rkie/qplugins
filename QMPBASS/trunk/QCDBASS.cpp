@@ -27,6 +27,7 @@
 // Feature Reqeusts
 // : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 07-10-09 : Fixed track name tag update when playing Shoutcast streams
 // 04-26-08 : General cleanup, including:
 //				- Tighter thread control and Window destruction 
 //				- Fixed volume control in BASS playback.
