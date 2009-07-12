@@ -78,9 +78,10 @@ public:
 	void DoSwitch(long index, ASIOBool directProcess);
 
 	BOOL IsDriverLoaded()	{ return m_bDriverLoaded; }; 
-	BOOL IsDeviceOpen()		{ return m_bDeviceOpen; }; 
+	BOOL IsDeviceReady()	{ return m_bDeviceOpen && (m_bPlaying || m_bPlayerStart); }; 
 	BOOL IsDeviceInited()	{ return m_bDeviceInited; };
 	BOOL IsPlaying()		{ return m_bPlaying; };
+	BOOL IsDeviceOpen()		{ return m_bDeviceOpen; };
 
 	long	GetBufferLatency()	{ return m_nBufferLatency; };
 	long	GetDeviceLatency()	{ return m_nDeviceLatency; };
@@ -112,6 +113,8 @@ private:
 
 	CRITICAL_SECTION	AsioCritSec;
 	HANDLE				BufferEvent;
+	HANDLE				DrainEvent;
+	HANDLE				CommandSemaphore;
 
 	ASIOSampleType	m_nAsioSampleType;
 	DWORD			m_nAsioBytesPerSample;

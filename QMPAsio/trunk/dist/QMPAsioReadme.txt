@@ -1,4 +1,4 @@
-QMPAsio V1.0.6
+QMPAsio V1.0.7
 
 Contents
 ========
@@ -35,6 +35,9 @@ Notes
 
 Revision History
 ================
+
+1.0.7	Improved buffer synchronization with ASIO driver (no deadlocks)
+	Fixed track positioning
 
 1.0.6	Faster float-to-integer conversion
 

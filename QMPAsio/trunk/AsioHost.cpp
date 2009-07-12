@@ -38,7 +38,7 @@ CAsioHost::CAsioHost(void)
 	this->m_bDeviceOpen = FALSE;
 	this->m_bPlaying = FALSE;
 	this->m_bDraining = FALSE;
-	this->m_bPlayerStart = TRUE;
+	this->m_bPlayerStart = FALSE;
 	
 	this->m_nChannelBufferSize = 0;
 	this->m_nChannelBufferLowWater = 0;
@@ -57,12 +57,17 @@ CAsioHost::CAsioHost(void)
 	// Use of spinlock can avoid costly kernel wait calls (best if low contention)
 	::InitializeCriticalSectionAndSpinCount(&this->AsioCritSec, QMPASIO_SPINCOUNT);
 	this->BufferEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+	this->DrainEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+	// Processing semaphore (serialize calls from player)
+	this->CommandSemaphore = ::CreateSemaphore(NULL, 1, 1, NULL);
 }
 
 CAsioHost::~CAsioHost(void)
 {
 	::DeleteCriticalSection(&this->AsioCritSec);
+	::CloseHandle(this->CommandSemaphore);
 	::CloseHandle(this->BufferEvent);
+	::CloseHandle(this->DrainEvent);
 }
 
 //
@@ -72,6 +77,9 @@ CAsioHost::~CAsioHost(void)
 //
 BOOL CAsioHost::DoOpen(DWORD SampleRate, DWORD BitsPerSample, DWORD nChannels, DWORD WaveFormat)
 {
+	// Grab command semaphore
+	::WaitForSingleObject(this->CommandSemaphore, INFINITE);
+
 	if (!this->m_bDeviceInited)
 	{
 		// Check if driver needs to be switched
@@ -103,10 +111,18 @@ BOOL CAsioHost::DoOpen(DWORD SampleRate, DWORD BitsPerSample, DWORD nChannels, D
 	// Finish init and return status
 	// If player is supplying mono data (nChannels .EQ. 1) be sure to
 	// init at least 2 ASIO playback channels for binaural sound.
-	return SetFormatInfo(m_nPlayerSampleRate,
-						 m_nPlayerBitsPerSample, 
-						 (m_nPlayerChannels < 2) ? 2 : m_nPlayerChannels,	// Minimum of 2 chnls
-						 m_nPlayerSampleFormat);
+	BOOL ret = SetFormatInfo(m_nPlayerSampleRate,
+							 m_nPlayerBitsPerSample, 
+							 (m_nPlayerChannels < 2) ? 2 : m_nPlayerChannels,	// Minimum of 2 chnls
+							 m_nPlayerSampleFormat);
+
+	// Need to kick off player when Write called
+	this->m_bPlayerStart = TRUE;
+
+	// Done with command execution
+	::ReleaseSemaphore(this->CommandSemaphore, 1, NULL);
+
+	return ret;
 }
 
 //
@@ -315,12 +331,6 @@ BOOL CAsioHost::DoStop(int flags)
 				// Drain it now
 				DrainAndWait();
 
-				// Wait for driver to indicate we are empty
-				while (this->m_bDraining)
-				{
-					::WaitForSingleObject(this->BufferEvent, INFINITE);
-				}
-
 				// Stop ASIO processing
 				PlayerStop();
 			}
@@ -331,16 +341,20 @@ BOOL CAsioHost::DoStop(int flags)
 			if (!this->m_bDraining && 
 				((flags == STOPFLAG_PLAYSKIP) || (flags == STOPFLAG_PLAYDONE)))
 			{
+				// Flush!
 				DoFlush(0);
+
 				// Stop only if not SKIP
 				if (flags == STOPFLAG_PLAYSKIP)
+				{
 					return TRUE;
+				}
 			}
 
 			// May be either between tracks or all done
 			while (this->m_bDraining)
 			{
-				::WaitForSingleObject(this->BufferEvent, INFINITE);
+				::WaitForSingleObject(this->DrainEvent, INFINITE);
 			}
 		
 			// Not seamless, just stop
@@ -392,7 +406,6 @@ void CAsioHost::PlayerStop(void)
 		// Not playing, not draining, start needed
 		this->m_bPlaying = FALSE;
 		this->m_bDraining = FALSE;
-		this->m_bPlayerStart = TRUE;
 #if defined(_DEBUG)
 		this->m_nUnderruns = 0;
 #endif
@@ -414,6 +427,9 @@ BOOL CAsioHost::DoFlush(DWORD marker)
 		// Stop ASIO processing
 		PlayerStop();
 
+		// Grab command semaphore
+		::WaitForSingleObject(this->CommandSemaphore, INFINITE);
+
 		::EnterCriticalSection(&this->AsioCritSec);
 		
 		// Zap channel buffers
@@ -434,6 +450,12 @@ BOOL CAsioHost::DoFlush(DWORD marker)
 		ClearAsioBuffer(this, 1, 0);
 
 		::LeaveCriticalSection(&this->AsioCritSec);
+
+		// Need to re-start player when Write called
+		this->m_bPlayerStart = TRUE;
+
+		// Done with command execution
+		::ReleaseSemaphore(this->CommandSemaphore, 1, NULL);
 	}
 
 	return TRUE;
@@ -457,8 +479,12 @@ void CAsioHost::DrainAndWait()
 		::LeaveCriticalSection(&this->AsioCritSec);
 
 		// Yield to other threads
-		::WaitForSingleObject(this->BufferEvent, INFINITE);
+		::WaitForSingleObject(this->DrainEvent, INFINITE);
 	}
+
+	// Drain complete
+	this->m_bDraining = FALSE;
+	::SetEvent(this->DrainEvent);
 
 	return;
 }
@@ -468,6 +494,9 @@ void CAsioHost::DrainAndWait()
 //
 BOOL CAsioHost::DoDrain(int flags)
 {
+	// Grab command semaphore
+	::WaitForSingleObject(this->CommandSemaphore, INFINITE);
+
 	if (!asioApp.m_pConfig->m_bSeamless)
 	{
 		// Not seamless, just drain and return when empty
@@ -478,6 +507,9 @@ BOOL CAsioHost::DoDrain(int flags)
 		// Attempt to keep smooth playing without running dry
 		::SetEvent(this->BufferEvent);
 	}
+
+	// Done with command execution
+	::ReleaseSemaphore(this->CommandSemaphore, 1, NULL);
 
 	return TRUE;
 }
@@ -490,7 +522,7 @@ void CAsioHost::DoDrainCancel(int flags)
 	// Exit drain wait if active
 	this->m_bDraining = FALSE;
 
-	::SetEvent(this->BufferEvent);
+	::SetEvent(this->DrainEvent);
 
 	return;
 }
@@ -674,6 +706,9 @@ void CAsioHost::DoWrite(WriteDataStruct* writeData)
 	int		samplesToSend = writeSamples;
 	BOOL	monoData = (writeData->nch == 1);
 	BOOL	applyVC = asioApp.m_pConfig->m_bVolumeEnable;
+
+	// Grab command semaphore
+	::WaitForSingleObject(this->CommandSemaphore, INFINITE);
 
 	// Copy write data to channel buffers (conversion to ASIO happens in callbacks) 
 	while (this->m_bDeviceInited)
@@ -862,16 +897,25 @@ void CAsioHost::DoWrite(WriteDataStruct* writeData)
 
 		// Update progress and quit when all buffered
 		writeSamples -= samplesToSend;
-		if(writeSamples == 0)
+		// Quit if not playing any longer
+		if((writeSamples == 0) || !this->m_bPlaying)
 			break;
 
-		// Yield to other threads return when space available
+		//   Release semaphore while waiting, 
+		::ReleaseSemaphore(this->CommandSemaphore, 1, NULL);
+		// Yield to other threads and return when space available
 		::WaitForSingleObject(this->BufferEvent, INFINITE);
 
-		// Quit if not playing any longer
+		// Exit if play stopped while we were waiting
 		if (!this->m_bPlaying)
-			break;
+			return;
+
+		//   Obtain semaphore after wakeup
+		::WaitForSingleObject(this->CommandSemaphore, INFINITE);
 	}
+
+	// Done with command execution
+	::ReleaseSemaphore(this->CommandSemaphore, 1, NULL);
 
 	return;
 }
@@ -970,10 +1014,11 @@ void CAsioHost::DoSwitch(long index, ASIOBool directProcess)
 		} else {
 			// Signal waiter that we are empty
 			this->m_bDraining = FALSE;
-			::SetEvent(this->BufferEvent);
+			::SetEvent(this->DrainEvent);
 #if defined(_DEBUG)
 			this->m_nUnderruns = 0;
 #endif
+			::SetEvent(this->BufferEvent);
 		}
 	}
 

@@ -215,7 +215,7 @@ BOOL Write(WriteDataStruct* writeData)
 {
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 
-	if (asioApp.m_pAsioHost->IsDeviceOpen())
+	if (asioApp.m_pAsioHost->IsDeviceReady())
 	{
 		// We are open - is there data?
 		if (writeData->bytelen)
@@ -231,7 +231,7 @@ BOOL Write(WriteDataStruct* writeData)
 		return OUTPUT_OK_TO_VIS;
 	}
 
-	return FALSE;
+	return (asioApp.m_pAsioHost->IsDeviceOpen()) ? OUTPUT_FOR_POS_ONLY : FALSE;
 }
 
 //-----------------------------------------------------------------------------
