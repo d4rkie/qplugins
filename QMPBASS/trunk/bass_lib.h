@@ -59,9 +59,11 @@ public:
 	int init ( bool fullinit = true );
 	int get_data( void *out_buffer, int *out_size);
 	int decode( void *out_buffer, int *out_size );
-	bool seek(double ms);
-	double get_current_time(void);
+	bool seek(INT64 ms);
+	INT64 get_current_time(void);
 	void set_stream_buffer_length(DWORD ms);
+	void update_stream_title(char *szMeta);
+	void set_stream_title(INT64 decoder_pos);
 
 	DWORD get_length(void) const { return length; }
 	QWORD get_size(void) const { return size; }
@@ -148,13 +150,13 @@ public:
 	char* m_strCurTitle; // stream media title per read, used for stream saving
 
 private:
-	BOOL use_32fp;
+	INT64 m_nTitleUpdateDelay;
 	
 	DWORD eqfx[10];
 	DWORD length;
 	DWORD bitrate;
 	DWORD starttime, pausetime; // time marker for MOD file
-	signed __int64 size;
+	__int64 size;
 
 	HSTREAM m_hBass;				// BASS handle
 	LPBYTE m_lpDecodeReservoir;
@@ -164,6 +166,7 @@ private:
 
 	bool is_url;
 	bool is_seekable;
+	bool use_32fp;
 
 	reader_file* r;
 	
@@ -187,8 +190,6 @@ private:
 	static char stream_type[16];
 	FILE* m_StreamFile;
 
-	// static void update_stream_title(char * meta);
-	static void update_stream_title(char* meta, bass* pBass);
 	static void CALLBACK stream_title_sync(HSYNC handle, DWORD channel, DWORD data, void *user);
 	static void CALLBACK stream_status_proc(const void *buffer, DWORD length, void *user);
 };

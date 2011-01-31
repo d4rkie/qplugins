@@ -19,14 +19,11 @@
 //
 //-----------------------------------------------------------------------------
 // Bugs
-// : The bass plugin sometimes retaining the file open when you press the stop button (Hard to reproduce consistently)
-// : Volume in system mode with 32bit is very low/not mirrored to backspeakers (Not looked into yet)
-// : Encoding to wav doesn't work
+// : Encoding to wav doesn't work (TAH: Should work - not tested)
 //     (Tokelil: Talked to Paul about this, and he will add float support to the wav encoding plug-in)
 //
-// Feature Reqeusts
-// : Shoutcast stream url and title(for QMP). Currently only the songname tag is supported for QCD
 //-----------------------------------------------------------------------------
+// 09-02-09 : Fixed stream saving filename errors (normalize names for Windows)
 // 07-10-09 : Fixed track name tag update when playing Shoutcast streams
 // 04-26-08 : General cleanup, including:
 //				- Tighter thread control and Window destruction 
@@ -68,7 +65,7 @@ QCDModInitIn	QCDCallbacks;
 
 DecoderInfo_t	decoderInfo;
 
-DOUBLE	seek_to			= -1;
+INT64	seek_to			= -1;
 BOOL	encoding		= FALSE;
 BOOL	paused			= FALSE;
 INT64	decode_pos_ms	= 0;
@@ -166,7 +163,7 @@ PLUGIN_API QCDModInitIn* INPUTDLL_ENTRY_POINT(QCDModInitIn *ModInit, QCDModInfo 
 	QCDCallbacks.toModule.Eject				= NULL;
 	QCDCallbacks.toModule.About				= About;
 	QCDCallbacks.toModule.Configure			= Configure;
-	QCDCallbacks.toModule.SetEQ				= bEqEnabled ? SetEQ : NULL;;
+	QCDCallbacks.toModule.SetEQ				= bEqEnabled ? SetEQ : NULL;
 	QCDCallbacks.toModule.SetVolume			= SetVolume;
 
 	return &QCDCallbacks;
@@ -315,10 +312,10 @@ void ShutDown(int flags)
 
 bool IsExtensionSupported(const char* strExt)
 {
-	OutputDebugString(":IsExtenstionSupported()");
+	//OutputDebugString(":IsExtenstionSupported()");
 
 	if (listExtensions.empty()) { // Build the list
-		OutputDebugString(" -- Building extension list:");
+		//OutputDebugString(" -- Building extension list:");
 		TCHAR* token;
 		TCHAR* str;
 		
@@ -328,10 +325,10 @@ bool IsExtensionSupported(const char* strExt)
 		while(token != NULL)
 		{
 			listExtensions.push_back(string(token));
-			OutputDebugString(token);
+			//OutputDebugString(token);
 			token = _tcstok(NULL, _T(":")); // Get next token
 		}
-		OutputDebugString(" -- Done addons!");
+		//OutputDebugString(" -- Done addons!");
 		free(str);
 
 		str = _tcsdup((LPCTSTR)strExtensions);
@@ -339,10 +336,10 @@ bool IsExtensionSupported(const char* strExt)
 		while(token != NULL)
 		{
 			listExtensions.push_back(string(token));
-			OutputDebugString(token);
+			//OutputDebugString(token);
 			token = _tcstok(NULL, _T(":")); // Get next token
 		}
-		OutputDebugString(" -- Done!");
+		//OutputDebugString(" -- Done!");
 		free(str);
 	}
 
@@ -355,7 +352,7 @@ bool IsExtensionSupported(const char* strExt)
 			return TRUE;		
 	}
 	
-	OutputDebugString(":IsExtenstionSupported() - return FALSE");
+	//OutputDebugString(":IsExtenstionSupported() - return FALSE");
 	return FALSE;
 }
 
@@ -363,9 +360,9 @@ bool IsExtensionSupported(const char* strExt)
 
 int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 {
-	OutputDebugString(":GetMediaSupported(): ");
+	//OutputDebugString(":GetMediaSupported(): ");
 	if (medianame) {
-		OutputDebugString(medianame);
+		//OutputDebugString(medianame);
 
 		if (lstrlen(medianame) < 3) // No support for CD drives etc.
 			return FALSE;
@@ -390,7 +387,7 @@ int GetMediaSupported(const char* medianame, MediaInfo *mediaInfo)
 		}
 	}
 
-	OutputDebugString("Not supported!");
+	//OutputDebugString("Not supported!");
 	return FALSE;
 }
 
@@ -458,7 +455,7 @@ int Play(const char* medianame, int playfrom, int playto, int flags)
 	}
 
 	decoderInfo.killThread = 0;
-	seek_to = (double)playfrom;
+	seek_to = playfrom;
 
 	SetEQ(NULL);
 
@@ -802,12 +799,12 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 	while (!decoderInfo->killThread) {
 		/********************** SEEK ************************/
 		if (!done && seek_to >= 0) {
-			double ms = seek_to;
+			INT64 ms = seek_to;
 			seek_to = -1;
 			updatePos = 1;
 
 			if (decoderInfo->pDecoder->seek(ms)) {
-				decode_pos_ms = (__int64)ms;
+				decode_pos_ms = ms;
 				QCDCallbacks.toPlayer.OutputFlush((unsigned int)ms);
 			}
 			else
@@ -860,7 +857,7 @@ DWORD WINAPI __stdcall PlayThread(void *b)
 			QCDCallbacks.Service(opSetAudioInfo, &ai, sizeof(AudioInfo), 0);
 
 			// playback
-			decode_pos_ms = (unsigned long)(decoderInfo->pDecoder->get_current_time());
+			decode_pos_ms = decoderInfo->pDecoder->get_current_time();
 
 			int out_size = VIS_BUFFER_SIZE;
 			decoderInfo->pDecoder->get_data(pVisData, &out_size);
@@ -963,12 +960,12 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 	while (!decoderInfo->killThread) {
 		/********************** SEEK ************************/
 		if (!done && seek_to >= 0) {
-			double ms = seek_to;
+			INT64 ms = seek_to;
 			seek_to = -1;
 			updatePos = 1;
 
 			if (decoderInfo->pDecoder->seek(ms)) {
-				decode_pos_ms = (__int64)ms;
+				decode_pos_ms = ms;
 				QCDCallbacks.toPlayer.OutputFlush((unsigned int)ms);
 			}
 			else
@@ -1035,7 +1032,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 			if (!decoderInfo->killThread && ret > 0) { // Send to output
 				WriteDataStruct wd;
 
-				decode_pos_ms = (unsigned long)(decoderInfo->pDecoder->get_current_time());
+				decode_pos_ms = decoderInfo->pDecoder->get_current_time();
 
 				if (out_size) {
 					wd.bytelen		= out_size;
@@ -1056,6 +1053,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				QCDCallbacks.toPlayer.PositionUpdate((unsigned int)decode_pos_ms);
 				updatePos = 0;
 			}
+			decoderInfo->pDecoder->set_stream_title(decode_pos_ms);
 		}
 
 		// catch pause (use semaphore?)
